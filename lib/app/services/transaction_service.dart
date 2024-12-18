@@ -10,25 +10,36 @@ class TransactionService extends GetxService {
   Future<TransactionModel?> createTransaction(
       TransactionModel transaction) async {
     try {
+      final transactionData = transaction.toCheckoutPayload();
+      print('Transaction Data: $transactionData'); // Log the transaction data
       final response =
-          await _transactionProvider.createTransaction(transaction.toJson());
+          await _transactionProvider.createTransaction(transactionData);
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         // Parsing data transaksi dari response
-        // Sesuaikan dengan struktur response backend Anda
-        final createdTransaction =
-            TransactionModel.fromJson(response.data['data'] ?? response.data);
-
-        return createdTransaction;
+        final responseData = response.data;
+        if (responseData['meta']?['status'] == 'success') {
+          final createdTransaction =
+              TransactionModel.fromJson(responseData['data']);
+          return createdTransaction;
+        }
       }
 
-      // Log error jika status code bukan 201
+      // Log error jika response tidak sesuai
       print(
           'Failed to create transaction. Status code: ${response.statusCode}');
-      return null;
+      print('Response body: ${response.data}');
+
+      // Throw an exception with the response message
+      final errorMessage = response.data['meta']?['message'] ??
+          response.data['message'] ??
+          'Failed to create transaction. Please try again later.';
+      throw Exception(errorMessage);
     } catch (e) {
-      print('Error creating transaction: $e');
-      return null;
+      // Log the error in a structured way
+      print('Error creating transaction: ${e.toString()}');
+      // Rethrow the exception to be handled by the controller
+      rethrow;
     }
   }
 

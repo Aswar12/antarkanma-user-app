@@ -128,18 +128,35 @@ class CartPage extends GetView<CartController> {
   }
 
   Widget _buildCartList() {
-    return ListView.builder(
-      padding: EdgeInsets.all(Dimenssions.height15),
-      itemCount: controller.merchantItems.length,
-      itemBuilder: (context, index) {
-        final merchantId = controller.merchantItems.keys.elementAt(index);
-        final merchantItems = controller.merchantItems[merchantId];
-        if (merchantItems != null) {
-          return _buildMerchantSection(merchantId, merchantItems);
-        }
-        return const SizedBox.shrink();
-      },
-    );
+    return ListView(padding: EdgeInsets.all(Dimenssions.height15), children: [
+      // Swipe hint text
+      Container(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        alignment: Alignment.center,
+        child: Text(
+          'Geser item ke kiri untuk menghapus',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ),
+      // Cart items list
+      ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: controller.merchantItems.length,
+        itemBuilder: (context, index) {
+          final merchantId = controller.merchantItems.keys.elementAt(index);
+          final merchantItems = controller.merchantItems[merchantId];
+          if (merchantItems != null) {
+            return _buildMerchantSection(merchantId, merchantItems);
+          }
+          return const SizedBox.shrink();
+        },
+      )
+    ]);
   }
 
   Widget _buildMerchantSection(int merchantId, List<CartItemModel> items) {
@@ -182,8 +199,62 @@ class CartPage extends GetView<CartController> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
+        color: Colors.red.shade400,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.delete_outline,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Geser untuk Hapus',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 20),
+          ],
+        ),
+      ),
+      secondaryBackground: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red.shade400,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.delete_outline,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Geser untuk Hapus',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 20),
+          ],
+        ),
       ),
       confirmDismiss: (direction) async {
         HapticFeedback.mediumImpact();
@@ -221,105 +292,118 @@ class CartPage extends GetView<CartController> {
           ),
         );
       },
-      child: Semantics(
-        label: 'Geser ke kiri untuk menghapus ${item.product.name}',
+      child: Container(
+        color: Colors.white,
         child: Stack(
           children: [
-            Tooltip(
-              message: 'Geser ke kiri untuk menghapus ${item.product.name}',
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimenssions.height20,
-                  vertical: Dimenssions.height10,
+            // Swipe indicator
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 20,
+                color: Colors.red.withOpacity(0.07),
+                child: Center(
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: logoColorSecondary,
+                    size: 20,
+                  ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Gambar produk
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: item.product.imageUrls.isNotEmpty
-                          ? Image.network(
-                              item.product.imageUrls.first,
-                              width: Dimenssions.height90,
-                              height: Dimenssions.height90,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Image.asset(
-                                'assets/image_shoes.png',
-                                width: Dimenssions.height90,
-                                height: Dimenssions.height90,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Image.asset(
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: Dimenssions.height20,
+                vertical: Dimenssions.height10,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Gambar produk
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: item.product.imageUrls.isNotEmpty
+                        ? Image.network(
+                            item.product.imageUrls.first,
+                            width: Dimenssions.height90,
+                            height: Dimenssions.height90,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
                               'assets/image_shoes.png',
                               width: Dimenssions.height90,
                               height: Dimenssions.height90,
                               fit: BoxFit.cover,
                             ),
-                    ),
-                    SizedBox(width: Dimenssions.width15),
-                    // Informasi produk
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.product.name,
-                            style: primaryTextStyle.copyWith(
-                              fontWeight: semiBold,
-                              fontSize: Dimenssions.font18,
-                            ),
+                          )
+                        : Image.asset(
+                            'assets/image_shoes.png',
+                            width: Dimenssions.height90,
+                            height: Dimenssions.height90,
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                  SizedBox(width: Dimenssions.width15),
+                  // Informasi produk
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.product.name,
+                          style: primaryTextStyle.copyWith(
+                            fontWeight: semiBold,
+                            fontSize: Dimenssions.font18,
+                          ),
+                        ),
+                        SizedBox(height: Dimenssions.height5),
+
+                        // Menampilkan variant jika ada
+                        if (item.selectedVariant != null) ...[
+                          Row(
+                            children: [
+                              Text(
+                                '${item.selectedVariant!.name}: ',
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                item.selectedVariant!.value,
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font14,
+                                  color: Colors.grey[600],
+                                  fontWeight: medium,
+                                ),
+                              ),
+                            ],
                           ),
                           SizedBox(height: Dimenssions.height5),
-
-                          // Menampilkan variant jika ada
-                          if (item.selectedVariant != null) ...[
-                            Row(
-                              children: [
-                                Text(
-                                  '${item.selectedVariant!.name}: ',
-                                  style: primaryTextStyle.copyWith(
-                                    fontSize: Dimenssions.font14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                Text(
-                                  item.selectedVariant!.value,
-                                  style: primaryTextStyle.copyWith(
-                                    fontSize: Dimenssions.font14,
-                                    color: Colors.grey[600],
-                                    fontWeight: medium,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: Dimenssions.height5),
-                          ],
-
-                          Text(
-                            NumberFormat.currency(
-                              locale: 'id',
-                              symbol: 'Rp ',
-                              decimalDigits: 0,
-                            ).format(item.totalPrice),
-                            style: TextStyle(
-                              color: logoColorSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                         ],
-                      ),
+
+                        Text(
+                          NumberFormat.currency(
+                            locale: 'id',
+                            symbol: 'Rp ',
+                            decimalDigits: 0,
+                          ).format(item.totalPrice),
+                          style: TextStyle(
+                            color: logoColorSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             // Kontrol kuantitas
@@ -330,8 +414,7 @@ class CartPage extends GetView<CartController> {
                 height: Dimenssions.height35,
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(
-                      8), // Mengubah radius menjadi lebih kecil
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

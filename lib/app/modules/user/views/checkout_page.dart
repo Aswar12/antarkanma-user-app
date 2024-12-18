@@ -332,26 +332,39 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   Widget _buildOrderItemsSection() {
-    return Card(
-      color: backgroundColor1,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Pesanan',
-              style: primaryTextStyle.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+    return Obx(() {
+      return Card(
+        color: backgroundColor1,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pesanan',
+                style: primaryTextStyle.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            ...controller.orderItems.map((item) => _buildOrderItemCard(item)),
-          ],
+              const SizedBox(height: 8),
+              if (controller.orderItems.isEmpty)
+                Center(
+                  child: Text(
+                    'Tidak ada pesanan',
+                    style: primaryTextStyle.copyWith(
+                      color: Colors.grey,
+                    ),
+                  ),
+                )
+              else
+                ...controller.orderItems
+                    .map((item) => _buildOrderItemCard(item)),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildOrderItemCard(OrderItemModel item) {

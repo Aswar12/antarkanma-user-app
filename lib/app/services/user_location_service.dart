@@ -25,12 +25,27 @@ class UserLocationService extends GetxService {
 
   static const String _userLocationsKey = 'user_locations';
   static const String _defaultLocationKey = 'default_location';
+  static const String _lastSyncKey = 'last_locations_sync';
+  static const Duration _cacheDuration =
+      Duration(hours: 24); // Cache for 24 hours
 
   @override
   void onInit() {
     super.onInit();
     loadUserLocationsFromLocal();
-    loadUserLocations();
+    // Only load from backend if cache is expired
+    if (_shouldSyncWithBackend()) {
+      loadUserLocations();
+    }
+  }
+
+  bool _shouldSyncWithBackend() {
+    final lastSync = _storageService.getInt(_lastSyncKey);
+    if (lastSync == null) return true;
+
+    final lastSyncTime = DateTime.fromMillisecondsSinceEpoch(lastSync);
+    final now = DateTime.now();
+    return now.difference(lastSyncTime) > _cacheDuration;
   }
 
   void loadUserLocationsFromLocal() {
@@ -52,12 +67,19 @@ class UserLocationService extends GetxService {
     }
   }
 
-  Future<void> loadUserLocations() async {
+  Future<void> loadUserLocations({bool forceRefresh = false}) async {
     try {
       isLoading.value = true;
       final token = _authService.getToken();
       if (token == null) {
         throw Exception('Token tidak valid');
+      }
+
+      // If not forcing refresh and we have local data, skip backend call
+      if (!forceRefresh &&
+          userLocations.isNotEmpty &&
+          !_shouldSyncWithBackend()) {
+        return;
       }
 
       final response = await _userLocationProvider.getUserLocations(token);
@@ -69,6 +91,10 @@ class UserLocationService extends GetxService {
 
         updateDefaultLocation();
         saveLocationsToLocal();
+
+        // Update last sync time
+        await _storageService.saveInt(
+            _lastSyncKey, DateTime.now().millisecondsSinceEpoch);
       } else {
         throw Exception('Gagal memuat lokasi');
       }
@@ -228,7 +254,6 @@ class UserLocationService extends GetxService {
     clearLocalData();
   }
 
-  // Metode untuk mendapatkan lokasi terakhir
   // Metode untuk mendapatkan lokasi terakhir
   Future<List<UserLocationModel>> getRecentLocations({int limit = 5}) async {
     try {
@@ -495,9 +520,9 @@ class UserLocationService extends GetxService {
   }
 
 // Metode untuk menyinkronkan lokasi
-  Future<void> syncLocations() async {
+  Future<void> syncLocations({bool forceRefresh = false}) async {
     try {
-      await loadUserLocations();
+      await loadUserLocations(forceRefresh: forceRefresh);
     } catch (e) {
       showCustomSnackbar(
           title: 'Error',

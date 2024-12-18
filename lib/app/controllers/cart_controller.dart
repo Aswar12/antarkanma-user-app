@@ -1,10 +1,9 @@
-// ignore_for_file: constant_identifier_names, avoid_print
-
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:antarkanma/app/data/providers/transaction_provider.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -81,7 +80,15 @@ class CartController extends GetxController {
       }
 
       final merchantId = merchant.id;
-      if (merchantId == null) {
+      if (product.id == null) {
+        showCustomSnackbar(
+          title: 'ID Produk Tidak Valid',
+          message: 'Produk harus memiliki ID yang valid',
+          backgroundColor: Colors.red,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      } else if (merchantId == null) {
         throw Exception('ID Merchant tidak valid');
       }
 
@@ -321,6 +328,59 @@ class CartController extends GetxController {
       merchantItems[merchantId] = [item];
     }
     update();
+  }
+
+  Future<void> createTransaction(
+      int userLocationId, double shippingPrice, String paymentMethod) async {
+    if (!validateCart()) {
+      return; // Exit if the cart is not valid
+    }
+
+    // Prepare the items list
+    List<Map<String, dynamic>> items = [];
+    merchantItems.forEach((merchantId, cartItems) {
+      for (var item in cartItems) {
+        items.add({
+          "product_id": item.product.id,
+          "merchant_id": item.merchant.id,
+          "quantity": item.quantity,
+          "price": item.totalPrice,
+        });
+      }
+    });
+
+    // Prepare the transaction data
+    Map<String, dynamic> transactionData = {
+      "user_location_id": userLocationId,
+      "total_price": totalPrice + shippingPrice,
+      "shipping_price": shippingPrice,
+      "payment_method": paymentMethod,
+      "items": items,
+    };
+
+    // Log the transaction data before creating the transaction
+    print('Transaction Data: $transactionData');
+    final transactionProvider = TransactionProvider();
+    try {
+      final response =
+          await transactionProvider.createTransaction(transactionData);
+      // Handle the response as needed
+      print('Transaction created successfully: ${response.data}');
+      showCustomSnackbar(
+        title: 'Success',
+        message: 'Transaction created successfully!',
+        backgroundColor: Colors.green,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      print('Error creating transaction: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Failed to create transaction.',
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 
   @override

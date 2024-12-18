@@ -3,9 +3,10 @@
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:flutter/material.dart';
 import 'package:antarkanma/app/services/order_item_service.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
@@ -13,6 +14,7 @@ import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'user_location_controller.dart';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
@@ -148,15 +150,9 @@ class CheckoutController extends GetxController {
             args['merchantItems'] as Map<int, List<CartItemModel>>;
 
         orderItems.value = merchantItems.entries.expand((entry) {
-          return entry.value.map((cartItem) => OrderItemModel(
-                orderId: '',
-                product: cartItem.product,
-                merchant: cartItem.merchant,
-                quantity: cartItem.quantity,
-                price: cartItem.price,
-                selectedVariantId: cartItem.selectedVariantId?.toString(),
-                status: 'PENDING',
-                createdAt: DateTime.now(),
+          return entry.value.map((cartItem) => OrderItemModel.fromCartItem(
+                cartItem,
+                DateTime.now().millisecondsSinceEpoch.toString(),
               ));
         }).toList();
 
@@ -169,11 +165,10 @@ class CheckoutController extends GetxController {
 
   void _handleInitializationError(dynamic error) {
     print('Error initializing checkout: $error');
-    Get.snackbar(
-      'Error',
-      'Terjadi kesalahan saat memuat data checkout',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    showCustomSnackbar(
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memuat data checkout',
+        isError: true);
   }
 
   void _calculateTotals() {
@@ -214,12 +209,12 @@ class CheckoutController extends GetxController {
           await transactionService.createTransaction(transaction);
 
       if (createdTransaction != null) {
-        // Transaksi berhasil dibuat
+        showCustomSnackbar(
+            title: 'Success',
+            message: 'Transaksi berhasil dibuat',
+            isError: false);
         _clearCart();
         _navigateToSuccessPage(createdTransaction);
-      } else {
-        // Gagal membuat transaksi
-        _showSnackbar('Error', 'Gagal membuat transaksi');
       }
     } catch (e) {
       _handleCheckoutError(e);
@@ -246,18 +241,16 @@ class CheckoutController extends GetxController {
       throw Exception('Pengguna tidak terautentikasi');
     }
 
-    // Buat order ID sementara (backend akan mengganti)
-    final tempOrderId = DateTime.now().millisecondsSinceEpoch.toString();
-
     return TransactionModel(
-      orderId: tempOrderId,
-      userId: userId.toString(),
-      userLocationId: selectedLocation.value!.id.toString(),
+      orderId: null,
+      userId: userId,
+      userLocationId: selectedLocation.value!.id ?? 0,
       totalPrice: subtotal.value,
       shippingPrice: deliveryFee.value,
       paymentMethod: _mapPaymentMethod(selectedPaymentMethod.value!),
       status: 'PENDING',
       paymentStatus: 'PENDING',
+      items: orderItems.toList(),
     );
   }
 
@@ -319,11 +312,15 @@ class CheckoutController extends GetxController {
   }
 
   void _navigateToSuccessPage(TransactionModel transaction) {
-    Get.offNamed('/checkout-success', arguments: {
+    if (transaction.orderId == null) {
+      print('Warning: transaction.orderId is null');
+    }
+
+    Get.offNamed(Routes.checkoutSuccess, arguments: {
       'transaction': transaction,
-      'orderItems': orderItems,
+      'orderItems': orderItems.toList(),
       'total': total.value,
-      'deliveryAddress': selectedLocation.value,
+      'deliveryAddress': selectedLocation.value!,
     });
   }
 
@@ -338,14 +335,10 @@ class CheckoutController extends GetxController {
       errorMessage = error;
     }
 
-    Get.snackbar(
-      'Error',
-      'Gagal memproses checkout: $errorMessage',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-    );
+    showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal memproses checkout: $errorMessage',
+        isError: true);
   }
 
   Map<int, List<OrderItemModel>> _groupItemsByMerchant() {
@@ -366,14 +359,8 @@ class CheckoutController extends GetxController {
 //
 
   void _showValidationErrorSnackbar(List<String> errors) {
-    Get.snackbar(
-      'Validasi Gagal',
-      errors.join('\n'),
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-    );
+    showCustomSnackbar(
+        title: 'Validasi Gagal', message: errors.join('\n'), isError: true);
   }
 
   // Method lainnya tetap sama seperti sebelumnya...
@@ -385,48 +372,6 @@ class CheckoutController extends GetxController {
     return 'Terjadi kesalahan tidak dikenal';
   }
 
-  Future<TransactionModel?> _saveTransaction(
-      TransactionModel transaction) async {
-    try {
-      final transactionService = Get.find<TransactionService>();
-      final createdTransaction =
-          await transactionService.createTransaction(transaction);
-
-      if (createdTransaction == null) {
-        _showSnackbar('Error', 'Gagal membuat transaksi');
-        return null;
-      }
-
-      return createdTransaction;
-    } catch (e) {
-      _showSnackbar('Error', 'Gagal menyimpan transaksi: ${e.toString()}');
-      return null;
-    }
-  }
-
-  Future<void> _saveOrderItems(TransactionModel transaction) async {
-    final orderItemService = Get.find<OrderItemService>();
-
-    for (var orderItem in orderItems) {
-      try {
-        // Set order ID dari transaksi yang baru dibuat
-        orderItem.orderId =
-            transaction.id ?? DateTime.now().millisecondsSinceEpoch.toString();
-
-        final isOrderItemCreated =
-            await orderItemService.createOrderItem(orderItem);
-
-        if (!isOrderItemCreated) {
-          throw Exception(
-              'Gagal menyimpan order item: ${orderItem.product.name}');
-        }
-      } catch (e) {
-        _showSnackbar('Error', 'Gagal menyimpan order item: ${e.toString()}');
-        rethrow;
-      }
-    }
-  }
-
   void _clearCart() {
     try {
       Get.find<CartController>().clearCart();
@@ -436,13 +381,10 @@ class CheckoutController extends GetxController {
   }
 
   void _showSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Get.theme.colorScheme.error,
-      colorText: Colors.white,
-    );
+    showCustomSnackbar(
+        title: title,
+        message: message,
+        isError: title.toLowerCase() == 'error');
   }
 
   void setPaymentMethod(String method) {

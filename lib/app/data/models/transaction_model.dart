@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/data/models/order_model.dart';
+import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 
 class TransactionModel {
-  final String? id;
-  final String orderId;
-  final String userId;
-  final String userLocationId;
+  final int? id;
+  final int? orderId; // Foreign Key ke Orders
+  final int userId; // Foreign Key ke Users
+  final int userLocationId; // Foreign Key ke User_Locations
   final double totalPrice;
   final double shippingPrice;
   final DateTime? paymentDate;
   final String status; // PENDING, COMPLETED, CANCELED
   final String paymentMethod; // MANUAL, ONLINE
   final String paymentStatus; // PENDING, COMPLETED, FAILED
-  final int? rating;
+  final double? rating;
   final String? note;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-
+  final List<OrderItemModel>? items;
   // Relasi
   OrderModel? order;
   UserLocationModel? userLocation;
 
   TransactionModel({
     this.id,
-    required this.orderId,
+    this.orderId,
     required this.userId,
     required this.userLocationId,
     required this.totalPrice,
@@ -40,6 +41,7 @@ class TransactionModel {
     this.updatedAt,
     this.order,
     this.userLocation,
+    this.items,
   });
 
   // Getter untuk total harga (termasuk ongkir)
@@ -70,20 +72,43 @@ class TransactionModel {
     ).format(grandTotal);
   }
 
+  // Metode untuk menghasilkan payload checkout
+  Map<String, dynamic> toCheckoutPayload() {
+    return {
+      "user_location_id": userLocationId,
+      "total_price": totalPrice,
+      "shipping_price": shippingPrice,
+      "payment_method": paymentMethod,
+      "items": items
+              ?.map((item) => {
+                    "product_id": item.product.id,
+                    "merchant_id": item.merchant.id,
+                    "quantity": item.quantity,
+                    "price": item.price,
+                  })
+              .toList() ??
+          [],
+      "order_id": orderId,
+      "user_id": userId,
+    };
+  }
+
   // Konversi ke JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'order_id': orderId,
-      'user_id': userId,
-      'user_location_id': userLocationId,
+      'id': id?.toString(),
+      'order_id': orderId?.toString(),
+      'user_id': userId.toString(),
+      'user_location_id': userLocationId.toString(),
       'total_price': totalPrice,
       'shipping_price': shippingPrice,
       'payment_date': paymentDate?.toIso8601String(),
       'status': status,
       'payment_method': paymentMethod,
       'payment_status': paymentStatus,
+      'order': order?.toJson(),
       'rating': rating,
+      'items': items?.map((item) => item.toJson()).toList(),
       'note': note,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -93,20 +118,37 @@ class TransactionModel {
   // Membuat instance dari JSON
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     return TransactionModel(
-      id: json['id'],
-      orderId: json['order_id'],
-      userId: json['user_id'],
-      userLocationId: json['user_location_id'],
-      totalPrice: json['total_price'].toDouble(),
-      shippingPrice: json['shipping_price'].toDouble(),
+      id: json['id'] is String ? int.tryParse(json['id']) : json['id'],
+      orderId: json['order_id'] is String
+          ? int.tryParse(json['order_id'])
+          : json['order_id'],
+      userId: json['user_id'] is String
+          ? int.parse(json['user_id'])
+          : json['user_id'],
+      userLocationId: json['user_location_id'] is String
+          ? int.parse(json['user_location_id'])
+          : json['user_location_id'],
+      totalPrice: json['total_price'] is String
+          ? double.parse(json['total_price'])
+          : json['total_price'].toDouble(),
+      shippingPrice: json['shipping_price'] is String
+          ? double.parse(json['shipping_price'])
+          : json['shipping_price'].toDouble(),
       paymentDate: json['payment_date'] != null
           ? DateTime.parse(json['payment_date'])
           : null,
       status: json['status'] ?? 'PENDING',
       paymentMethod: json['payment_method'],
       paymentStatus: json['payment_status'] ?? 'PENDING',
-      rating: json['rating'],
+      rating: json['rating'] is String
+          ? double.tryParse(json['rating'])
+          : json['rating']?.toDouble(),
       note: json['note'],
+      items: json['items'] != null
+          ? (json['items'] as List)
+              .map((item) => OrderItemModel.fromJson(item))
+              .toList()
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -118,22 +160,23 @@ class TransactionModel {
 
   // Copy with method
   TransactionModel copyWith({
-    String? id,
-    String? orderId,
-    String? userId,
-    String? userLocationId,
+    int? id,
+    int? orderId,
+    int? userId,
+    int? userLocationId,
     double? totalPrice,
     double? shippingPrice,
     DateTime? paymentDate,
     String? status,
     String? paymentMethod,
     String? paymentStatus,
-    int? rating,
+    double? rating,
     String? note,
     DateTime? createdAt,
     DateTime? updatedAt,
     OrderModel? order,
     UserLocationModel? userLocation,
+    List<OrderItemModel>? items,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -152,6 +195,7 @@ class TransactionModel {
       updatedAt: updatedAt ?? this.updatedAt,
       order: order ?? this.order,
       userLocation: userLocation ?? this.userLocation,
+      items: items ?? this.items,
     );
   }
 
@@ -249,7 +293,7 @@ class TransactionModel {
   bool get isCanceled => status == 'CANCELED';
 
   // Method untuk menambahkan rating
-  TransactionModel addRating(int newRating) {
+  TransactionModel addRating(double newRating) {
     if (newRating < 1 || newRating > 5) {
       throw ArgumentError('Rating harus antara 1 dan 5');
     }
@@ -341,5 +385,55 @@ class TransactionModel {
     }
 
     return 'Estimasi belum tersedia';
+  }
+
+  // Method tambahan untuk payload pembayaran
+  Map<String, dynamic> toPaymentPayload() {
+    return {
+      'transaction_id': id,
+      'order_id': orderId,
+      'amount': grandTotal,
+      'payment_method': paymentMethod,
+      'user_id': userId,
+    };
+  }
+
+  // Method untuk normalisasi status
+  static String normalizeStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+      case 'PROCESSING':
+        return 'PENDING';
+      case 'COMPLETED':
+      case 'SUCCESS':
+        return 'COMPLETED';
+      case 'CANCELED':
+      case 'FAILED':
+        return 'CANCELED';
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
+  // Override equality
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is TransactionModel &&
+        id == other.id &&
+        orderId == other.orderId &&
+        userId == other.userId &&
+        totalPrice == other.totalPrice &&
+        status == other.status;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+        orderId.hashCode ^
+        userId.hashCode ^
+        totalPrice.hashCode ^
+        status.hashCode;
   }
 }

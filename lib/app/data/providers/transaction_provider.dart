@@ -1,9 +1,13 @@
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio;
+import 'package:get/get.dart';
 import 'package:antarkanma/config.dart';
+import 'package:antarkanma/app/services/storage_service.dart';
+import 'package:antarkanma/app/routes/app_pages.dart'; // Pastikan Anda punya routes
 
 class TransactionProvider {
-  final Dio _dio = Dio();
+  final dio.Dio _dio = dio.Dio();
   final String baseUrl = Config.baseUrl;
+  final StorageService _storageService = StorageService.instance;
 
   TransactionProvider() {
     _setupBaseOptions();
@@ -11,7 +15,7 @@ class TransactionProvider {
   }
 
   void _setupBaseOptions() {
-    _dio.options = BaseOptions(
+    _dio.options = dio.BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
@@ -21,99 +25,121 @@ class TransactionProvider {
 
   void _setupInterceptors() {
     _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          options.headers.addAll({
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          });
+      dio.InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = _storageService.getToken();
+
+          // Tambahkan token hanya jika tersedia
+          if (token != null) {
+            options.headers.addAll({
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            });
+          }
+
           return handler.next(options);
         },
-        onResponse: (response, handler) {
-          return handler.next(response);
-        },
-        onError: (DioException error, handler) {
-          _handleError(error);
+        onError: (dio.DioException error, handler) async {
+          // Tangani error 401 (Unauthorized)
+          if (error.response?.statusCode == 401) {}
+
           return handler.next(error);
         },
       ),
     );
   }
 
-  void _handleError(DioException error) {
+  // Ganti _handleForceLogout dengan metode yang lebih sederhana
+
+  void _handleError(dio.DioException error) {
     String message;
     switch (error.response?.statusCode) {
       case 401:
         message = 'Unauthorized access. Please log in again.';
+
         break;
       case 422:
         final errors = error.response?.data['errors'];
-        message = errors.toString();
+        message = errors is Map ? errors.values.join(', ') : errors.toString();
+        break;
+      case 403:
+        message = 'Forbidden. You do not have permission.';
+        break;
+      case 404:
+        message = 'Resource not found.';
+        break;
+      case 500:
+        message = 'Internal server error. Please try again later.';
         break;
       default:
-        message = error.response?.data['message'] ?? 'An error occurred';
+        message = error.response?.data['message'] ??
+            error.message ??
+            'An unexpected error occurred';
     }
+
     throw Exception(message);
   }
 
-  // Menggunakan endpoint untuk membuat transaksi
-  Future<Response> createTransaction(
+  // Metode-metode transaksi
+  Future<dio.Response> createTransaction(
       Map<String, dynamic> transactionData) async {
     try {
-      return await _dio.post('/transactions', data: transactionData);
-    } catch (e) {
-      throw Exception('Failed to create transaction: $e');
+      print(
+          'Using token: ${_storageService.getToken()}'); // Log the token being used
+      print('Transaction Data: $transactionData'); // Log the transaction data
+      final response = await _dio.post('/transactions', data: transactionData);
+      print('Response: ${response.data}'); // Log the response for debugging
+      return response; // Return the response to avoid null return error
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 
-  // Mengambil daftar transaksi untuk pengguna
-  Future<Response> getTransactions() async {
+  Future<dio.Response> getTransactions() async {
     try {
-      return await _dio
-          .get('/transactions'); // Endpoint untuk mengambil daftar transaksi
-    } catch (e) {
-      throw Exception('Failed to get transactions: $e');
+      return await _dio.get('/transactions');
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 
-  // Mengambil transaksi berdasarkan ID
-  Future<Response> getTransactionById(String transactionId) async {
+  Future<dio.Response> getTransactionById(String transactionId) async {
     try {
-      return await _dio.get(
-          '/transactions/$transactionId'); // Endpoint untuk mengambil transaksi berdasarkan ID
-    } catch (e) {
-      throw Exception('Failed to get transaction: $e');
+      return await _dio.get('/transactions/$transactionId');
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 
-  // Memperbarui transaksi
-  Future<Response> updateTransaction(
+  Future<dio.Response> updateTransaction(
       String transactionId, Map<String, dynamic> updateData) async {
     try {
-      return await _dio.put('/transactions/$transactionId',
-          data: updateData); // Endpoint untuk memperbarui transaksi
-    } catch (e) {
-      throw Exception('Failed to update transaction: $e');
+      return await _dio.put('/transactions/$transactionId', data: updateData);
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 
-  // Membatalkan transaksi
-  Future<Response> cancelTransaction(String transactionId) async {
+  Future<dio.Response> cancelTransaction(String transactionId) async {
     try {
-      return await _dio.post(
-          '/transactions/$transactionId/cancel'); // Endpoint untuk membatalkan transaksi
-    } catch (e) {
-      throw Exception('Failed to cancel transaction: $e');
+      return await _dio.post('/transactions/$transactionId/cancel');
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 
-  // Mengambil transaksi berdasarkan merchant
-  Future<Response> getTransactionsByMerchant(String merchantId) async {
+  Future<dio.Response> getTransactionsByMerchant(String merchantId) async {
     try {
-      return await _dio.get(
-          '/merchants/$merchantId/transactions'); // Endpoint untuk mengambil transaksi berdasarkan merchant
-    } catch (e) {
-      throw Exception('Failed to get transactions by merchant: $e');
+      return await _dio.get('/merchants/$merchantId/transactions');
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
     }
   }
 }

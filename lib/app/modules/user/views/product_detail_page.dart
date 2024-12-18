@@ -1,7 +1,7 @@
 // ignore_for_file: unused_local_variable, unused_catch_stack, empty_catches, deprecated_member_use, constant_identifier_names
 
 import 'package:antarkanma/app/controllers/cart_controller.dart';
-
+import 'package:antarkanma/app/data/models/cart_item_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/utils/image_viewer_page.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
@@ -53,12 +53,52 @@ class ProductDetailPage extends GetView<ProductDetailController> {
   }
 
   void _buyNow() {
-    if (controller.validateCheckout()) {
-      final checkoutData = controller.getCheckoutData();
-      Get.toNamed('/checkout', arguments: {
-        'items': [],
+    try {
+      final merchant = controller.product.value.merchant;
+      if (merchant == null) {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Data merchant tidak valid',
+          backgroundColor: Colors.red,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      // Create a map structure similar to merchantItems in cart
+      final merchantId = merchant.id;
+      if (merchantId == null) {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'ID merchant tidak valid',
+          backgroundColor: Colors.red,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      final Map<int, List<CartItemModel>> merchantItems = {
+        merchantId: [
+          CartItemModel(
+            product: controller.product.value,
+            merchant: merchant,
+            quantity: controller.quantity.value,
+            selectedVariant: controller.selectedVariant.value,
+          )
+        ]
+      };
+
+      Get.toNamed('/main/checkout', arguments: {
+        'merchantItems': merchantItems,
         'type': 'direct_buy',
       });
+    } catch (e) {
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memproses pembelian',
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -584,25 +624,29 @@ class ProductDetailPage extends GetView<ProductDetailController> {
         height: Dimenssions.height45,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: logoColorSecondary,
+            backgroundColor: controller.quantity.value > 0
+                ? logoColorSecondary
+                : Colors.grey,
             padding: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          onPressed: () {
-            if (controller.product.value.status != 'ACTIVE') {
-              Get.snackbar(
-                'Tidak Tersedia',
-                'Produk ini sedang tidak tersedia',
-                backgroundColor: Colors.red,
-                colorText: Colors.white,
-              );
-              return;
-            }
+          onPressed: controller.quantity.value > 0
+              ? () {
+                  if (controller.product.value.status != 'ACTIVE') {
+                    Get.snackbar(
+                      'Tidak Tersedia',
+                      'Produk ini sedang tidak tersedia',
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                    );
+                    return;
+                  }
 
-            _buyNow();
-          },
+                  _buyNow();
+                }
+              : null,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

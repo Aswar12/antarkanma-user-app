@@ -2,7 +2,7 @@ import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -22,15 +22,14 @@ class _SplashPageState extends State<SplashPage> {
     // Simulasi delay loading
     await Future.delayed(const Duration(seconds: 3));
 
-    // Periksa status login
-    final box = GetStorage();
-    bool isLoggedIn = box.read('isLoggedIn') ?? false;
+    final authService = Get.find<AuthService>();
 
-    // Navigasi berdasarkan status login
-    if (isLoggedIn) {
-      Get.offAllNamed(Routes.main);
-    } else {
-      Get.offAllNamed(Routes.login); // Pastikan Anda memiliki Routes.login
+    // Check login status using AuthService
+    await authService.checkLoginStatus();
+
+    // AuthService will automatically redirect based on role if logged in
+    if (!authService.isLoggedIn.value) {
+      Get.offAllNamed(Routes.login);
     }
   }
 

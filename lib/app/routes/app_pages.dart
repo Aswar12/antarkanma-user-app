@@ -4,6 +4,7 @@ import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/modules/auth/auth_binding.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
+import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
 import 'package:antarkanma/app/modules/splash/views/splash_page.dart';
 import 'package:antarkanma/app/modules/user/user_binding.dart';
 import 'package:antarkanma/app/modules/user/views/add_edit_address_page.dart';
@@ -24,6 +25,7 @@ abstract class Routes {
   static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
+  static const checkoutSuccess = '/checkout-success';
 
   // User routes
   static const home = '/home';
@@ -49,6 +51,11 @@ class AppPages {
   static const initial = Routes.splash;
 
   static final routes = [
+    GetPage(
+      name: Routes.checkoutSuccess,
+      page: () => const CheckoutSuccessPage(),
+      binding: UserBinding(),
+    ),
     GetPage(
       name: Routes.productDetail,
       page: () => const ProductDetailPage(),
