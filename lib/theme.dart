@@ -106,7 +106,10 @@ class Dimenssions {
 
   // Dynamic height padding and margin
   static double height2 = screenHeight / 422;
+  static double height4 = screenHeight / 211;
   static double height5 = screenHeight / 168.8;
+  static double height6 = screenHeight / 140.67;
+  static double height8 = screenHeight / 105.5;
   static double height10 = screenHeight / 84.4;
   static double height12 = screenHeight / 70.33;
   static double height15 = screenHeight / 56.27;
@@ -141,8 +144,12 @@ class Dimenssions {
 
   // Dynamic width padding and margin
   static double width2 = screenHeight / 422;
+  static double width4 = screenHeight / 211;
   static double width5 = screenHeight / 168.8;
+  static double width6 = screenHeight / 140.67;
+  static double width8 = screenHeight / 105.5;
   static double width10 = screenHeight / 84.4;
+  static double width12 = screenHeight / 70.33;
   static double width15 = screenHeight / 56.27;
   static double width20 = screenHeight / 42.2;
   static double width25 = screenHeight / 33.64;
@@ -181,6 +188,8 @@ class Dimenssions {
   static double font26 = screenHeight / 32.46;
 
   // Radius
+  static double radius4 = screenHeight / 211;
+  static double radius6 = screenHeight / 140.67;
   static double radius8 = screenHeight / 105.5;
   static double radius15 = screenHeight / 52.75;
   static double radius20 = screenHeight / 42.2;

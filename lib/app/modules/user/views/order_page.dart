@@ -214,10 +214,9 @@ class _OrderPageState extends State<OrderPage>
   }
 
   Widget _buildOrderCard(TransactionModel transaction) {
-    final items = transaction.order?.orderItems ?? [];
+    final items = transaction.items;
     final orderId = transaction.orderId ?? transaction.id;
     final status = transaction.status ?? 'UNKNOWN';
-    final total = transaction.totalPrice + transaction.shippingPrice;
     final date = transaction.createdAt != null
         ? DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!)
         : '-';
@@ -226,7 +225,6 @@ class _OrderPageState extends State<OrderPage>
       onTap: () => _showOrderDetails(transaction),
       child: Container(
         margin: EdgeInsets.only(bottom: Dimenssions.height15),
-        padding: EdgeInsets.all(Dimenssions.height15),
         decoration: BoxDecoration(
           color: backgroundColor2,
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
@@ -240,185 +238,240 @@ class _OrderPageState extends State<OrderPage>
           ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Order #$orderId',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font16,
-                    fontWeight: semiBold,
-                  ),
+            // Header with order ID and status
+            Container(
+              padding: EdgeInsets.all(Dimenssions.height15),
+              decoration: BoxDecoration(
+                color: backgroundColor3.withOpacity(0.05),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(Dimenssions.radius15),
+                  topRight: Radius.circular(Dimenssions.radius15),
                 ),
-                _buildStatusBadge(status),
-              ],
-            ),
-            SizedBox(height: Dimenssions.height10),
-            if (items.isNotEmpty) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ...items
-                      .take(2)
-                      .map((item) => Padding(
-                            padding:
-                                EdgeInsets.only(bottom: Dimenssions.height5),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: Dimenssions.width30,
-                                  height: Dimenssions.height30,
-                                  decoration: BoxDecoration(
-                                    color: backgroundColor3,
-                                    borderRadius: BorderRadius.circular(
-                                        Dimenssions.radius8),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${item.quantity}x',
-                                      style: secondaryTextStyle.copyWith(
-                                        fontSize: Dimenssions.font12,
-                                        fontWeight: medium,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: Dimenssions.width10),
-                                Expanded(
-                                  child: Text(
-                                    item.product.name,
-                                    style: primaryTextStyle.copyWith(
-                                      fontSize: Dimenssions.font14,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ))
-                      .toList(),
-                  if (items.length > 2)
-                    Text(
-                      '+ ${items.length - 2} item lainnya',
-                      style: secondaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font12,
-                        fontStyle: FontStyle.italic,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.shopping_bag_outlined,
+                        size: Dimenssions.font20,
+                        color: logoColorSecondary,
                       ),
-                    ),
+                      SizedBox(width: Dimenssions.width10),
+                      Text(
+                        'Order #$orderId',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font16,
+                          fontWeight: semiBold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildStatusBadge(status),
                 ],
               ),
-              SizedBox(height: Dimenssions.height10),
-            ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Tanggal: ',
-                      style: secondaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
-                      ),
-                    ),
-                    Text(
-                      date,
-                      style: primaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_canBeCancelled(status))
-                  SizedBox(
-                    height: Dimenssions.height25,
-                    child: TextButton(
-                      onPressed: () {
-                        if (transaction.id != null) {
-                          _showCancelConfirmation(transaction);
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: alertColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius8),
-                        ),
-                      ),
-                      child: Text(
-                        'Batalkan',
-                        style: primaryTextStyle.copyWith(
-                          color: backgroundColor1,
-                          fontSize: Dimenssions.font12,
-                          fontWeight: medium,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
             ),
-            Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total:',
-                      style: secondaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
+            // Order content
+            Container(
+              padding: EdgeInsets.all(Dimenssions.height15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (items.isNotEmpty) ...[
+                    // Products list
+                    ...items.take(2).map((item) => Container(
+                          margin: EdgeInsets.only(bottom: Dimenssions.height12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Product Image with border
+                              Container(
+                                width: Dimenssions.height60,
+                                height: Dimenssions.height60,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimenssions.radius8),
+                                  border: Border.all(
+                                    color: backgroundColor3.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimenssions.radius8),
+                                  child: Image.network(
+                                    item.product.firstImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Image.asset(
+                                                'assets/image_shop_logo.png'),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: Dimenssions.width10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.product.name,
+                                          style: primaryTextStyle.copyWith(
+                                            fontSize: Dimenssions.font14,
+                                            fontWeight: medium,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        SizedBox(height: Dimenssions.height4),
+                                        Text(
+                                          'Toko: ${item.merchant.name}',
+                                          style: secondaryTextStyle.copyWith(
+                                            fontSize: Dimenssions.font12,
+                                          ),
+                                        ),
+                                        SizedBox(height: Dimenssions.height4),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: Dimenssions.width5,
+                                            vertical: Dimenssions.height2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: logoColorSecondary
+                                                .withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                                Dimenssions.radius8),
+                                          ),
+                                          child: Text(
+                                            '${item.quantity} item',
+                                            style: primaryTextStyle.copyWith(
+                                              fontSize: Dimenssions.font12,
+                                              color: logoColorSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: Dimenssions.width10),
+                                        Text(
+                                          item.formattedPrice,
+                                          style: priceTextStyle.copyWith(
+                                            fontSize: Dimenssions.font12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                    if (items.length > 2)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: Dimenssions.height12),
+                        child: Text(
+                          '+ ${items.length - 2} item lainnya',
+                          style: secondaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       ),
+                    // Divider before total
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: backgroundColor3.withOpacity(0.1),
                     ),
-                    Text(
-                      NumberFormat.currency(
-                        locale: 'id',
-                        symbol: 'Rp ',
-                        decimalDigits: 0,
-                      ).format(total),
-                      style: priceTextStyle.copyWith(
-                        fontSize: Dimenssions.font16,
-                        fontWeight: semiBold,
-                      ),
-                    ),
+                    SizedBox(height: Dimenssions.height12),
                   ],
-                ),
-                if (_canBeCancelled(status)) ...[
-                  SizedBox(height: Dimenssions.height10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: Dimenssions.height30,
-                    child: TextButton(
-                      onPressed: () {
-                        if (transaction.id != null) {
-                          _showCancelConfirmation(transaction);
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: alertColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius8),
-                        ),
+                  // Total and date row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total Pembayaran',
+                            style: secondaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font12,
+                            ),
+                          ),
+                          SizedBox(height: Dimenssions.height4),
+                          Text(
+                            transaction.formattedGrandTotal,
+                            style: priceTextStyle.copyWith(
+                              fontSize: Dimenssions.font16,
+                              fontWeight: semiBold,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        'Batalkan Pesanan',
-                        style: primaryTextStyle.copyWith(
-                          color: backgroundColor1,
-                          fontSize: Dimenssions.font12,
-                          fontWeight: medium,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: Dimenssions.font14,
+                                color: secondaryTextColor,
+                              ),
+                              SizedBox(width: Dimenssions.width5),
+                              Text(
+                                date,
+                                style: secondaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_canBeCancelled(status)) ...[
+                            SizedBox(height: Dimenssions.height10),
+                            TextButton(
+                              onPressed: () {
+                                if (transaction.id != null) {
+                                  _showCancelConfirmation(transaction);
+                                }
+                              },
+                              style: TextButton.styleFrom(
+                                backgroundColor: alertColor.withOpacity(0.1),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: Dimenssions.width10,
+                                  vertical: Dimenssions.height5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimenssions.radius8),
+                                  side: BorderSide(color: alertColor),
+                                ),
+                              ),
+                              child: Text(
+                                'Batalkan',
+                                style: primaryTextStyle.copyWith(
+                                  color: alertColor,
+                                  fontSize: Dimenssions.font12,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
           ],
         ),
@@ -437,7 +490,7 @@ class _OrderPageState extends State<OrderPage>
       },
       textConfirm: 'Ya',
       textCancel: 'Tidak',
-      confirmTextColor: logoColor, // Use logoColor for confirmation text
+      confirmTextColor: logoColor,
     );
   }
 
@@ -501,7 +554,8 @@ class _OrderPageState extends State<OrderPage>
   }
 
   void _showOrderDetails(TransactionModel transaction) {
-    Get.dialog(Dialog(
+    Get.dialog(
+      Dialog(
         backgroundColor: backgroundColor1,
         insetPadding: EdgeInsets.symmetric(
           horizontal: Dimenssions.width10,
@@ -510,266 +564,324 @@ class _OrderPageState extends State<OrderPage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
         ),
-        child: GestureDetector(
-            onVerticalDragUpdate: (details) {
-              if (details.primaryDelta! < 0) {
-                // Dragging up - expand
-                Get.back();
-                _showOrderDetails(transaction);
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              height: Dimenssions.screenHeight * 0.9,
-              decoration: BoxDecoration(
-                color: backgroundColor1,
-                borderRadius: BorderRadius.circular(Dimenssions.radius15),
-              ),
-              child: Column(children: [
-                // Drag handle
-                Container(
-                  width: Dimenssions.width40,
-                  height: Dimenssions.height5,
-                  margin: EdgeInsets.symmetric(vertical: Dimenssions.height10),
-                  decoration: BoxDecoration(
-                    color: backgroundColor3,
-                    borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: Dimenssions.screenHeight * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(Dimenssions.height15),
+                decoration: BoxDecoration(
+                  color: backgroundColor2,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(Dimenssions.radius15),
+                    topRight: Radius.circular(Dimenssions.radius15),
                   ),
                 ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Detail Pesanan',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font18,
+                        fontWeight: semiBold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Get.back(),
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: EdgeInsets.all(Dimenssions.height15),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Order ID and Status
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Detail Pesanan',
+                              'Order #${transaction.orderId ?? transaction.id}',
                               style: primaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font18,
-                                fontWeight: semiBold,
+                                fontSize: Dimenssions.font16,
+                                fontWeight: medium,
                               ),
                             ),
-                            IconButton(
-                              onPressed: () => Get.back(),
-                              icon: const Icon(Icons.close),
+                            _buildStatusBadge(transaction.status),
+                          ],
+                        ),
+                        SizedBox(height: Dimenssions.height15),
+                        // Date
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: Dimenssions.font16,
+                              color: secondaryTextColor,
+                            ),
+                            SizedBox(width: Dimenssions.width5),
+                            Text(
+                              transaction.createdAt != null
+                                  ? DateFormat('dd MMM yyyy HH:mm')
+                                      .format(transaction.createdAt!)
+                                  : '-',
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font14,
+                              ),
                             ),
                           ],
                         ),
-                        const Divider(),
+                        SizedBox(height: Dimenssions.height20),
+                        // Products
                         Text(
-                          'Order #${transaction.orderId ?? transaction.id}',
+                          'Detail Produk',
                           style: primaryTextStyle.copyWith(
                             fontSize: Dimenssions.font16,
-                            fontWeight: medium,
+                            fontWeight: semiBold,
                           ),
                         ),
                         SizedBox(height: Dimenssions.height10),
                         if (transaction.items?.isNotEmpty ?? false) ...[
-                          Text(
-                            'Detail Produk:',
-                            style: primaryTextStyle.copyWith(
-                              fontWeight: medium,
-                              fontSize: Dimenssions.font14,
-                            ),
-                          ),
-                          SizedBox(height: Dimenssions.height10),
-                          ...transaction.items!
-                              .map((item) => Container(
-                                    margin: EdgeInsets.only(
-                                        bottom: Dimenssions.height10),
-                                    padding:
-                                        EdgeInsets.all(Dimenssions.height10),
-                                    decoration: BoxDecoration(
-                                      color: backgroundColor3.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(
-                                          Dimenssions.radius8),
-                                    ),
-                                    child: Column(
+                          ...transaction.items!.map((item) => Container(
+                                margin: EdgeInsets.only(
+                                    bottom: Dimenssions.height10),
+                                padding: EdgeInsets.all(Dimenssions.height10),
+                                decoration: BoxDecoration(
+                                  color: backgroundColor3.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(
+                                      Dimenssions.radius8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: Dimenssions.width25,
-                                              height: Dimenssions.height25,
-                                              decoration: BoxDecoration(
-                                                color: backgroundColor3,
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        Dimenssions.radius8),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  '${item.quantity}x',
-                                                  style: secondaryTextStyle
-                                                      .copyWith(
-                                                    fontSize:
-                                                        Dimenssions.font12,
-                                                    fontWeight: medium,
+                                        // Product Image
+                                        Container(
+                                          width: Dimenssions.height60,
+                                          height: Dimenssions.height60,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                                Dimenssions.radius8),
+                                            image: DecorationImage(
+                                              image: NetworkImage(
+                                                  item.product.firstImageUrl),
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: Dimenssions.width10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item.product.name,
+                                                    style: primaryTextStyle
+                                                        .copyWith(
+                                                      fontSize:
+                                                          Dimenssions.font14,
+                                                      fontWeight: medium,
+                                                    ),
                                                   ),
+                                                  SizedBox(
+                                                      height:
+                                                          Dimenssions.height5),
+                                                  Text(
+                                                    'Toko: ${item.merchant.name}',
+                                                    style: secondaryTextStyle
+                                                        .copyWith(
+                                                      fontSize:
+                                                          Dimenssions.font12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(
+                                                      height:
+                                                          Dimenssions.height5),
+                                                ],
+                                              ),
+                                              Text(
+                                                '${item.quantity}x ${NumberFormat.currency(
+                                                  locale: 'id',
+                                                  symbol: 'Rp ',
+                                                  decimalDigits: 0,
+                                                ).format(item.price)}',
+                                                style:
+                                                    secondaryTextStyle.copyWith(
+                                                  fontSize: Dimenssions.font12,
                                                 ),
                                               ),
-                                            ),
-                                            SizedBox(
-                                                width: Dimenssions.width10),
-                                            Expanded(
-                                              child: Text(
-                                                item.product.name,
-                                                style:
-                                                    primaryTextStyle.copyWith(
-                                                  fontSize: Dimenssions.font14,
+                                              Text(
+                                                'Subtotal: ${NumberFormat.currency(
+                                                  locale: 'id',
+                                                  symbol: 'Rp ',
+                                                  decimalDigits: 0,
+                                                ).format(item.price * item.quantity)}',
+                                                style: priceTextStyle.copyWith(
+                                                  fontSize: Dimenssions.font12,
                                                   fontWeight: medium,
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: Dimenssions.height5),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              'Harga Satuan:',
-                                              style:
-                                                  secondaryTextStyle.copyWith(
-                                                fontSize: Dimenssions.font12,
-                                              ),
-                                            ),
-                                            Text(
-                                              NumberFormat.currency(
-                                                locale: 'id',
-                                                symbol: 'Rp ',
-                                                decimalDigits: 0,
-                                              ).format(item.price),
-                                              style: priceTextStyle.copyWith(
-                                                fontSize: Dimenssions.font12,
-                                                fontWeight: medium,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              'Subtotal:',
-                                              style:
-                                                  secondaryTextStyle.copyWith(
-                                                fontSize: Dimenssions.font12,
-                                              ),
-                                            ),
-                                            Text(
-                                              NumberFormat.currency(
-                                                locale: 'id',
-                                                symbol: 'Rp ',
-                                                decimalDigits: 0,
-                                              ).format(
-                                                  item.price * item.quantity),
-                                              style: priceTextStyle.copyWith(
-                                                fontSize: Dimenssions.font12,
-                                                fontWeight: medium,
-                                              ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ))
-                              .toList(),
-                          SizedBox(height: Dimenssions.height10),
-                          const Divider(),
-                        ],
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Harga:',
-                              style:
-                                  primaryTextStyle.copyWith(fontWeight: medium),
-                            ),
-                            Text(
-                              transaction.formattedTotalPrice,
-                              style:
-                                  priceTextStyle.copyWith(fontWeight: semiBold),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Ongkos Kirim:',
-                              style:
-                                  primaryTextStyle.copyWith(fontWeight: medium),
-                            ),
-                            Text(
-                              transaction.formattedShippingPrice,
-                              style:
-                                  priceTextStyle.copyWith(fontWeight: semiBold),
-                            ),
-                          ],
-                        ),
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total:',
-                              style: primaryTextStyle.copyWith(
-                                  fontWeight: semiBold),
-                            ),
-                            Text(
-                              transaction.formattedGrandTotal,
-                              style: priceTextStyle.copyWith(
-                                fontSize: Dimenssions.font16,
-                                fontWeight: semiBold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (transaction.canBeCanceled) ...[
-                          SizedBox(height: Dimenssions.height15),
-                          SizedBox(
-                            width: double.infinity,
-                            child: TextButton(
-                              onPressed: () {
-                                Get.back();
-                                if (transaction.id != null) {
-                                  Get.find<OrderController>()
-                                      .cancelOrder(transaction.id.toString());
-                                }
-                              },
-                              style: TextButton.styleFrom(
-                                backgroundColor: alertColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      Dimenssions.radius15),
+                                  ],
                                 ),
-                              ),
-                              child: Text(
-                                'Batalkan Pesanan',
-                                style: primaryTextStyle.copyWith(
-                                  color: backgroundColor1,
-                                  fontSize: Dimenssions.font14,
-                                  fontWeight: medium,
-                                ),
-                              ),
+                              )),
+                        ] else
+                          Text(
+                            'Tidak ada produk',
+                            style: secondaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font14,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                        ],
+                        SizedBox(height: Dimenssions.height20),
+                        // Price Details
+                        Text(
+                          'Rincian Pembayaran',
+                          style: primaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font16,
+                            fontWeight: semiBold,
+                          ),
+                        ),
+                        SizedBox(height: Dimenssions.height10),
+                        Container(
+                          padding: EdgeInsets.all(Dimenssions.height10),
+                          decoration: BoxDecoration(
+                            color: backgroundColor3.withOpacity(0.1),
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius8),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Total Harga:',
+                                    style: secondaryTextStyle,
+                                  ),
+                                  Text(
+                                    transaction.formattedTotalPrice,
+                                    style: priceTextStyle.copyWith(
+                                      fontWeight: medium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: Dimenssions.height5),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Ongkos Kirim:',
+                                    style: secondaryTextStyle,
+                                  ),
+                                  Text(
+                                    transaction.formattedShippingPrice,
+                                    style: priceTextStyle.copyWith(
+                                      fontWeight: medium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Divider(
+                                height: Dimenssions.height20,
+                                thickness: 0.5,
+                                color: secondaryTextColor.withOpacity(0.3),
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Total Pembayaran:',
+                                    style: primaryTextStyle.copyWith(
+                                      fontWeight: semiBold,
+                                    ),
+                                  ),
+                                  Text(
+                                    transaction.formattedGrandTotal,
+                                    style: priceTextStyle.copyWith(
+                                      fontSize: Dimenssions.font16,
+                                      fontWeight: semiBold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                )
-              ]),
-            ))));
+                ),
+              ),
+              // Cancel Button at bottom if applicable
+              if (_canBeCancelled(transaction.status))
+                SizedBox(
+                  width: double.infinity,
+                  height: Dimenssions.height45,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimenssions.width15,
+                      vertical: Dimenssions.height5,
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        Get.back();
+                        if (transaction.id != null) {
+                          _showCancelConfirmation(transaction);
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: alertColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius8),
+                        ),
+                      ),
+                      child: Text(
+                        'Batalkan Pesanan',
+                        style: primaryTextStyle.copyWith(
+                          color: backgroundColor1,
+                          fontSize: Dimenssions.font14,
+                          fontWeight: medium,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildErrorState(String message) {
