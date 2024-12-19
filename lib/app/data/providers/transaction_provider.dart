@@ -2,7 +2,8 @@ import 'package:dio/dio.dart' as dio;
 import 'package:get/get.dart';
 import 'package:antarkanma/config.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
-import 'package:antarkanma/app/routes/app_pages.dart'; // Pastikan Anda punya routes
+import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 
 class TransactionProvider {
   final dio.Dio _dio = dio.Dio();
@@ -41,8 +42,17 @@ class TransactionProvider {
           return handler.next(options);
         },
         onError: (dio.DioException error, handler) async {
-          // Tangani error 401 (Unauthorized)
-          if (error.response?.statusCode == 401) {}
+          print('\n=== API Error Interceptor ===');
+          print('Status code: ${error.response?.statusCode}');
+
+          if (error.response?.statusCode == 401) {
+            try {
+              final authService = Get.find<AuthService>();
+              authService.handleAuthError(error);
+            } catch (e) {
+              print('Failed to handle auth error in interceptor: $e');
+            }
+          }
 
           return handler.next(error);
         },
@@ -53,29 +63,40 @@ class TransactionProvider {
   // Ganti _handleForceLogout dengan metode yang lebih sederhana
 
   void _handleError(dio.DioException error) {
+    print('\n=== API Error Debug ===');
+    print('Status code: ${error.response?.statusCode}');
+    print('Response data: ${error.response?.data}');
+    print('Error type: ${error.type}');
+    print('Error message: ${error.message}');
+
     String message;
     switch (error.response?.statusCode) {
       case 401:
-        message = 'Unauthorized access. Please log in again.';
-
+        message = 'Sesi anda telah berakhir. Silakan login kembali.';
+        try {
+          final authService = Get.find<AuthService>();
+          authService.handleAuthError(error);
+        } catch (e) {
+          print('Failed to handle auth error: $e');
+        }
         break;
       case 422:
         final errors = error.response?.data['errors'];
         message = errors is Map ? errors.values.join(', ') : errors.toString();
         break;
       case 403:
-        message = 'Forbidden. You do not have permission.';
+        message = 'Anda tidak memiliki akses ke halaman ini.';
         break;
       case 404:
-        message = 'Resource not found.';
+        message = 'Data tidak ditemukan.';
         break;
       case 500:
-        message = 'Internal server error. Please try again later.';
+        message = 'Terjadi kesalahan pada server. Silakan coba lagi nanti.';
         break;
       default:
         message = error.response?.data['message'] ??
             error.message ??
-            'An unexpected error occurred';
+            'Terjadi kesalahan yang tidak diketahui';
     }
 
     throw Exception(message);
@@ -97,9 +118,36 @@ class TransactionProvider {
     }
   }
 
-  Future<dio.Response> getTransactions() async {
+  Future<dio.Response> getTransactions({String? status}) async {
     try {
-      return await _dio.get('/transactions');
+      final queryParameters = <String, dynamic>{};
+
+      if (status != null && status.isNotEmpty) {
+        // Split status string into array if it contains multiple statuses
+        final statuses = status.split(',');
+        if (statuses.length > 1) {
+          // If multiple statuses, pass them as array parameter
+          queryParameters['status[]'] = statuses;
+        } else {
+          // If single status, pass as simple parameter
+          queryParameters['status'] = status;
+        }
+      }
+
+      print('\n=== Transaction Provider Debug ===');
+      print('Making GET request to: ${baseUrl}/transactions');
+      print('Query parameters: $queryParameters');
+      print('Headers: ${_dio.options.headers}');
+
+      final response = await _dio.get(
+        '/transactions',
+        queryParameters: queryParameters,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      return response;
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;

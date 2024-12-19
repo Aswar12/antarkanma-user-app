@@ -21,16 +21,49 @@ class MerchantModel {
 
   // Constructor untuk data dari API
   factory MerchantModel.fromJson(Map<String, dynamic> json) {
-    return MerchantModel(
-      id: json['id'] as int?,
-      ownerId: json['owner_id'] as int,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      phoneNumber: json['phone_number'] as String,
-      status: json['status'] as String? ?? 'ACTIVE',
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-    );
+    try {
+      // Helper function to safely parse integer
+      int? parseInt(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is String) {
+          try {
+            return int.parse(value);
+          } catch (e) {
+            print('Error parsing $value to int: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      return MerchantModel(
+        id: parseInt(json['id']),
+        ownerId: parseInt(json['owner_id']) ?? 0,
+        name: json['name']?.toString() ?? '',
+        address: json['address']?.toString() ?? '',
+        phoneNumber: json['phone_number']?.toString() ?? '',
+        status: json['status']?.toString() ?? 'ACTIVE',
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+      );
+    } catch (e) {
+      print('Error parsing merchant JSON: $e');
+      print('Problematic JSON: $json');
+      // Return a minimal valid merchant in case of error
+      return MerchantModel(
+        ownerId: 0,
+        name: '',
+        address: '',
+        phoneNumber: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 
   Map<String, dynamic> toJson() {

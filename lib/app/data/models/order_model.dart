@@ -55,21 +55,26 @@ class OrderModel {
   // Membuat instance dari JSON
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'],
-      userId: json['user_id'],
-      items: (json['items'] as List)
-          .map((item) => OrderItemModel.fromJson(item))
-          .toList(),
-      totalAmount: json['total_amount'].toDouble(),
+      id: json['id']?.toString(),
+      userId: json['user_id']?.toString() ?? '',
+      items: (json['order_items'] as List?)
+              ?.map((item) => OrderItemModel.fromJson(item))
+              ?.toList() ??
+          [],
+      totalAmount: (json['total_amount'] is String)
+          ? double.tryParse(json['total_amount']) ?? 0.0
+          : (json['total_amount'] ?? 0.0).toDouble(),
       orderStatus: json['order_status'] ?? 'PENDING',
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? DateTime.tryParse(json['created_at'])
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'])
           : null,
     );
   }
+
+  List<OrderItemModel> get orderItems => items;
 
   // Method untuk mendapatkan items berdasarkan merchant
   Map<String, List<OrderItemModel>> getItemsByMerchant() {

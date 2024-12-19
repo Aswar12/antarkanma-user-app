@@ -9,29 +9,34 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
-class CartPage extends GetView<CartController> {
+class CartPage extends StatefulWidget {
   const CartPage({super.key});
+
+  @override
+  State<CartPage> createState() => _CartPageState();
+}
+
+class _CartPageState extends State<CartPage> {
+  final CartController cartController = Get.find<CartController>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor3,
       appBar: AppBar(
-        toolbarHeight: Dimenssions.height45,
         title: Text(
           'Keranjang',
           style: primaryTextStyle.copyWith(
-            // Menggunakan style dari theme
             fontSize: Dimenssions.font20,
             fontWeight: regular,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white, // Mengubah warna background
+        backgroundColor: Colors.white,
         foregroundColor: primaryTextColor,
         iconTheme: IconThemeData(
-          color: logoColorSecondary, // Mengubah warna icon
-        ), // Mengubah warna teks dan icon
+          color: logoColorSecondary,
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -43,7 +48,6 @@ class CartPage extends GetView<CartController> {
         ],
         elevation: 0.5,
         shape: Border(
-          // Optional: menambahkan border bottom
           bottom: BorderSide(
             color: Colors.grey.withOpacity(0.2),
             width: 1,
@@ -55,7 +59,7 @@ class CartPage extends GetView<CartController> {
           if (controller.merchantItems.isEmpty) {
             return _buildEmptyCart();
           }
-          return _buildCartList();
+          return _buildCartList(controller);
         },
       ),
       bottomNavigationBar: _buildCheckoutBar(),
@@ -74,7 +78,7 @@ class CartPage extends GetView<CartController> {
           ),
           TextButton(
             onPressed: () {
-              controller.clearCart();
+              cartController.clearCart();
               Get.back();
             },
             child: const Text('Hapus'),
@@ -106,10 +110,7 @@ class CartPage extends GetView<CartController> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              // Jika berada dalam UserMainPage
               Get.find<UserMainController>().currentIndex.value = 0;
-
-              // Jika berada di CartPage standalone
               Get.offAllNamed('/main');
             },
             style: ElevatedButton.styleFrom(
@@ -127,36 +128,40 @@ class CartPage extends GetView<CartController> {
     );
   }
 
-  Widget _buildCartList() {
-    return ListView(padding: EdgeInsets.all(Dimenssions.height15), children: [
-      // Swipe hint text
-      Container(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        alignment: Alignment.center,
-        child: Text(
-          'Geser item ke kiri untuk menghapus',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-            fontStyle: FontStyle.italic,
+  Widget _buildCartList(CartController controller) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(Dimenssions.height15),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Geser item ke kiri untuk menghapus',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                ...controller.merchantItems.entries.map((entry) {
+                  final merchantId = entry.key;
+                  final merchantItems = entry.value;
+                  return _buildMerchantSection(merchantId, merchantItems);
+                }).toList(),
+              ],
+            ),
           ),
-        ),
-      ),
-      // Cart items list
-      ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: controller.merchantItems.length,
-        itemBuilder: (context, index) {
-          final merchantId = controller.merchantItems.keys.elementAt(index);
-          final merchantItems = controller.merchantItems[merchantId];
-          if (merchantItems != null) {
-            return _buildMerchantSection(merchantId, merchantItems);
-          }
-          return const SizedBox.shrink();
-        },
-      )
-    ]);
+        );
+      },
+    );
   }
 
   Widget _buildMerchantSection(int merchantId, List<CartItemModel> items) {
@@ -179,13 +184,10 @@ class CartPage extends GetView<CartController> {
             ),
           ),
           const Divider(height: 1),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) =>
-                _buildCartItem(merchantId, items[index], index),
+          Column(
+            children: List.generate(items.length, (index) {
+              return _buildCartItem(merchantId, items[index], index);
+            }),
           ),
         ],
       ),
@@ -270,7 +272,7 @@ class CartPage extends GetView<CartController> {
               ),
               TextButton(
                 onPressed: () {
-                  controller.removeFromCart(merchantId, index);
+                  cartController.removeFromCart(merchantId, index);
                   Get.back(result: true);
                 },
                 child: const Text('Hapus'),
@@ -286,7 +288,7 @@ class CartPage extends GetView<CartController> {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () {
-                controller.undoRemove(merchantId, index, item);
+                cartController.undoRemove(merchantId, index, item);
               },
             ),
           ),
@@ -296,7 +298,6 @@ class CartPage extends GetView<CartController> {
         color: Colors.white,
         child: Stack(
           children: [
-            // Swipe indicator
             Positioned(
               right: 0,
               top: 0,
@@ -321,7 +322,6 @@ class CartPage extends GetView<CartController> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Gambar produk
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: item.product.imageUrls.isNotEmpty
@@ -351,7 +351,6 @@ class CartPage extends GetView<CartController> {
                           ),
                   ),
                   SizedBox(width: Dimenssions.width15),
-                  // Informasi produk
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,8 +363,6 @@ class CartPage extends GetView<CartController> {
                           ),
                         ),
                         SizedBox(height: Dimenssions.height5),
-
-                        // Menampilkan variant jika ada
                         if (item.selectedVariant != null) ...[
                           Row(
                             children: [
@@ -388,7 +385,6 @@ class CartPage extends GetView<CartController> {
                           ),
                           SizedBox(height: Dimenssions.height5),
                         ],
-
                         Text(
                           NumberFormat.currency(
                             locale: 'id',
@@ -406,93 +402,6 @@ class CartPage extends GetView<CartController> {
                 ],
               ),
             ),
-            // Kontrol kuantitas
-            Positioned(
-              bottom: Dimenssions.height15,
-              left: Dimenssions.height100 + Dimenssions.width80,
-              child: Container(
-                height: Dimenssions.height35,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          bottomLeft: Radius.circular(8),
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(8),
-                            bottomLeft: Radius.circular(8),
-                          ),
-                          onTap: () =>
-                              controller.decrementQuantity(merchantId, index),
-                          child: Container(
-                            width: Dimenssions.height35,
-                            height: Dimenssions.height35,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.remove,
-                              size: 18,
-                              color: logoColorSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: Dimenssions.height35,
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${item.quantity}',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font16,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(8),
-                          bottomRight: Radius.circular(8),
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(8),
-                            bottomRight: Radius.circular(8),
-                          ),
-                          onTap: () =>
-                              controller.incrementQuantity(merchantId, index),
-                          child: Container(
-                            width: Dimenssions.height35,
-                            height: Dimenssions.height35,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.add,
-                              size: 18,
-                              color: logoColorSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -502,7 +411,10 @@ class CartPage extends GetView<CartController> {
   Widget _buildCheckoutBar() {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimenssions.width15,
+          vertical: Dimenssions.height10,
+        ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(Dimenssions.radius15),

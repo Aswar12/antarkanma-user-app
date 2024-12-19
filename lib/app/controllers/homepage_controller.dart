@@ -4,21 +4,21 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/services/product_service.dart';
-import 'dart:async';
-import 'package:get_storage/get_storage.dart';
 
 class HomePageController extends GetxController {
-  var products = <ProductModel>[].obs;
-  var isLoading = true.obs;
-  var isRefreshing = false.obs;
-  Timer? _refreshTimer;
-  final Rx<String> selectedCategory = "All".obs;
   final ProductService productService;
-  var currentIndex = 0.obs;
-  final storage = GetStorage();
+  final RxList<ProductModel> products = <ProductModel>[].obs;
+  final RxBool isLoading = true.obs;
+  final RxBool isRefreshing = false.obs;
+  final RxString selectedCategory = "All".obs;
+  final RxInt currentIndex = 0.obs;
 
-  void updateCurrentIndex(int index) {
-    currentIndex.value = index;
+  HomePageController(this.productService);
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadProducts();
   }
 
   List<ProductModel> get filteredProducts {
@@ -31,58 +31,25 @@ class HomePageController extends GetxController {
     }
   }
 
-  HomePageController(this.productService);
-
-  @override
-  void onInit() {
-    super.onInit();
-    loadProducts();
-  }
-
-  @override
-  void onClose() {
-    _refreshTimer?.cancel();
-    super.onClose();
-  }
-
-  // Load products from local storage first
   Future<void> loadProducts() async {
     try {
       isLoading(true);
-
-      // Try to load from local storage first
-      final storedProducts = storage.read('products');
-      final lastRefresh = storage.read('last_refresh');
-      final shouldRefresh = lastRefresh == null ||
-          DateTime.now().difference(DateTime.parse(lastRefresh)).inHours > 1;
-
-      if (storedProducts != null && !shouldRefresh) {
-        // Use cached data
-        final List<dynamic> productList = storedProducts;
-        products.value =
-            productList.map((json) => ProductModel.fromJson(json)).toList();
-        isLoading(false);
-      } else {
-        // If no cached data or cache is old, fetch from server
-        await refreshProducts(showMessage: false);
-      }
+      await productService.fetchProducts();
+      products.assignAll(productService.products);
     } catch (e) {
       _handleError('Failed to load products', e);
+    } finally {
       isLoading(false);
     }
   }
 
-  // Refresh products (untuk pull-to-refresh)
   Future<void> refreshProducts({bool showMessage = true}) async {
-    if (isRefreshing.value) return; // Prevent multiple refreshes
+    if (isRefreshing.value) return;
 
     try {
       isRefreshing(true);
       await productService.refreshProducts();
       products.assignAll(productService.products);
-
-      // Update last refresh time
-      await storage.write('last_refresh', DateTime.now().toIso8601String());
 
       if (showMessage) {
         Get.snackbar(
@@ -102,20 +69,11 @@ class HomePageController extends GetxController {
     }
   }
 
-  // Handle error dengan lebih terstruktur
   void _handleError(String message, dynamic error) {
     print('Error: $message - $error');
-
-    String errorMessage = message;
-    if (error is TimeoutException) {
-      errorMessage = 'Connection timeout. Please try again.';
-    } else if (error.toString().contains('No Internet')) {
-      errorMessage = 'No internet connection. Please check your connection.';
-    }
-
     Get.snackbar(
       'Error',
-      errorMessage,
+      message,
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.red,
       colorText: Colors.white,
@@ -124,12 +82,8 @@ class HomePageController extends GetxController {
     );
   }
 
-  // Method untuk mendapatkan produk populer
-  List<ProductModel> get popularProducts {
-    return products.take(5).toList();
-  }
+  List<ProductModel> get popularProducts => products.take(5).toList();
 
-  // Method untuk mencari produk
   List<ProductModel> searchProducts(String query) {
     if (query.isEmpty) return products;
     return products
@@ -138,7 +92,6 @@ class HomePageController extends GetxController {
         .toList();
   }
 
-  // Method untuk sorting produk
   void sortProducts({required String sortBy, bool ascending = true}) {
     switch (sortBy) {
       case 'name':
@@ -153,13 +106,9 @@ class HomePageController extends GetxController {
     }
   }
 
-  // Method untuk memvalidasi data
-  bool get hasValidData {
-    return products.isNotEmpty && !isLoading.value;
-  }
+  bool get hasValidData => products.isNotEmpty && !isLoading.value;
 
-  // Method untuk retry loading jika gagal
-  Future<void> retryLoading() async {
-    await loadProducts();
-  }
+  Future<void> retryLoading() => loadProducts();
+
+  void updateCurrentIndex(int index) => currentIndex.value = index;
 }

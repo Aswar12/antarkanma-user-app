@@ -189,7 +189,6 @@ class UserLocationController extends GetxController {
 
     if (existingLocation != null) {
       selectedLocation.value = existingLocation;
-      update(); // Memperbarui UI
     } else {
       // Jika lokasi tidak ditemukan, tambahkan ke daftar
       addAddress(location).then((_) {

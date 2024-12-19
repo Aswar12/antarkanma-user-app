@@ -23,18 +23,30 @@ class AuthService extends GetxService {
   }
 
   Future<void> checkLoginStatus() async {
+    print('\n=== Auth Service Debug ===');
     final token = _storageService.getToken();
     final userData = _storageService.getUser();
 
+    print('Checking login status:');
+    print('- Token exists: ${token != null}');
+    print('- User data exists: ${userData != null}');
+
     if (token != null && userData != null) {
+      print('Verifying token...');
       final isValidToken = await verifyToken(token);
+      print('- Token valid: $isValidToken');
+
       if (isValidToken) {
         isLoggedIn.value = true;
         currentUser.value = UserModel.fromJson(userData);
+        print('- User role: ${currentUser.value?.role}');
         _redirectBasedOnRole();
       } else {
+        print('Token invalid, trying auto login...');
         await tryAutoLogin();
       }
+    } else {
+      print('No stored credentials found');
     }
   }
 

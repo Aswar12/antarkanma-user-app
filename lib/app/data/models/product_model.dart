@@ -70,40 +70,82 @@ class ProductModel {
   }
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-    return ProductModel(
-      id: json['id'] as int?,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      price: double.parse(json['price'].toString()),
-      galleries: json['galleries'] != null
-          ? (json['galleries'] as List)
-              .map((gallery) => ProductGalleryModel.fromJson(gallery))
-              .toList()
-          : [],
-      status: json['status'] as String?,
-      variants: json['variants'] != null
-          ? (json['variants'] as List)
-              .map((variant) => VariantModel.fromJson(variant))
-              .toList()
-          : [],
-      reviews: json['reviews'] != null
-          ? (json['reviews'] as List)
-              .map((review) => ProductReviewModel.fromJson(review))
-              .toList()
-          : [],
-      merchant: json['merchant'] != null
-          ? MerchantModel.fromJson(json['merchant'])
-          : null,
-      category: json['category'] != null
-          ? CategoryModel.fromJson(json['category'])
-          : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
+    try {
+      // Helper function to safely convert to double
+      double? toDouble(dynamic value) {
+        if (value == null) return null;
+        if (value is double) return value;
+        if (value is int) return value.toDouble();
+        if (value is String) {
+          try {
+            return double.parse(value);
+          } catch (e) {
+            print('Error converting $value to double: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      // Helper function to safely parse integer
+      int? parseInt(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is String) {
+          try {
+            return int.parse(value);
+          } catch (e) {
+            print('Error parsing $value to int: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      return ProductModel(
+        id: parseInt(json['id']),
+        name: json['name']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        price: toDouble(json['price']) ?? 0.0,
+        galleries: json['galleries'] != null
+            ? (json['galleries'] as List)
+                .map((gallery) => ProductGalleryModel.fromJson(gallery))
+                .toList()
+            : [],
+        status: json['status']?.toString(),
+        variants: json['variants'] != null
+            ? (json['variants'] as List)
+                .map((variant) => VariantModel.fromJson(variant))
+                .toList()
+            : [],
+        reviews: json['reviews'] != null
+            ? (json['reviews'] as List)
+                .map((review) => ProductReviewModel.fromJson(review))
+                .toList()
+            : [],
+        merchant: json['merchant'] != null
+            ? MerchantModel.fromJson(json['merchant'])
+            : null,
+        category: json['category'] != null
+            ? CategoryModel.fromJson(json['category'])
+            : null,
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'].toString())
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString())
+            : null,
+      );
+    } catch (e) {
+      print('Error parsing product JSON: $e');
+      print('Problematic JSON: $json');
+      // Return a minimal valid product in case of error
+      return ProductModel(
+        name: '',
+        description: '',
+        price: 0.0,
+      );
+    }
   }
 
   factory ProductModel.local({

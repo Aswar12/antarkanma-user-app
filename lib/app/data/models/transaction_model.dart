@@ -117,45 +117,82 @@ class TransactionModel {
 
   // Membuat instance dari JSON
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    return TransactionModel(
-      id: json['id'] is String ? int.tryParse(json['id']) : json['id'],
-      orderId: json['order_id'] is String
-          ? int.tryParse(json['order_id'])
-          : json['order_id'],
-      userId: json['user_id'] is String
-          ? int.parse(json['user_id'])
-          : json['user_id'],
-      userLocationId: json['user_location_id'] is String
-          ? int.parse(json['user_location_id'])
-          : json['user_location_id'],
-      totalPrice: json['total_price'] is String
-          ? double.parse(json['total_price'])
-          : json['total_price'].toDouble(),
-      shippingPrice: json['shipping_price'] is String
-          ? double.parse(json['shipping_price'])
-          : json['shipping_price'].toDouble(),
-      paymentDate: json['payment_date'] != null
-          ? DateTime.parse(json['payment_date'])
-          : null,
-      status: json['status'] ?? 'PENDING',
-      paymentMethod: json['payment_method'],
-      paymentStatus: json['payment_status'] ?? 'PENDING',
-      rating: json['rating'] is String
-          ? double.tryParse(json['rating'])
-          : json['rating']?.toDouble(),
-      note: json['note'],
-      items: json['items'] != null
-          ? (json['items'] as List)
-              .map((item) => OrderItemModel.fromJson(item))
-              .toList()
-          : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
+    try {
+      // Helper function to safely parse numeric values
+      T? parseNumeric<T>(dynamic value, T Function(String) parser) {
+        if (value == null) return null;
+        if (value is T) return value;
+        if (value is String) {
+          try {
+            return parser(value);
+          } catch (e) {
+            print('Error parsing $value to $T: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      // Helper function to safely convert to double
+      double? toDouble(dynamic value) {
+        if (value == null) return null;
+        if (value is double) return value;
+        if (value is int) return value.toDouble();
+        if (value is String) {
+          try {
+            return double.parse(value);
+          } catch (e) {
+            print('Error converting $value to double: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      return TransactionModel(
+        id: parseNumeric(json['id'], int.parse),
+        orderId: parseNumeric(json['order_id'], int.parse),
+        userId: parseNumeric(json['user_id'], int.parse) ??
+            0, // Default to 0 if null
+        userLocationId: parseNumeric(json['user_location_id'], int.parse) ??
+            0, // Default to 0 if null
+        totalPrice:
+            toDouble(json['total_price']) ?? 0.0, // Default to 0.0 if null
+        shippingPrice:
+            toDouble(json['shipping_price']) ?? 0.0, // Default to 0.0 if null
+        paymentDate: json['payment_date'] != null
+            ? DateTime.tryParse(json['payment_date'].toString())
+            : null,
+        status: json['status']?.toString() ?? 'PENDING',
+        paymentMethod: json['payment_method']?.toString() ??
+            'MANUAL', // Default to MANUAL if null
+        paymentStatus: json['payment_status']?.toString() ?? 'PENDING',
+        rating: toDouble(json['rating']),
+        note: json['note']?.toString(),
+        items: json['items'] != null
+            ? (json['items'] as List)
+                .map((item) => OrderItemModel.fromJson(item))
+                .toList()
+            : null,
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'].toString())
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString())
+            : null,
+      );
+    } catch (e) {
+      print('Error parsing transaction JSON: $e');
+      print('Problematic JSON: $json');
+      // Return a default transaction model in case of error
+      return TransactionModel(
+        userId: 0,
+        userLocationId: 0,
+        totalPrice: 0.0,
+        shippingPrice: 0.0,
+        paymentMethod: 'MANUAL',
+      );
+    }
   }
 
   // Copy with method

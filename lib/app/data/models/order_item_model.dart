@@ -69,23 +69,66 @@ class OrderItemModel {
 
   // Membuat instance dari JSON
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    return OrderItemModel(
-      id: json['id'],
-      orderId: json['order_id'],
-      product: ProductModel.fromJson(json['product']),
-      merchant: MerchantModel.fromJson(
-          json['merchant']), // Mengambil merchant dari JSON
-      quantity: json['quantity'],
-      price: json['price'].toDouble(),
-      selectedVariantId: json['selected_variant_id'],
-      status: json['status'] ?? 'PENDING',
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
+    try {
+      // Helper function to safely convert to double
+      double? toDouble(dynamic value) {
+        if (value == null) return null;
+        if (value is double) return value;
+        if (value is int) return value.toDouble();
+        if (value is String) {
+          try {
+            return double.parse(value);
+          } catch (e) {
+            print('Error converting $value to double: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      // Helper function to safely parse integer
+      int? parseInt(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is String) {
+          try {
+            return int.parse(value);
+          } catch (e) {
+            print('Error parsing $value to int: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      return OrderItemModel(
+        id: json['id']?.toString(),
+        orderId: json['order_id']?.toString() ?? '',
+        product: ProductModel.fromJson(json['product'] ?? {}),
+        merchant: MerchantModel.fromJson(json['merchant'] ?? {}),
+        quantity: parseInt(json['quantity']) ?? 1,
+        price: toDouble(json['price']) ?? 0.0,
+        selectedVariantId: json['selected_variant_id']?.toString(),
+        status: json['status']?.toString() ?? 'PENDING',
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'].toString())
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString())
+            : null,
+      );
+    } catch (e) {
+      print('Error parsing order item JSON: $e');
+      print('Problematic JSON: $json');
+      // Return a minimal valid order item in case of error
+      return OrderItemModel(
+        orderId: '',
+        product: ProductModel.fromJson({}),
+        merchant: MerchantModel.fromJson({}),
+        quantity: 1,
+        price: 0.0,
+      );
+    }
   }
 
   // Membuat OrderItem dari CartItem

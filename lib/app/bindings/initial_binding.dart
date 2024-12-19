@@ -3,6 +3,7 @@
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'package:antarkanma/app/controllers/user_controller.dart';
@@ -15,10 +16,11 @@ class InitialBinding extends Bindings {
     // Services
     Get.put(ProductService(), permanent: true);
     Get.put(AuthService(), permanent: true);
+    Get.put(TransactionService(), permanent: true);
     // Controllers
     Get.put(AuthController(), permanent: true);
     Get.lazyPut(() => UserController());
     Get.put(UserMainController(), permanent: true);
-    Get.lazyPut(() => HomePageController(Get.find<ProductService>()));
+    Get.put(HomePageController(Get.find<ProductService>()), permanent: true);
   }
 }
