@@ -1,5 +1,3 @@
-// lib/app/modules/user/views/user_main_page.dart
-
 // ignore_for_file: deprecated_member_use
 
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
@@ -57,29 +55,36 @@ class UserMainPage extends GetView<UserMainController> {
     }
 
     Widget customBottomNav() {
-      return ClipRRect(
-        // borderRadius: BorderRadius.vertical(
-        //   top: Radius.circular(Dimenssions.radius20),
-        // ),
-        child: Container(
+      return GetX<UserMainController>(
+        builder: (_) => Container(
           decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: backgroundColor6,
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: const Offset(0, 3),
-              )
-            ],
+            color: backgroundColor2,
+            boxShadow: controller.currentIndex.value == 1
+                ? []
+                : [
+                    BoxShadow(
+                      color: backgroundColor6.withOpacity(0.15),
+                      offset: const Offset(0, -1),
+                      blurRadius: 10,
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: backgroundColor6.withOpacity(0.3),
+                      offset: const Offset(0, -0.5),
+                      blurRadius: 4,
+                      spreadRadius: 0,
+                    ),
+                  ],
           ),
-          child: GetX<UserMainController>(
-            builder: (_) => BottomNavigationBar(
+          child: ClipRRect(
+            child: BottomNavigationBar(
               selectedItemColor: logoColorSecondary,
               unselectedItemColor: secondaryTextColor,
               currentIndex: controller.currentIndex.value,
               onTap: (index) => controller.changePage(index),
               type: BottomNavigationBarType.fixed,
               backgroundColor: backgroundColor2,
+              elevation: 0,
               items: [
                 createNavItem('assets/icon_home.png', 'Home', 0),
                 createNavItem('assets/icon_cart.png', 'Keranjang', 1),

@@ -1,5 +1,3 @@
-// lib/app/modules/user/views/address_page.dart
-
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
@@ -13,19 +11,53 @@ class AddressPage extends GetView<UserLocationController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor8,
+      backgroundColor: backgroundColor1,
       appBar: AppBar(
-        title: const Text('Alamat Saya'),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: primaryTextColor,
+            size: Dimenssions.height22,
+          ),
+          onPressed: () => Get.back(),
+        ),
+        backgroundColor: backgroundColor1,
+        elevation: 0,
+        title: Text(
+          'Alamat Saya',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font18,
+            fontWeight: semiBold,
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => Get.toNamed('/add-address'),
+          Container(
+            margin: EdgeInsets.only(right: Dimenssions.width15),
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(Dimenssions.height5),
+                decoration: BoxDecoration(
+                  color: logoColorSecondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                ),
+                child: Icon(
+                  Icons.add,
+                  color: logoColorSecondary,
+                  size: Dimenssions.height22,
+                ),
+              ),
+              onPressed: () => Get.toNamed('/main/add-address'),
+            ),
           ),
         ],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              color: logoColorSecondary,
+            ),
+          );
         }
 
         if (controller.errorMessage.isNotEmpty) {
@@ -33,10 +65,34 @@ class AddressPage extends GetView<UserLocationController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(controller.errorMessage.value),
-                ElevatedButton(
+                Text(
+                  controller.errorMessage.value,
+                  style: secondaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: Dimenssions.height15),
+                TextButton(
                   onPressed: controller.loadAddresses,
-                  child: const Text('Coba Lagi'),
+                  style: TextButton.styleFrom(
+                    backgroundColor: logoColorSecondary,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimenssions.width20,
+                      vertical: Dimenssions.height10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                    ),
+                  ),
+                  child: Text(
+                    'Coba Lagi',
+                    style: primaryTextStyle.copyWith(
+                      color: backgroundColor1,
+                      fontSize: Dimenssions.font14,
+                      fontWeight: medium,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -57,16 +113,48 @@ class AddressPage extends GetView<UserLocationController> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.location_off, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
-            'Belum ada alamat tersimpan',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Icon(
+            Icons.location_off,
+            size: Dimenssions.height65,
+            color: secondaryTextColor.withOpacity(0.5),
           ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () => Get.toNamed('/main/add-address'),
-            child: const Text('Tambah Alamat'),
+          SizedBox(height: Dimenssions.height15),
+          Text(
+            'Belum ada alamat tersimpan',
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font16,
+              fontWeight: semiBold,
+            ),
+          ),
+          SizedBox(height: Dimenssions.height10),
+          Text(
+            'Tambahkan alamat untuk memudahkan pengiriman',
+            style: secondaryTextStyle.copyWith(
+              fontSize: Dimenssions.font14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: Dimenssions.height20),
+          Container(
+            height: Dimenssions.height45,
+            padding: EdgeInsets.symmetric(horizontal: Dimenssions.width30),
+            child: TextButton(
+              onPressed: () => Get.toNamed('/main/add-address'),
+              style: TextButton.styleFrom(
+                backgroundColor: logoColorSecondary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                ),
+              ),
+              child: Text(
+                'Tambah Alamat',
+                style: primaryTextStyle.copyWith(
+                  color: backgroundColor1,
+                  fontSize: Dimenssions.font14,
+                  fontWeight: medium,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -76,7 +164,9 @@ class AddressPage extends GetView<UserLocationController> {
   Widget _buildAddressList() {
     return RefreshIndicator(
       onRefresh: controller.loadAddresses,
+      color: logoColorSecondary,
       child: ListView.builder(
+        padding: EdgeInsets.all(Dimenssions.height15),
         itemCount: controller.addresses.length,
         itemBuilder: (context, index) {
           final address = controller.addresses[index];
@@ -87,45 +177,125 @@ class AddressPage extends GetView<UserLocationController> {
   }
 
   Widget _buildAddressItem(UserLocationModel address) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                address.customerName ?? 'Alamat ${address.id}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (address.isDefault)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: EdgeInsets.only(bottom: Dimenssions.height15),
+      decoration: BoxDecoration(
+        color: backgroundColor2,
+        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        boxShadow: [
+          BoxShadow(
+            color: backgroundColor6.withOpacity(0.08),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: backgroundColor6.withOpacity(0.05),
+            spreadRadius: 3,
+            blurRadius: 7,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showAddressOptions(address),
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          child: Container(
+            padding: EdgeInsets.all(Dimenssions.height15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: logoColorSecondary,
+                            size: Dimenssions.height22,
+                          ),
+                          SizedBox(width: Dimenssions.width10),
+                          Expanded(
+                            child: Text(
+                              address.customerName ?? 'Alamat ${address.id}',
+                              style: primaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font16,
+                                fontWeight: semiBold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (address.isDefault)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimenssions.width10,
+                          vertical: Dimenssions.height5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: logoColorSecondary.withOpacity(0.1),
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius8),
+                        ),
+                        child: Text(
+                          'Utama',
+                          style: primaryTextStyle.copyWith(
+                            color: logoColorSecondary,
+                            fontSize: Dimenssions.font12,
+                            fontWeight: medium,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                child: const Text(
-                  'Utama',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                SizedBox(height: Dimenssions.height10),
+                Container(
+                  margin: EdgeInsets.only(left: Dimenssions.height30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        address.fullAddress,
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                        ),
+                      ),
+                      SizedBox(height: Dimenssions.height5),
+                      Text(
+                        address.phoneNumber,
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                        ),
+                      ),
+                      SizedBox(height: Dimenssions.height5),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimenssions.width10,
+                          vertical: Dimenssions.height5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: backgroundColor3,
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius8),
+                        ),
+                        child: Text(
+                          address.addressType,
+                          style: secondaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(address.fullAddress),
-            Text(address.phoneNumber),
-            Text(
-              address.addressType,
-              style: TextStyle(
-                color: logoColorSecondary,
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-        onTap: () => _showAddressOptions(address),
       ),
     );
   }
@@ -133,47 +303,84 @@ class AddressPage extends GetView<UserLocationController> {
   void _showAddressOptions(UserLocationModel address) {
     Get.bottomSheet(
       Container(
-        color: Colors.white,
-        child: Wrap(
+        decoration: BoxDecoration(
+          color: backgroundColor1,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Dimenssions.radius20),
+          ),
+        ),
+        padding: EdgeInsets.symmetric(
+          vertical: Dimenssions.height20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              iconColor: logoColorSecondary,
-              leading: Icon(
-                Icons.edit,
-                color: logoColorSecondary,
+            Container(
+              width: Dimenssions.width45,
+              height: Dimenssions.height5,
+              decoration: BoxDecoration(
+                color: backgroundColor3,
+                borderRadius: BorderRadius.circular(Dimenssions.radius15),
               ),
-              title: Text(
-                'Edit Alamat',
-                style: primaryTextStyle,
-              ),
+            ),
+            SizedBox(height: Dimenssions.height20),
+            _buildOptionItem(
+              icon: Icons.edit,
+              title: 'Edit Alamat',
+              color: logoColorSecondary,
               onTap: () {
                 Get.back();
                 Get.toNamed('/main/edit-address', arguments: address);
               },
             ),
             if (!address.isDefault)
-              ListTile(
-                leading: Icon(
-                  color: logoColorSecondary,
-                  Icons.check_circle_outline,
-                ),
-                title: Text(
-                  'Jadikan Alamat Utama',
-                  style: primaryTextStyle,
-                ),
+              _buildOptionItem(
+                icon: Icons.check_circle_outline,
+                title: 'Jadikan Alamat Utama',
+                color: logoColorSecondary,
                 onTap: () {
                   Get.back();
                   _setDefaultAddress(address);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Hapus Alamat',
-                  style: TextStyle(color: Colors.red)),
+            _buildOptionItem(
+              icon: Icons.delete,
+              title: 'Hapus Alamat',
+              color: alertColor,
               onTap: () {
                 Get.back();
                 _deleteAddress(address);
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionItem({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimenssions.width20,
+          vertical: Dimenssions.height15,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: Dimenssions.height22),
+            SizedBox(width: Dimenssions.width15),
+            Text(
+              title,
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -198,20 +405,41 @@ class AddressPage extends GetView<UserLocationController> {
     }
   }
 
-// Update fungsi _deleteAddress
   void _deleteAddress(UserLocationModel address) async {
     final confirm = await Get.dialog<bool>(
       AlertDialog(
-        title: const Text('Hapus Alamat'),
-        content: const Text('Anda yakin ingin menghapus alamat ini?'),
+        title: Text(
+          'Hapus Alamat',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font16,
+            fontWeight: semiBold,
+          ),
+        ),
+        content: Text(
+          'Anda yakin ingin menghapus alamat ini?',
+          style: secondaryTextStyle.copyWith(
+            fontSize: Dimenssions.font14,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Batal'),
+            child: Text(
+              'Batal',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: Text(
+              'Hapus',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+                color: alertColor,
+              ),
+            ),
           ),
         ],
       ),

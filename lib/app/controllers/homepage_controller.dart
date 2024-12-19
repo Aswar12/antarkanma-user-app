@@ -4,7 +4,8 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/services/product_service.dart';
-import 'dart:async'; // Untuk Timer
+import 'dart:async';
+import 'package:get_storage/get_storage.dart';
 
 class HomePageController extends GetxController {
   var products = <ProductModel>[].obs;
@@ -14,6 +15,7 @@ class HomePageController extends GetxController {
   final Rx<String> selectedCategory = "All".obs;
   final ProductService productService;
   var currentIndex = 0.obs;
+  final storage = GetStorage();
 
   void updateCurrentIndex(int index) {
     currentIndex.value = index;
@@ -35,7 +37,6 @@ class HomePageController extends GetxController {
   void onInit() {
     super.onInit();
     loadProducts();
-    _startAutoRefresh();
   }
 
   @override
@@ -44,21 +45,35 @@ class HomePageController extends GetxController {
     super.onClose();
   }
 
-  // Load products pertama kali
+  // Load products from local storage first
   Future<void> loadProducts() async {
     try {
       isLoading(true);
-      await productService.fetchProducts();
-      products.assignAll(productService.products);
+
+      // Try to load from local storage first
+      final storedProducts = storage.read('products');
+      final lastRefresh = storage.read('last_refresh');
+      final shouldRefresh = lastRefresh == null ||
+          DateTime.now().difference(DateTime.parse(lastRefresh)).inHours > 1;
+
+      if (storedProducts != null && !shouldRefresh) {
+        // Use cached data
+        final List<dynamic> productList = storedProducts;
+        products.value =
+            productList.map((json) => ProductModel.fromJson(json)).toList();
+        isLoading(false);
+      } else {
+        // If no cached data or cache is old, fetch from server
+        await refreshProducts(showMessage: false);
+      }
     } catch (e) {
       _handleError('Failed to load products', e);
-    } finally {
       isLoading(false);
     }
   }
 
   // Refresh products (untuk pull-to-refresh)
-  Future<void> refreshProducts() async {
+  Future<void> refreshProducts({bool showMessage = true}) async {
     if (isRefreshing.value) return; // Prevent multiple refreshes
 
     try {
@@ -66,27 +81,25 @@ class HomePageController extends GetxController {
       await productService.refreshProducts();
       products.assignAll(productService.products);
 
-      // Show success message
-      Get.snackbar(
-        'Success',
-        'Products refreshed successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
+      // Update last refresh time
+      await storage.write('last_refresh', DateTime.now().toIso8601String());
+
+      if (showMessage) {
+        Get.snackbar(
+          'Success',
+          'Products refreshed successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      }
     } catch (e) {
       _handleError('Failed to refresh products', e);
     } finally {
       isRefreshing(false);
+      isLoading(false);
     }
-  }
-
-  // Auto refresh setiap interval tertentu
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      refreshProducts();
-    });
   }
 
   // Handle error dengan lebih terstruktur
@@ -113,7 +126,7 @@ class HomePageController extends GetxController {
 
   // Method untuk mendapatkan produk populer
   List<ProductModel> get popularProducts {
-    return products.take(5).toList(); // Ambil 5 produk pertama sebagai contoh
+    return products.take(5).toList();
   }
 
   // Method untuk mencari produk
@@ -124,15 +137,6 @@ class HomePageController extends GetxController {
             product.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
   }
-
-  // Method untuk filter produk berdasarkan kategori
-  // List<ProductModel> filterByCategory(String category) {
-  //   if (category.isEmpty) return products;
-  //   return products
-  //       .where((product) =>
-  //           product.category?.toLowerCase() == category.toLowerCase())
-  //       .toList();
-  // }
 
   // Method untuk sorting produk
   void sortProducts({required String sortBy, bool ascending = true}) {
@@ -146,11 +150,8 @@ class HomePageController extends GetxController {
             ? a.price.compareTo(b.price)
             : b.price.compareTo(a.price));
         break;
-      // Tambahkan case sorting lainnya sesuai kebutuhan
     }
   }
-
-  // Method untuk check jika data perlu di-refresh
 
   // Method untuk memvalidasi data
   bool get hasValidData {

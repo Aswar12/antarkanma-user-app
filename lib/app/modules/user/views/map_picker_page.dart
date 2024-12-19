@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:antarkanma/app/controllers/map_picker_controller.dart';
+import 'package:antarkanma/theme.dart'; // Ensure theme.dart is imported
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
@@ -32,18 +33,36 @@ class _MapPickerViewState extends State<MapPickerView> {
 
   AppBar _buildAppBar() {
     return AppBar(
-      title: const Text('Pilih Lokasi'),
+      title: Text(
+        'Pilih Lokasi',
+        style: primaryTextStyle.copyWith(
+          fontSize: Dimenssions.font18,
+          fontWeight: semiBold,
+        ),
+      ),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: Icon(
+          Icons.arrow_back,
+          color: logoColorSecondary,
+        ),
         onPressed: () => Get.back(),
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.my_location),
-          onPressed: () => controller.getCurrentLocation(),
+          icon: Icon(
+            Icons.my_location,
+            color: logoColorSecondary,
+          ),
+          onPressed: () {
+            controller.getCurrentLocation();
+            // Center the map on the user's current location
+            controller.updateLocation(controller.currentLocation);
+          },
           tooltip: 'Lokasi Saat Ini',
         ),
       ],
+      backgroundColor: backgroundColor1,
+      elevation: 0,
     );
   }
 
@@ -90,7 +109,6 @@ class _MapPickerViewState extends State<MapPickerView> {
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.example.app',
-              tileBuilder: _darkModeTileBuilder,
             ),
             MarkerLayer(
               markers: [
@@ -143,7 +161,7 @@ class _MapPickerViewState extends State<MapPickerView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Dimenssions.radius15),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -191,42 +209,7 @@ class _MapPickerViewState extends State<MapPickerView> {
       onPressed: () => controller.confirmLocation(),
       icon: const Icon(Icons.check),
       label: const Text('Konfirmasi'),
-      backgroundColor: Colors.green,
-    );
-  }
-
-  Widget _darkModeTileBuilder(
-    BuildContext context,
-    Widget tileWidget,
-    TileImage tile,
-  ) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    if (!isDarkMode) return tileWidget;
-
-    return ColorFiltered(
-      colorFilter: const ColorFilter.matrix([
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-      ]),
-      child: tileWidget,
+      backgroundColor: logoColorSecondary,
     );
   }
 }

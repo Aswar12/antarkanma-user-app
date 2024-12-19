@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
@@ -23,10 +25,89 @@ class ProfilePage extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      backgroundColor: backgroundColor3,
+      body: ListView(
         children: [
           _buildHeader(authService),
-          _buildContent(authService),
+          _buildAddressCard(),
+          _buildMenuSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(AuthService authService) {
+    final user = authService.getUser();
+    return Container(
+      padding: EdgeInsets.only(
+        top: Dimenssions.height45,
+        bottom: Dimenssions.height30,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor2,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: () => controller.updateProfileImage(),
+            child: Stack(
+              children: [
+                user != null
+                    ? ProfileImage(
+                        user: user,
+                        size: Dimenssions.height90,
+                      )
+                    : CircleAvatar(
+                        radius: Dimenssions.height45,
+                        backgroundColor: Colors.grey[300],
+                        child: Icon(
+                          Icons.person,
+                          size: Dimenssions.height45,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(Dimenssions.height5),
+                    decoration: BoxDecoration(
+                      color: logoColorSecondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.edit,
+                      size: Dimenssions.height15,
+                      color: backgroundColor1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: Dimenssions.height15),
+          Text(
+            authService.userName,
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font20,
+              fontWeight: semiBold,
+            ),
+          ),
+          SizedBox(height: Dimenssions.height5),
+          Text(
+            authService.userPhone,
+            style: secondaryTextStyle.copyWith(
+              fontSize: Dimenssions.font14,
+            ),
+          ),
         ],
       ),
     );
@@ -35,230 +116,245 @@ class ProfilePage extends GetView<AuthController> {
   Widget _buildAddressCard() {
     return GetBuilder<UserLocationController>(
       builder: (locationController) {
-        return Card(
-          color: backgroundColor2,
-          elevation: 2,
-          shape: RoundedRectangleBorder(
+        return Container(
+          margin: EdgeInsets.all(Dimenssions.height15),
+          padding: EdgeInsets.all(Dimenssions.height15),
+          decoration: BoxDecoration(
+            color: backgroundColor2,
             borderRadius: BorderRadius.circular(Dimenssions.radius15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: EdgeInsets.all(Dimenssions.width15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Alamat Pengiriman',
-                      style: primaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font16,
-                        fontWeight: semiBold,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Get.toNamed('/main/address'),
-                      child: Text(
-                        'Lihat Semua',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontSize: Dimenssions.font14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimenssions.height10),
-                if (locationController.defaultAddress != null) ...[
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Row(
                     children: [
                       Icon(
                         Icons.location_on,
-                        color: primaryColor,
-                        size: Dimenssions.font20,
+                        color: logoColorSecondary,
+                        size: Dimenssions.height22,
                       ),
                       SizedBox(width: Dimenssions.width10),
-                      Expanded(
-                        child: Obx(() => Text(
-                              locationController.defaultAddress!.fullAddress,
-                              style: secondaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font14,
-                              ),
-                            )),
+                      Text(
+                        'Alamat Pengiriman',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font16,
+                          fontWeight: semiBold,
+                        ),
                       ),
                     ],
                   ),
-                ] else ...[
-                  Text(
-                    'Tambahkan alamat pengiriman Anda untuk memudahkan proses pengiriman',
-                    style: secondaryTextStyle.copyWith(
-                      fontSize: Dimenssions.font14,
-                    ),
-                  ),
-                  SizedBox(height: Dimenssions.height15),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (Get.isRegistered<UserLocationController>()) {
-                          Get.toNamed('/main/add-address');
-                        } else {
-                          Get.snackbar('Error', 'Controller tidak ditemukan');
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: EdgeInsets.symmetric(
-                          vertical: Dimenssions.height10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius15),
-                        ),
-                      ),
-                      child: Text(
-                        'Tambah Alamat',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font14,
-                          color: Colors.white,
-                        ),
+                  TextButton(
+                    onPressed: () => Get.toNamed('/main/address'),
+                    child: Text(
+                      'Lihat Semua',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font14,
+                        color: logoColorSecondary,
                       ),
                     ),
                   ),
                 ],
+              ),
+              SizedBox(height: Dimenssions.height10),
+              if (locationController.defaultAddress != null) ...[
+                Container(
+                  padding: EdgeInsets.all(Dimenssions.height10),
+                  decoration: BoxDecoration(
+                    color: backgroundColor3,
+                    borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                  ),
+                  child: Obx(() => Text(
+                        locationController.defaultAddress!.fullAddress,
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                        ),
+                      )),
+                ),
+              ] else ...[
+                Text(
+                  'Tambahkan alamat pengiriman Anda untuk memudahkan proses pengiriman',
+                  style: secondaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height15),
+                Container(
+                  height: Dimenssions.height45,
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Get.toNamed('/main/add-address'),
+                    style: TextButton.styleFrom(
+                      backgroundColor: logoColorSecondary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius15),
+                      ),
+                    ),
+                    child: Text(
+                      'Tambah Alamat',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font14,
+                        color: backgroundColor1,
+                        fontWeight: medium,
+                      ),
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildHeader(AuthService authService) {
-    final user = authService.getUser();
-    return Obx(() => AppBar(
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          backgroundColor: backgroundColor1,
-          flexibleSpace: SafeArea(
-            child: Container(
-              padding: EdgeInsets.all(Dimenssions.width30),
+  Widget _buildMenuSection() {
+    return Container(
+      margin: EdgeInsets.all(Dimenssions.height15),
+      padding: EdgeInsets.all(Dimenssions.height15),
+      decoration: BoxDecoration(
+        color: backgroundColor2,
+        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMenuGroup('Akun', [
+            _MenuItem(
+              icon: Icons.person_outline,
+              title: 'Edit Profil',
+              onTap: () => Get.toNamed('/edit-profile'),
+            ),
+            _MenuItem(
+              icon: Icons.shopping_bag_outlined,
+              title: 'Orderan Kamu',
+              onTap: () => Get.toNamed('/orders'),
+            ),
+            _MenuItem(
+              icon: Icons.headset_mic_outlined,
+              title: 'Bantuan',
+              onTap: () => Get.toNamed('/help'),
+            ),
+          ]),
+          SizedBox(height: Dimenssions.height20),
+          _buildMenuGroup('Umum', [
+            _MenuItem(
+              icon: Icons.privacy_tip_outlined,
+              title: 'Kebijakan & Privasi',
+              onTap: () => Get.toNamed('/privacy-policy'),
+            ),
+            _MenuItem(
+              icon: Icons.description_outlined,
+              title: 'Ketentuan Layanan',
+              onTap: () => Get.toNamed('/terms-of-service'),
+            ),
+            _MenuItem(
+              icon: Icons.star_outline,
+              title: 'Rating Aplikasi',
+              onTap: () => _showRatingDialog(),
+            ),
+          ]),
+          SizedBox(height: Dimenssions.height20),
+          Container(
+            height: Dimenssions.height45,
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Get.dialog(const LogoutConfirmationDialog()),
+              style: TextButton.styleFrom(
+                backgroundColor: alertColor.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                ),
+              ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  GestureDetector(
-                    onTap: () => controller.updateProfileImage(),
-                    child: user != null
-                        ? ProfileImage(
-                            user: user,
-                            size: Dimenssions.height55,
-                          )
-                        : CircleAvatar(
-                            radius: Dimenssions.width20,
-                            backgroundColor: Colors.grey,
-                            child:
-                                const Icon(Icons.person, color: Colors.white),
-                          ),
+                  Icon(
+                    Icons.logout,
+                    color: alertColor,
+                    size: Dimenssions.height20,
                   ),
-                  SizedBox(width: Dimenssions.width15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          authService.userName,
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font24,
-                            fontWeight: medium,
-                          ),
-                        ),
-                        Text(
-                          authService.userPhone,
-                          style: subtitleTextStyle.copyWith(
-                            fontSize: Dimenssions.font16,
-                          ),
-                        )
-                      ],
+                  SizedBox(width: Dimenssions.width10),
+                  Text(
+                    'Keluar',
+                    style: primaryTextStyle.copyWith(
+                      color: alertColor,
+                      fontSize: Dimenssions.font14,
+                      fontWeight: medium,
                     ),
                   ),
-                  IconButton(
-                    color: logoColorSecondary,
-                    icon: Image.asset(
-                      color: logoColorSecondary,
-                      'assets/button_exit.png',
-                      width: Dimenssions.height25,
-                    ),
-                    onPressed: () =>
-                        Get.dialog(const LogoutConfirmationDialog()),
-                  )
                 ],
               ),
             ),
           ),
-        ));
-  }
-
-  Widget _buildContent(AuthService authService) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: Dimenssions.width30),
-        width: double.infinity,
-        decoration: BoxDecoration(color: backgroundColor3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: Dimenssions.height25),
-            _buildAddressCard(),
-            SizedBox(height: Dimenssions.height25),
-
-            Text(
-              'Akun',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font18,
-                fontWeight: semiBold,
-              ),
-            ),
-            _buildMenuItem('Edit Profil', () => Get.toNamed('/edit-profile')),
-            _buildMenuItem('Orderan Kamu', () => Get.toNamed('/orders')),
-            _buildMenuItem('Bantuan', () => Get.toNamed('/help')),
-            SizedBox(height: Dimenssions.height30),
-            Text(
-              'Umum',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font18,
-                fontWeight: semiBold,
-              ),
-            ),
-            _buildMenuItem(
-                'Kebijakan & Privasi', () => Get.toNamed('/privacy-policy')),
-            _buildMenuItem(
-                'Ketentuan Layanan', () => Get.toNamed('/terms-of-service')),
-            _buildMenuItem('Rating Aplikasi', () => _showRatingDialog()),
-            const Spacer(),
-            // _buildLogoutButton(authService),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildMenuItem(String text, VoidCallback onTap) {
+  Widget _buildMenuGroup(String title, List<_MenuItem> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font16,
+            fontWeight: semiBold,
+          ),
+        ),
+        SizedBox(height: Dimenssions.height10),
+        ...items.map((item) => _buildMenuItemWidget(item)),
+      ],
+    );
+  }
+
+  Widget _buildMenuItemWidget(_MenuItem item) {
     return InkWell(
-      onTap: onTap,
+      onTap: item.onTap,
       child: Container(
-        margin: EdgeInsets.only(top: Dimenssions.height20),
+        padding: EdgeInsets.symmetric(
+          vertical: Dimenssions.height15,
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              text,
-              style: secondaryTextStyle.copyWith(
-                fontSize: Dimenssions.font16,
+            Icon(
+              item.icon,
+              color: logoColorSecondary,
+              size: Dimenssions.height20,
+            ),
+            SizedBox(width: Dimenssions.width15),
+            Expanded(
+              child: Text(
+                item.title,
+                style: secondaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font14,
+                ),
               ),
             ),
             Icon(
               Icons.arrow_forward_ios,
-              color: logoColorSecondary,
-              size: Dimenssions.font20,
+              color: secondaryTextColor,
+              size: Dimenssions.height15,
             ),
           ],
         ),
@@ -273,33 +369,32 @@ class ProfilePage extends GetView<AuthController> {
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
         ),
         child: Container(
-          padding: EdgeInsets.all(Dimenssions.width20),
+          padding: EdgeInsets.all(Dimenssions.height20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Rating Aplikasi',
-                style: TextStyle(
+                style: primaryTextStyle.copyWith(
                   fontSize: Dimenssions.font18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: semiBold,
                 ),
               ),
               SizedBox(height: Dimenssions.height20),
-              FittedBox(
-                // Menggunakan FittedBox untuk menyesuaikan ukuran
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    5,
-                    (index) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: InkWell(
-                        onTap: () => controller.setRating(index + 1),
-                        child: const Icon(
-                          Icons.star_border,
-                          size: 32,
-                          color: Colors.amber,
-                        ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  5,
+                  (index) => Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimenssions.width5,
+                    ),
+                    child: InkWell(
+                      onTap: () => controller.setRating(index + 1),
+                      child: Icon(
+                        Icons.star_border,
+                        size: Dimenssions.height30,
+                        color: logoColorSecondary,
                       ),
                     ),
                   ),
@@ -311,15 +406,32 @@ class ProfilePage extends GetView<AuthController> {
                 children: [
                   TextButton(
                     onPressed: () => Get.back(),
-                    child: const Text('Batal'),
+                    child: Text(
+                      'Batal',
+                      style: primaryTextStyle.copyWith(
+                        color: secondaryTextColor,
+                      ),
+                    ),
                   ),
                   SizedBox(width: Dimenssions.width10),
-                  ElevatedButton(
+                  TextButton(
                     onPressed: () {
                       controller.submitRating();
                       Get.back();
                     },
-                    child: const Text('Kirim'),
+                    style: TextButton.styleFrom(
+                      backgroundColor: logoColorSecondary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius15),
+                      ),
+                    ),
+                    child: Text(
+                      'Kirim',
+                      style: primaryTextStyle.copyWith(
+                        color: backgroundColor1,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -329,4 +441,16 @@ class ProfilePage extends GetView<AuthController> {
       ),
     );
   }
+}
+
+class _MenuItem {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  _MenuItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 }

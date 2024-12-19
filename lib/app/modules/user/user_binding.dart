@@ -3,6 +3,7 @@ import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/controllers/map_picker_controller.dart';
+import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
@@ -39,13 +40,18 @@ class UserBinding extends Bindings {
       ),
       fenix: true,
     );
+
+    // Transaction and Order Related Dependencies
+    Get.lazyPut(() => TransactionService(), fenix: true);
+    Get.lazyPut(() => OrderController(), fenix: true);
+
     Get.lazyPut<CheckoutController>(
       () => CheckoutController(
         userLocationController: Get.find<UserLocationController>(),
         authController: Get.find<AuthController>(),
       ),
     );
-    Get.lazyPut(() => TransactionService());
+
     // Additional Feature Controllers
     _initializeFeatureControllers();
   }
@@ -54,6 +60,5 @@ class UserBinding extends Bindings {
     // Uncomment and add these as needed
     // Get.lazyPut<ProfileController>(() => ProfileController());
     // Get.lazyPut<ChatController>(() => ChatController());
-    // Get.lazyPut<OrderController>(() => OrderController());
   }
 }

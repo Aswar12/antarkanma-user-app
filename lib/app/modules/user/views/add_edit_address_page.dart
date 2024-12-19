@@ -182,71 +182,108 @@ class _AddressFormState extends State<AddressForm> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         children: [
-          CustomInputField(
-            label: 'Nama Penerima',
-            hintText: 'Masukkan nama penerima',
-            controller: _customerNameController,
-            validator: (value) =>
-                value!.isEmpty ? 'Nama penerima harus diisi' : null,
-            icon:
-                'assets/icon_name.png', // Menggunakan icon_name.png yang tersedia
+          // Personal Information Section
+          Text(
+            'Informasi Penerima',
+            style: primaryTextStyle.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          _buildDropdownField(
-            label: 'Kecamatan',
-            value: _selectedDistrict,
-            items: districts,
-            onChanged: (value) {
-              setState(() {
-                _selectedDistrict = value;
-              });
-            },
-            hintText: 'Pilih Kecamatan',
-          ),
-          CustomInputField(
-            label: 'Alamat Lengkap',
-            hintText: 'Masukkan alamat lengkap',
-            controller: _addressController,
-            validator: (value) => value!.isEmpty ? 'Alamat harus diisi' : null,
-            icon:
-                'assets/icon_your_address.png', // Menggunakan icon_your_address.png yang tersedia
-          ),
-          CustomInputField(
-            label: 'Kode Pos',
-            hintText: 'Masukkan kode pos',
-            controller: _postalCodeController,
-            validator: (value) {
-              if (value!.isEmpty) return 'Kode pos harus diisi';
-              if (!RegExp(r'^\d{5}$').hasMatch(value)) {
-                return 'Kode pos harus 5 digit';
-              }
-              return null;
-            },
-            icon: const Icon(Icons.local_post_office_rounded),
-          ),
-          CustomInputField(
-            label: 'Nomor Telepon',
-            hintText: 'Masukkan nomor telepon',
-            controller: _phoneNumberController,
-            validator: (value) =>
-                value!.isEmpty ? 'Nomor telepon harus diisi' : null,
-            icon: const Icon(Icons
-                .phone_android_rounded), // Menggunakan icon_phone.png yang tersedia
-          ),
+          const SizedBox(height: 16),
           Container(
-            margin: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              children: [
+                CustomInputField(
+                  label: 'Nama Penerima',
+                  hintText: 'Masukkan nama penerima',
+                  controller: _customerNameController,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Nama penerima harus diisi' : null,
+                  icon: 'assets/icon_name.png',
+                ),
+                const SizedBox(height: 16),
+                CustomInputField(
+                  label: 'Nomor Telepon',
+                  hintText: 'Masukkan nomor telepon',
+                  controller: _phoneNumberController,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Nomor telepon harus diisi' : null,
+                  icon: const Icon(Icons.phone_android_rounded),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+          // Address Information Section
+          Text(
+            'Informasi Alamat',
+            style: primaryTextStyle.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              children: [
+                _buildDropdownField(
+                  label: 'Kecamatan',
+                  value: _selectedDistrict,
+                  items: districts,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDistrict = value;
+                    });
+                  },
+                  hintText: 'Pilih Kecamatan',
+                ),
+                const SizedBox(height: 16),
+                CustomInputField(
+                  label: 'Alamat Lengkap',
+                  hintText: 'Masukkan alamat lengkap',
+                  controller: _addressController,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Alamat harus diisi' : null,
+                  icon: 'assets/icon_your_address.png',
+                ),
+                const SizedBox(height: 16),
+                CustomInputField(
+                  label: 'Kode Pos',
+                  hintText: 'Masukkan kode pos',
+                  controller: _postalCodeController,
+                  validator: (value) {
+                    if (value!.isEmpty) return 'Kode pos harus diisi';
+                    if (!RegExp(r'^\d{5}$').hasMatch(value)) {
+                      return 'Kode pos harus 5 digit';
+                    }
+                    return null;
+                  },
+                  icon: const Icon(Icons.local_post_office_rounded),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Catatan Alamat',
+            style: primaryTextStyle.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Catatan Alamat',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: 16,
-                    fontWeight: medium,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Container(
                   height: Dimenssions
                       .height90, // Tinggi yang lebih besar untuk multiple lines
@@ -305,20 +342,20 @@ class _AddressFormState extends State<AddressForm> {
               ],
             ),
           ),
-          SizedBox(height: Dimenssions.height35),
+          const SizedBox(height: 32),
+          Text(
+            'Tipe Alamat',
+            style: primaryTextStyle.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
-            margin: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Tipe Alamat',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: 16,
-                    fontWeight: medium,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Container(
                   height: 50,
                   decoration: BoxDecoration(
@@ -414,95 +451,99 @@ class _AddressFormState extends State<AddressForm> {
             },
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: logoColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () async {
-                    try {
-                      final result = await Get.to(() => const MapPickerView());
-                      if (result != null && result is Map<String, dynamic>) {
-                        setState(() {
-                          _latitude = (result['location'] as LatLng).latitude;
-                          _longitude = (result['location'] as LatLng).longitude;
-                          _addressController.text = result['address'] as String;
-                        });
-                      }
-                    } catch (e) {
-                      showCustomSnackbar(
-                        title: 'Error',
-                        message: 'Gagal memilih lokasi',
-                        backgroundColor: Colors.red,
-                      );
-                    }
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(width: 8),
-                      Icon(
-                        _latitude != 0.0 && _longitude != 0.0
-                            ? Icons.check_circle
-                            : Icons.location_on,
-                        color: Colors.white,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: logoColor,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
+                    ),
+                    onPressed: () async {
+                      try {
+                        final result =
+                            await Get.to(() => const MapPickerView());
+                        if (result != null && result is Map<String, dynamic>) {
+                          setState(() {
+                            _latitude = (result['location'] as LatLng).latitude;
+                            _longitude =
+                                (result['location'] as LatLng).longitude;
+                            _addressController.text =
+                                result['address'] as String;
+                          });
+                        }
+                      } catch (e) {
+                        showCustomSnackbar(
+                          title: 'Error',
+                          message: 'Gagal memilih lokasi',
+                          backgroundColor: Colors.red,
+                        );
+                      }
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _latitude != 0.0 && _longitude != 0.0
+                              ? Icons.check_circle
+                              : Icons.location_on,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
                           _latitude != 0.0 && _longitude != 0.0
                               ? 'Lokasi Telah Dipilih'
-                              : 'Lokasi dari Peta',
+                              : 'Pilih Lokasi dari Peta',
                           style: primaryTextOrange,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10), // Spasi antara tombol
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: logoColorSecondary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 8),
-                      Icon(
-                        widget.address == null
-                            ? Icons.check_circle
-                            : Icons.location_on,
-                        color: Colors.white,
+                ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  child: ElevatedButton(
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: logoColorSecondary,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Text(
-                        widget.address == null
-                            ? 'Tambah Alamat'
-                            : 'Simpan Perubahan',
-                        style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font18,
-                            color: backgroundColor1),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          widget.address == null
+                              ? Icons.add_location_alt
+                              : Icons.save_outlined,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          widget.address == null
+                              ? 'Tambah Alamat'
+                              : 'Simpan Perubahan',
+                          style: primaryTextStyle.copyWith(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          )
+              ],
+            ),
+          ),
         ],
       ),
     );

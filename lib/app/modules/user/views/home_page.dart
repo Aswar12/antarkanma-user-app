@@ -3,13 +3,13 @@
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/widgets/product_tile.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey _carouselKey = GlobalKey();
   bool _isCategorySticky = false;
   final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -50,143 +51,109 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
-
-      return Scaffold(
-        backgroundColor: backgroundColor3,
-        body: NestedScrollView(
-          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-            return [
-              SliverAppBar(
-                backgroundColor: backgroundColor3,
-                floating: true,
-                snap: true,
-                pinned: false,
-                title: _buildSearchBar(),
-                actions: [
-                  Padding(
-                    padding: EdgeInsets.only(right: Dimenssions.width20),
-                    child: Obx(() {
-                      final user = _authService.getUser();
-                      if (user == null) {
-                        return Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.grey,
-                          ),
-                        );
-                      }
-                      return ProfileImage(
-                        user: user,
-                        size: 40,
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ];
-          },
-          body: CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              SliverList(
-                delegate: SliverChildListDelegate([
-                  popularProductsTitle(),
-                  popularProducts(),
-                  const SizedBox(height: 10),
-                ]),
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SliverAppBarDelegate(
-                  minHeight: 35,
-                  maxHeight: 35,
-                  child: Container(
-                    color: Colors.white,
-                    child: _buildCategories(),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildListDelegate([
-                  listProductsTitle(),
-                  listProducts(),
-                ]),
-              ),
-            ],
+  Widget _buildSearchBar() {
+    return GestureDetector(
+      onTap: () {
+        Get.toNamed('/search');
+      },
+      child: Container(
+        height: Dimenssions.height45,
+        padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+        decoration: BoxDecoration(
+          color: backgroundColor3,
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          border: Border.all(
+            color: secondaryTextColor.withOpacity(0.1),
+            width: 1,
           ),
-        ),
-      );
-    });
-  }
-
-// Modifikasi _buildCategories untuk menambahkan shadow
-  Widget _buildCategories() {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor3,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(
-          horizontal: Dimenssions.width10,
-          vertical: 2,
         ),
         child: Row(
           children: [
-            _buildCategoryItem("All"),
-            _buildCategoryItem("Electronics"),
-            _buildCategoryItem("Fashion"),
-            _buildCategoryItem("Home"),
-            _buildCategoryItem("Beauty"),
+            Icon(
+              Icons.search_outlined,
+              color: secondaryTextColor,
+              size: Dimenssions.height22,
+            ),
+            SizedBox(width: Dimenssions.width10),
+            Text(
+              'Apa Ku AntarkanKi ?',
+              style: secondaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-// Buat widget terpisah untuk search bar
+  Widget _buildCategories() {
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor1,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimenssions.width15,
+          vertical: Dimenssions.height5,
+        ),
+        child: Row(
+          children: [
+            _buildCategoryItem("Semua"),
+            _buildCategoryItem("Elektronik"),
+            _buildCategoryItem("Fashion"),
+            _buildCategoryItem("Rumah"),
+            _buildCategoryItem("Kecantikan"),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildCategoryItem(String category) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Dimenssions.width5),
+    return Container(
+      margin: EdgeInsets.only(right: Dimenssions.width10),
       child: Obx(() {
         bool isSelected = controller.selectedCategory.value == category;
-        return GestureDetector(
-          onTap: () => controller.selectedCategory.value = category,
-          child: Chip(
-            label: Text(category),
-            backgroundColor: isSelected ? logoColorSecondary : Colors.grey[200],
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimenssions.width10,
-              vertical: 2,
-            ),
-            side: BorderSide(
-              // Tambahkan border di sini
-              color: isSelected ? Colors.white : logoColorSecondary,
-              width: 1,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => controller.selectedCategory.value = category,
+            borderRadius: BorderRadius.circular(Dimenssions.radius15),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Dimenssions.width15,
+                vertical: Dimenssions.height5,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? logoColorSecondary.withOpacity(0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                border: Border.all(
+                  color: isSelected
+                      ? logoColorSecondary
+                      : secondaryTextColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                category,
+                style: primaryTextStyle.copyWith(
+                  color: isSelected ? logoColorSecondary : secondaryTextColor,
+                  fontSize: Dimenssions.font14,
+                  fontWeight: isSelected ? semiBold : regular,
+                ),
+              ),
             ),
           ),
         );
@@ -194,31 +161,43 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, '/search');
-      },
-      child: Container(
-        height: Dimenssions.height40,
-        decoration: BoxDecoration(
-          border: Border.all(color: backgroundColor6, width: 2),
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 10.0),
-            Icon(Icons.search_outlined, color: backgroundColor6),
-            SizedBox(width: Dimenssions.width10),
-            Text(
-              'Apa Ku AntarkanKi ?',
-              style: subtitleTextStyle.copyWith(
+  Widget popularProductsTitle() {
+    return _buildTitle('Produk Populer');
+  }
+
+  Widget listProductsTitle() {
+    return _buildTitle('Daftar Produk');
+  }
+
+  Widget _buildTitle(String title) {
+    return Container(
+      margin: EdgeInsets.only(
+        top: Dimenssions.height15,
+        left: Dimenssions.width15,
+        right: Dimenssions.width15,
+        bottom: Dimenssions.height10,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font18,
+              fontWeight: semiBold,
+            ),
+          ),
+          TextButton(
+            onPressed: () {},
+            child: Text(
+              'Lihat Semua',
+              style: primaryTextStyle.copyWith(
                 fontSize: Dimenssions.font14,
-                color: backgroundColor6,
+                color: logoColorSecondary,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -248,17 +227,18 @@ class _HomePageState extends State<HomePage> {
             return _buildCarouselItem(index);
           },
         ),
-        SizedBox(height: Dimenssions.height5),
+        SizedBox(height: Dimenssions.height10),
         Obx(() => AnimatedSmoothIndicator(
               activeIndex: controller.currentIndex.value,
               count: controller.products.length > 4
                   ? 4
                   : controller.products.length,
-              effect: const WormEffect(
-                activeDotColor: Color(0xfffffff6600),
-                dotHeight: 11,
-                dotWidth: 11,
-                type: WormType.thinUnderground,
+              effect: WormEffect(
+                activeDotColor: logoColorSecondary,
+                dotColor: secondaryTextColor.withOpacity(0.2),
+                dotHeight: Dimenssions.height10,
+                dotWidth: Dimenssions.height10,
+                type: WormType.thin,
               ),
             )),
       ],
@@ -274,17 +254,26 @@ class _HomePageState extends State<HomePage> {
       onTap: () {
         Get.toNamed(Routes.productDetail, arguments: product);
       },
-      child: Stack(
-        children: [
-          Container(
-            height: Dimenssions.pageViewContainer,
-            margin: EdgeInsets.symmetric(horizontal: Dimenssions.width10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Dimenssions.radius30),
-              color: index.isEven
-                  ? const Color(0xff69c5df)
-                  : const Color(0xff9294cc),
-              image: DecorationImage(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: Dimenssions.width5),
+        decoration: BoxDecoration(
+          color: backgroundColor1,
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image(
                 image: product.galleries.isNotEmpty &&
                         product.imageUrls[0].isNotEmpty
                     ? NetworkImage(product.imageUrls[0])
@@ -292,130 +281,85 @@ class _HomePageState extends State<HomePage> {
                         as ImageProvider,
                 fit: BoxFit.cover,
               ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: Dimenssions.pageTextContainer,
-              margin: EdgeInsets.symmetric(
-                horizontal: Dimenssions.width20,
-                vertical: Dimenssions.height5,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Dimenssions.radius20),
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.5),
+                    ],
                   ),
-                ],
+                ),
               ),
-              child: Padding(
-                padding: EdgeInsets.all(Dimenssions.height20),
+              Positioned(
+                bottom: Dimenssions.height15,
+                left: Dimenssions.width15,
+                right: Dimenssions.width15,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: TextStyle(
-                                color: primaryTextColor,
-                                fontSize: Dimenssions.font16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          SizedBox(width: Dimenssions.width10),
-                          _buildRatingItem(
-                              product.averageRating, product.totalReviews),
-                        ],
+                    Text(
+                      product.name,
+                      style: primaryTextStyle.copyWith(
+                        color: backgroundColor1,
+                        fontSize: Dimenssions.font16,
+                        fontWeight: semiBold,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    Expanded(
-                      flex: 1,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Rp ${product.price}',
-                            style: TextStyle(
-                              fontSize: Dimenssions.font14,
-                              color: logoColorSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                    SizedBox(height: Dimenssions.height5),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          NumberFormat.currency(
+                            locale: 'id',
+                            symbol: 'Rp ',
+                            decimalDigits: 0,
+                          ).format(product.price),
+                          style: primaryTextStyle.copyWith(
+                            color: backgroundColor1,
+                            fontSize: Dimenssions.font14,
+                            fontWeight: medium,
                           ),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Icon(Icons.store,
-                                    color: Colors.blue,
-                                    size: Dimenssions.iconSize16),
-                                SizedBox(width: Dimenssions.width5),
-                                Flexible(
-                                  child: Text(
-                                    product.merchant?.name ??
-                                        'Unknown Merchant',
-                                    style: TextStyle(
-                                      color: primaryTextColor,
-                                      fontSize: Dimenssions.font12,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.end,
-                                  ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width10,
+                            vertical: Dimenssions.height5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius15),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: Dimenssions.height15,
+                              ),
+                              SizedBox(width: Dimenssions.width5),
+                              Text(
+                                '${product.averageRating ?? 0}',
+                                style: primaryTextStyle.copyWith(
+                                  color: backgroundColor1,
+                                  fontSize: Dimenssions.font12,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget popularProductsTitle() {
-    return _buildTitle('Produk Populer');
-  }
-
-  Widget listProductsTitle() {
-    return _buildTitle('Daftar Produk');
-  }
-
-  Widget _buildTitle(String title) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          top: Dimenssions.height5,
-          left: Dimenssions.height25,
-          bottom: Dimenssions.height10,
-        ),
-        child: Text(
-          title,
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font20,
-            color: backgroundColor6,
+            ],
           ),
         ),
       ),
@@ -424,59 +368,249 @@ class _HomePageState extends State<HomePage> {
 
   Widget listProducts() {
     return Container(
-      margin: EdgeInsets.only(top: Dimenssions.height10),
-      child: Column(
-        children: controller.filteredProducts.map((product) {
-          return ProductTile(
-            imageUrl:
-                product.galleries.isNotEmpty && product.imageUrls[0].isNotEmpty
-                    ? product.imageUrls[0]
-                    : 'assets/image_shoes2.png',
-            name: product.name,
-            price: product.price,
-            merchantName: product.merchant?.name ?? 'Unknown Merchant',
-            // Anda perlu menambahkan properti ini di MerchantModel
-            rating: product.averageRating,
-            reviews: product.totalReviews,
-            onTap: () {
-              Get.toNamed(Routes.productDetail, arguments: product);
-            },
+      margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
+          mainAxisSpacing: Dimenssions.height15,
+          crossAxisSpacing: Dimenssions.width15,
+        ),
+        itemCount: controller.filteredProducts.length,
+        itemBuilder: (context, index) {
+          final product = controller.filteredProducts[index];
+          return GestureDetector(
+            onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
+            child: Container(
+              decoration: BoxDecoration(
+                color: backgroundColor2,
+                borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(Dimenssions.radius15),
+                          topRight: Radius.circular(Dimenssions.radius15),
+                        ),
+                        image: DecorationImage(
+                          image: product.galleries.isNotEmpty &&
+                                  product.imageUrls[0].isNotEmpty
+                              ? NetworkImage(product.imageUrls[0])
+                              : const AssetImage('assets/image_shoes.png')
+                                  as ImageProvider,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: EdgeInsets.all(Dimenssions.height10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            product.name,
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font14,
+                              fontWeight: semiBold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                NumberFormat.currency(
+                                  locale: 'id',
+                                  symbol: 'Rp ',
+                                  decimalDigits: 0,
+                                ).format(product.price),
+                                style: priceTextStyle.copyWith(
+                                  fontSize: Dimenssions.font14,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                              SizedBox(height: Dimenssions.height5),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.store,
+                                    color: logoColorSecondary,
+                                    size: Dimenssions.height15,
+                                  ),
+                                  SizedBox(width: Dimenssions.width5),
+                                  Expanded(
+                                    child: Text(
+                                      product.merchant?.name ?? 'Unknown',
+                                      style: secondaryTextStyle.copyWith(
+                                        fontSize: Dimenssions.font12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: Dimenssions.width5,
+                                      vertical: Dimenssions.height2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          logoColorSecondary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                          Dimenssions.radius8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star,
+                                          color: Colors.amber,
+                                          size: Dimenssions.height12,
+                                        ),
+                                        SizedBox(width: Dimenssions.width2),
+                                        Text(
+                                          '${product.averageRating ?? 0}',
+                                          style: primaryTextStyle.copyWith(
+                                            fontSize: Dimenssions.font10,
+                                            color: logoColorSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
-        }).toList(),
+        },
       ),
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String text, Color color) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: Dimenssions.iconSize16),
-        SizedBox(width: Dimenssions.width5),
-        Text(
-          text,
-          style: TextStyle(
-            color: primaryTextColor,
-            fontSize: Dimenssions.font12,
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(
+              color: logoColorSecondary,
+            ),
           ),
-        ),
-      ],
-    );
-  }
+        );
+      }
 
-  Widget _buildRatingItem(double? rating, int? reviews) {
-    return Row(
-      children: [
-        Icon(Icons.star, color: Colors.amber, size: Dimenssions.iconSize16),
-        SizedBox(width: Dimenssions.width5),
-        Text(
-          '${rating ?? 0} (${reviews ?? 0})',
-          style: TextStyle(
-            color: primaryTextColor,
-            fontSize: Dimenssions.font12,
+      return Scaffold(
+        backgroundColor: backgroundColor1,
+        body: RefreshIndicator(
+          onRefresh: controller.refreshProducts,
+          color: logoColorSecondary,
+          child: NestedScrollView(
+            headerSliverBuilder:
+                (BuildContext context, bool innerBoxIsScrolled) {
+              return [
+                SliverAppBar(
+                  backgroundColor: backgroundColor1,
+                  floating: true,
+                  snap: true,
+                  pinned: false,
+                  elevation: 0,
+                  title: _buildSearchBar(),
+                  actions: [
+                    Padding(
+                      padding: EdgeInsets.only(right: Dimenssions.width20),
+                      child: Obx(() {
+                        final user = _authService.getUser();
+                        if (user == null) {
+                          return Container(
+                            width: Dimenssions.height45,
+                            height: Dimenssions.height45,
+                            decoration: BoxDecoration(
+                              color: backgroundColor3,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: logoColorSecondary.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person,
+                              color: secondaryTextColor,
+                              size: Dimenssions.height22,
+                            ),
+                          );
+                        }
+                        return ProfileImage(
+                          user: user,
+                          size: Dimenssions.height45,
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ];
+            },
+            body: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    popularProductsTitle(),
+                    popularProducts(),
+                    SizedBox(height: Dimenssions.height10),
+                  ]),
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverAppBarDelegate(
+                    minHeight: Dimenssions.height45,
+                    maxHeight: Dimenssions.height45,
+                    child: Container(
+                      color: backgroundColor1,
+                      child: _buildCategories(),
+                    ),
+                  ),
+                ),
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    listProductsTitle(),
+                    listProducts(),
+                    SizedBox(height: Dimenssions.height20),
+                  ]),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
-    );
+      );
+    });
   }
 }
 
@@ -499,10 +633,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return SizedBox.expand(child: child);
   }
 

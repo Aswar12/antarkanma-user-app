@@ -18,6 +18,9 @@ class MapPickerController extends GetxController {
   bool _disposed = false;
   Timer? _locationTimer;
 
+  // Add a getter for currentLocation
+  LatLng get currentLocation => selectedLocation.value;
+
   @override
   void onInit() {
     super.onInit();
