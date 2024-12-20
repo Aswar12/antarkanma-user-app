@@ -1,3 +1,4 @@
+import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
@@ -49,15 +50,28 @@ class OrderController extends GetxController {
     });
   }
 
+  final _storageService = StorageService.instance;
+
   Future<void> fetchTransactions({String? status}) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
+      // Load from cache first
+      final cachedOrders = _storageService.getOrders();
+      if (cachedOrders != null) {
+        transactions.value = cachedOrders
+            .map((json) => TransactionModel.fromJson(json))
+            .toList();
+      }
+
+      // Then fetch from API
       final result = await _transactionService.getTransactions(
         status: status,
       );
 
+      // Update cache and state
+      await _storageService.saveOrders(result.map((t) => t.toJson()).toList());
       transactions.value = result;
     } catch (e) {
       print('Error fetching transactions: $e');
@@ -107,14 +121,30 @@ class OrderController extends GetxController {
           await _transactionService.cancelTransaction(transactionId);
 
       if (success) {
-        await fetchTransactions(
-            status: currentTab.value == 0
-                ? 'PENDING,PROCESSING,ON_DELIVERY'
-                : 'COMPLETED,CANCELED');
+        // Update local state immediately
+        final updatedTransactions = transactions.map((t) {
+          if (t.id.toString() == transactionId) {
+            return t.copyWith(status: 'CANCELED');
+          }
+          return t;
+        }).toList();
+
+        transactions.value = updatedTransactions;
+
+        // Update cache
+        await _storageService
+            .saveOrders(updatedTransactions.map((t) => t.toJson()).toList());
+
         showCustomSnackbar(
           title: 'Sukses',
           message: 'Pesanan berhasil dibatalkan',
         );
+
+        // Refresh the current tab
+        await fetchTransactions(
+            status: currentTab.value == 0
+                ? 'PENDING,PROCESSING,ON_DELIVERY'
+                : 'COMPLETED,CANCELED');
       } else {
         throw Exception('Gagal membatalkan pesanan');
       }

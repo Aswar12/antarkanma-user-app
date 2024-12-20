@@ -7,12 +7,14 @@ class CartItemModel {
   final MerchantModel merchant; // Tidak nullable
   int quantity;
   final VariantModel? selectedVariant;
+  bool isSelected;
 
   CartItemModel({
     required this.product,
     required this.merchant,
     required this.quantity,
     this.selectedVariant,
+    this.isSelected = false,
   });
 
   // Getter untuk harga per item
@@ -37,6 +39,7 @@ class CartItemModel {
       'merchant': merchant.toJson(),
       'quantity': quantity,
       'selectedVariant': selectedVariant?.toJson(),
+      'isSelected': isSelected,
     };
   }
 
@@ -49,6 +52,7 @@ class CartItemModel {
       selectedVariant: json['selectedVariant'] != null
           ? VariantModel.fromJson(json['selectedVariant'])
           : null,
+      isSelected: json['isSelected'] as bool? ?? false,
     );
   }
 

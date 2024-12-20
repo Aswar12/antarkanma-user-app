@@ -20,6 +20,7 @@ class StorageService {
   static const String _savedCredentialsKey = 'saved_credentials';
   static const String _userLocationsKey = 'user_locations';
   static const String _defaultLocationKey = 'default_location';
+  static const String _ordersKey = 'orders_cache';
 
   // Simple encryption key
   static const String _secretKey = 'your_secret_key_here';
@@ -237,6 +238,21 @@ class StorageService {
   Future<void> clearLocationData() async {
     await _storage.remove(_userLocationsKey);
     await _storage.remove(_defaultLocationKey);
+  }
+
+  // Orders cache methods
+  Future<void> saveOrders(List<Map<String, dynamic>> orders) async {
+    await saveList(_ordersKey, orders);
+  }
+
+  List<Map<String, dynamic>>? getOrders() {
+    final data = getList(_ordersKey);
+    if (data == null) return null;
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> clearOrders() async {
+    await _storage.remove(_ordersKey);
   }
 
   Future<void> clearAll() async {

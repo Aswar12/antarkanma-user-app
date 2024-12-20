@@ -132,31 +132,17 @@ class _CartPageState extends State<CartPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: EdgeInsets.all(Dimenssions.height15),
+          padding: EdgeInsets.all(Dimenssions.height10),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: constraints.maxHeight,
             ),
             child: Column(
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Geser item ke kiri untuk menghapus',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-                ...controller.merchantItems.entries.map((entry) {
-                  final merchantId = entry.key;
-                  final merchantItems = entry.value;
-                  return _buildMerchantSection(merchantId, merchantItems);
-                }).toList(),
-              ],
+              children: controller.merchantItems.entries.map((entry) {
+                final merchantId = entry.key;
+                final merchantItems = entry.value;
+                return _buildMerchantSection(merchantId, merchantItems);
+              }).toList(),
             ),
           ),
         );
@@ -167,20 +153,19 @@ class _CartPageState extends State<CartPage> {
   Widget _buildMerchantSection(int merchantId, List<CartItemModel> items) {
     return Card(
       color: backgroundColor2,
-      margin: EdgeInsets.only(bottom: Dimenssions.height15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 4,
+      margin: EdgeInsets.only(bottom: Dimenssions.height10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: EdgeInsets.symmetric(
-                horizontal: Dimenssions.width20,
-                vertical: Dimenssions.height10),
+                horizontal: Dimenssions.width15, vertical: Dimenssions.height8),
             child: Text(
               items.first.merchant.name,
               style: primaryTextStyle.copyWith(
-                  fontSize: Dimenssions.font18, fontWeight: semiBold),
+                  fontSize: Dimenssions.font16, fontWeight: semiBold),
             ),
           ),
           const Divider(height: 1),
@@ -202,60 +187,10 @@ class _CartPageState extends State<CartPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: Colors.red.shade400,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.delete_outline,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Geser untuk Hapus',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 20),
-          ],
-        ),
-      ),
-      secondaryBackground: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: Colors.red.shade400,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.delete_outline,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Geser untuk Hapus',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 20),
-          ],
+        child: const Icon(
+          Icons.delete_outline,
+          color: Colors.white,
+          size: 24,
         ),
       ),
       confirmDismiss: (direction) async {
@@ -298,37 +233,40 @@ class _CartPageState extends State<CartPage> {
         color: Colors.white,
         child: Stack(
           children: [
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 20,
-                color: Colors.red.withOpacity(0.07),
-                child: Center(
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: logoColorSecondary,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
+            Container(
               padding: EdgeInsets.symmetric(
-                horizontal: Dimenssions.height20,
-                vertical: Dimenssions.height10,
+                horizontal: Dimenssions.height15,
+                vertical: Dimenssions.height8,
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Checkbox with custom border color
+                  Transform.scale(
+                    scale: 1.1,
+                    child: Checkbox(
+                      value: item.isSelected,
+                      onChanged: (bool? value) {
+                        cartController.toggleItemSelection(merchantId, index);
+                      },
+                      activeColor: logoColorSecondary,
+                      side: BorderSide(
+                        color: logoColorSecondary,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimenssions.width10),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     child: item.product.imageUrls.isNotEmpty
                         ? Image.network(
                             item.product.imageUrls.first,
-                            width: Dimenssions.height90,
-                            height: Dimenssions.height90,
+                            width: Dimenssions.height70,
+                            height: Dimenssions.height70,
                             fit: BoxFit.cover,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
@@ -338,53 +276,54 @@ class _CartPageState extends State<CartPage> {
                             errorBuilder: (context, error, stackTrace) =>
                                 Image.asset(
                               'assets/image_shoes.png',
-                              width: Dimenssions.height90,
-                              height: Dimenssions.height90,
+                              width: Dimenssions.height70,
+                              height: Dimenssions.height70,
                               fit: BoxFit.cover,
                             ),
                           )
                         : Image.asset(
                             'assets/image_shoes.png',
-                            width: Dimenssions.height90,
-                            height: Dimenssions.height90,
+                            width: Dimenssions.height70,
+                            height: Dimenssions.height70,
                             fit: BoxFit.cover,
                           ),
                   ),
-                  SizedBox(width: Dimenssions.width15),
+                  SizedBox(width: Dimenssions.width12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           item.product.name,
                           style: primaryTextStyle.copyWith(
                             fontWeight: semiBold,
-                            fontSize: Dimenssions.font18,
+                            fontSize: Dimenssions.font14,
                           ),
                         ),
-                        SizedBox(height: Dimenssions.height5),
                         if (item.selectedVariant != null) ...[
+                          SizedBox(height: Dimenssions.height4),
                           Row(
                             children: [
                               Text(
                                 '${item.selectedVariant!.name}: ',
                                 style: primaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font14,
+                                  fontSize: Dimenssions.font12,
                                   color: Colors.grey[600],
                                 ),
                               ),
                               Text(
                                 item.selectedVariant!.value,
                                 style: primaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font14,
+                                  fontSize: Dimenssions.font12,
                                   color: Colors.grey[600],
                                   fontWeight: medium,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: Dimenssions.height5),
                         ],
+                        SizedBox(height: Dimenssions.height4),
                         Text(
                           NumberFormat.currency(
                             locale: 'id',
@@ -394,12 +333,99 @@ class _CartPageState extends State<CartPage> {
                           style: TextStyle(
                             color: logoColorSecondary,
                             fontWeight: FontWeight.w600,
+                            fontSize: Dimenssions.font14,
+                          ),
+                        ),
+                        SizedBox(height: Dimenssions.height6),
+                        // Quantity controls with border
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => cartController.decrementQuantity(
+                                    merchantId, index),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  child: Icon(
+                                    Icons.remove,
+                                    size: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.symmetric(
+                                    vertical: BorderSide(
+                                      color: Colors.grey[300]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${item.quantity}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => cartController.incrementQuantity(
+                                    merchantId, index),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  child: Icon(
+                                    Icons.add,
+                                    size: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
+              ),
+            ),
+            // Right indicator for swipe
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 15,
+                decoration: BoxDecoration(
+                  color: logoColorSecondary.withOpacity(0.1),
+                  border: Border(
+                    left: BorderSide(
+                      color: logoColorSecondary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: logoColorSecondary,
+                    size: 16,
+                  ),
+                ),
               ),
             ),
           ],
@@ -438,7 +464,7 @@ class _CartPageState extends State<CartPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Total Belanjaanta',
+                    'Total Belanja',
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -451,10 +477,11 @@ class _CartPageState extends State<CartPage> {
                         locale: 'id',
                         symbol: 'Rp ',
                         decimalDigits: 0,
-                      ).format(controller.totalPrice),
+                      ).format(controller.selectedItemsTotal),
                       style: TextStyle(
                         fontSize: 18,
                         color: logoColorSecondary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -463,16 +490,26 @@ class _CartPageState extends State<CartPage> {
             ),
             GetBuilder<CartController>(
               builder: (controller) => ElevatedButton(
-                onPressed: controller.itemCount > 0
+                onPressed: controller.selectedItemCount > 0
                     ? () {
+                        // Group selected items by merchant
+                        Map<int, List<CartItemModel>> groupedItems = {};
+                        for (var item in controller.selectedItems) {
+                          final merchantId = item.merchant.id!;
+                          if (!groupedItems.containsKey(merchantId)) {
+                            groupedItems[merchantId] = [];
+                          }
+                          groupedItems[merchantId]!.add(item);
+                        }
+
                         Get.toNamed('/main/checkout', arguments: {
-                          'merchantItems': controller.merchantItems,
+                          'merchantItems': groupedItems,
                           'type': 'cart',
                         });
                       }
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: controller.itemCount > 0
+                  backgroundColor: controller.selectedItemCount > 0
                       ? logoColorSecondary
                       : Colors.grey,
                   padding:
@@ -481,8 +518,8 @@ class _CartPageState extends State<CartPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  'Checkout',
+                child: Text(
+                  'Checkout (${controller.selectedItemCount})',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.white,

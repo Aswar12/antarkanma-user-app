@@ -150,6 +150,47 @@ class TransactionModel {
   }
 
   // Membuat instance dari JSON
+  // CopyWith method
+  TransactionModel copyWith({
+    int? id,
+    int? orderId,
+    int? userId,
+    int? userLocationId,
+    double? totalPrice,
+    double? shippingPrice,
+    DateTime? paymentDate,
+    String? status,
+    String? paymentMethod,
+    String? paymentStatus,
+    double? rating,
+    String? note,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<OrderItemModel>? items,
+    OrderModel? order,
+    UserLocationModel? userLocation,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      userId: userId ?? this.userId,
+      userLocationId: userLocationId ?? this.userLocationId,
+      totalPrice: totalPrice ?? this.totalPrice,
+      shippingPrice: shippingPrice ?? this.shippingPrice,
+      paymentDate: paymentDate ?? this.paymentDate,
+      status: status ?? this.status,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      rating: rating ?? this.rating,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      items: items ?? this.items,
+      order: order ?? this.order,
+      userLocation: userLocation ?? this.userLocation,
+    );
+  }
+
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     try {
       return TransactionModel(

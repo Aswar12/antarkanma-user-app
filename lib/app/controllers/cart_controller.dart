@@ -213,6 +213,7 @@ class CartController extends GetxController {
             quantity: newQuantity,
             selectedVariant: item.selectedVariant,
             merchant: item.merchant,
+            isSelected: item.isSelected,
           );
           _saveCartToStorage();
           update();
@@ -265,6 +266,50 @@ class CartController extends GetxController {
     }
   }
 
+  // Methods for handling item selection
+  void toggleItemSelection(int merchantId, int index) {
+    if (merchantItems.containsKey(merchantId) &&
+        index >= 0 &&
+        index < merchantItems[merchantId]!.length) {
+      final items = merchantItems[merchantId];
+      if (items != null) {
+        final item = items[index];
+        items[index] = CartItemModel(
+          product: item.product,
+          quantity: item.quantity,
+          selectedVariant: item.selectedVariant,
+          merchant: item.merchant,
+          isSelected: !item.isSelected,
+        );
+        _saveCartToStorage();
+        update();
+      }
+    }
+  }
+
+  double get selectedItemsTotal {
+    double total = 0;
+    merchantItems.forEach((merchantId, items) {
+      total += items
+          .where((item) => item.isSelected)
+          .fold(0.0, (sum, item) => sum + item.totalPrice);
+    });
+    return total;
+  }
+
+  int get selectedItemCount {
+    return merchantItems.values.fold(
+        0, (sum, items) => sum + items.where((item) => item.isSelected).length);
+  }
+
+  List<CartItemModel> get selectedItems {
+    List<CartItemModel> selected = [];
+    merchantItems.forEach((merchantId, items) {
+      selected.addAll(items.where((item) => item.isSelected));
+    });
+    return selected;
+  }
+
   double get totalPrice {
     double total = 0;
     merchantItems.forEach((merchantId, items) {
@@ -290,10 +335,10 @@ class CartController extends GetxController {
   }
 
   bool validateCart() {
-    if (merchantItems.isEmpty) {
+    if (selectedItems.isEmpty) {
       showCustomSnackbar(
-        title: 'Keranjang Kosong',
-        message: 'Silakan tambahkan produk ke keranjang',
+        title: 'Tidak Ada Item Dipilih',
+        message: 'Silakan pilih produk yang ingin dicheckout',
         backgroundColor: Colors.red,
         snackPosition: SnackPosition.BOTTOM,
       );
@@ -333,38 +378,32 @@ class CartController extends GetxController {
   Future<void> createTransaction(
       int userLocationId, double shippingPrice, String paymentMethod) async {
     if (!validateCart()) {
-      return; // Exit if the cart is not valid
+      return;
     }
 
-    // Prepare the items list
     List<Map<String, dynamic>> items = [];
-    merchantItems.forEach((merchantId, cartItems) {
-      for (var item in cartItems) {
-        items.add({
-          "product_id": item.product.id,
-          "merchant_id": item.merchant.id,
-          "quantity": item.quantity,
-          "price": item.totalPrice,
-        });
-      }
+    selectedItems.forEach((item) {
+      items.add({
+        "product_id": item.product.id,
+        "merchant_id": item.merchant.id,
+        "quantity": item.quantity,
+        "price": item.totalPrice,
+      });
     });
 
-    // Prepare the transaction data
     Map<String, dynamic> transactionData = {
       "user_location_id": userLocationId,
-      "total_price": totalPrice + shippingPrice,
+      "total_price": selectedItemsTotal + shippingPrice,
       "shipping_price": shippingPrice,
       "payment_method": paymentMethod,
       "items": items,
     };
 
-    // Log the transaction data before creating the transaction
     print('Transaction Data: $transactionData');
     final transactionProvider = TransactionProvider();
     try {
       final response =
           await transactionProvider.createTransaction(transactionData);
-      // Handle the response as needed
       print('Transaction created successfully: ${response.data}');
       showCustomSnackbar(
         title: 'Success',
