@@ -1,12 +1,14 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
 import 'package:antarkanma/app/data/models/user_model.dart';
 import 'package:antarkanma/app/data/providers/auth_provider.dart';
 import 'package:antarkanma/app/utils/validators.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:get/get.dart';
-import './storage_service.dart';
-import '../routes/app_pages.dart';
+import 'package:antarkanma/app/services/storage_service.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile, Response;
+import 'package:dio/dio.dart';
 
 class AuthService extends GetxService {
   final StorageService _storageService = StorageService.instance;
@@ -225,6 +227,53 @@ class AuthService extends GetxService {
     }
   }
 
+  Future<bool> updateProfilePhoto(File photo) async {
+    try {
+      final token = _storageService.getToken();
+      if (token == null) {
+        showCustomSnackbar(
+            title: 'Error', message: 'Token tidak valid', isError: true);
+        return false;
+      }
+
+      // Create form data
+      final formData = FormData.fromMap({
+        'photo': await MultipartFile.fromFile(
+          photo.path,
+          filename: 'profile_photo.jpg',
+        ),
+      });
+
+      final response = await _authProvider.updateProfilePhoto(token, formData);
+
+      if (response.statusCode == 200) {
+        // Fetch fresh user data after update
+        final userResponse = await _authProvider.getCurrentUser(token);
+        if (userResponse.statusCode == 200) {
+          final userData = userResponse.data['data'];
+          await _storageService.saveUser(userData);
+          currentUser.value = UserModel.fromJson(userData);
+
+          showCustomSnackbar(
+              title: 'Sukses', message: 'Foto profil berhasil diperbarui');
+          return true;
+        }
+      }
+
+      showCustomSnackbar(
+          title: 'Error',
+          message: response.data['message'] ?? 'Gagal memperbarui foto profil',
+          isError: true);
+      return false;
+    } catch (e) {
+      showCustomSnackbar(
+          title: 'Error',
+          message: 'Gagal memperbarui foto profil: ${e.toString()}',
+          isError: true);
+      return false;
+    }
+  }
+
   Future<bool> updateProfile({
     required String name,
     required String email,
@@ -247,20 +296,17 @@ class AuthService extends GetxService {
       final response = await _authProvider.updateProfile(token, updateData);
 
       if (response.statusCode == 200) {
-        final updatedUser = currentUser.value?.copyWith(
-          name: name,
-          email: email,
-          phoneNumber: phoneNumber,
-        );
+        // Fetch fresh user data after update
+        final userResponse = await _authProvider.getCurrentUser(token);
+        if (userResponse.statusCode == 200) {
+          final userData = userResponse.data['data'];
+          await _storageService.saveUser(userData);
+          currentUser.value = UserModel.fromJson(userData);
 
-        if (updatedUser != null) {
-          await _storageService.saveUser(updatedUser.toJson());
-          currentUser.value = updatedUser;
+          showCustomSnackbar(
+              title: 'Sukses', message: 'Profil berhasil diperbarui');
+          return true;
         }
-
-        showCustomSnackbar(
-            title: 'Sukses', message: 'Profil berhasil diperbarui');
-        return true;
       }
 
       showCustomSnackbar(

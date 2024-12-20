@@ -57,7 +57,7 @@ class ProfilePage extends GetView<AuthController> {
       child: Column(
         children: [
           GestureDetector(
-            onTap: () => controller.updateProfileImage(),
+            onTap: () => Get.toNamed('/main/edit-profile'),
             child: Stack(
               children: [
                 user != null
@@ -242,7 +242,7 @@ class ProfilePage extends GetView<AuthController> {
             _MenuItem(
               icon: Icons.person_outline,
               title: 'Edit Profil',
-              onTap: () => Get.toNamed('/edit-profile'),
+              onTap: () => Get.toNamed('/main/edit-profile'),
             ),
             _MenuItem(
               icon: Icons.shopping_bag_outlined,

@@ -49,6 +49,23 @@ class AuthProvider {
     }
   }
 
+  Future<Response> updateProfilePhoto(String token, dynamic formData) async {
+    try {
+      return await _dio.post(
+        '/auth/update-profile-photo',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+        data: formData,
+      );
+    } catch (e) {
+      throw Exception('Failed to update profile photo: $e');
+    }
+  }
+
   Future<Response> updateProfile(
       String token, Map<String, dynamic> data) async {
     try {

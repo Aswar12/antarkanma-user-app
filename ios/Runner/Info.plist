@@ -4,3 +4,7 @@
 <string>We need your location to provide better services.</string>
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 <string>We need your location to provide better services.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>We need access to photo library to update profile photo.</string>
+<key>NSCameraUsageDescription</key>
+<string>We need access to camera to take profile photo.</string>

@@ -19,6 +19,7 @@ import 'package:antarkanma/app/modules/user/views/order_page.dart';
 import 'package:antarkanma/app/modules/user/views/product_detail_page.dart';
 import 'package:antarkanma/app/modules/user/views/profile_page.dart';
 import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
+import 'package:antarkanma/app/modules/user/views/edit_profile_view.dart';
 import 'package:get/get.dart';
 
 abstract class Routes {
@@ -129,6 +130,11 @@ class AppPages {
           name: '/checkout',
           page: () => CheckoutPage(), // Halaman Checkout
           binding: UserBinding(), // Bindings sesuai kebutuhan
+        ),
+        GetPage(
+          name: '/edit-profile',
+          page: () => const EditProfileView(),
+          binding: UserBinding(),
         ),
       ],
     ),

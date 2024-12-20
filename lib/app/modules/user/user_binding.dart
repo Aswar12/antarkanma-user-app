@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/controllers/auth_controller.dart';
+import 'package:antarkanma/app/modules/user/controllers/edit_profile_controller.dart';
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
@@ -57,8 +58,7 @@ class UserBinding extends Bindings {
   }
 
   void _initializeFeatureControllers() {
-    // Uncomment and add these as needed
-    // Get.lazyPut<ProfileController>(() => ProfileController());
-    // Get.lazyPut<ChatController>(() => ChatController());
+    // Feature Controllers
+    Get.lazyPut(() => EditProfileController(), fenix: true);
   }
 }
