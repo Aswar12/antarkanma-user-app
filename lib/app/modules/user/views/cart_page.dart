@@ -181,7 +181,7 @@ class _CartPageState extends State<CartPage> {
 
   Widget _buildCartItem(int merchantId, CartItemModel item, int index) {
     return Dismissible(
-      key: Key('$merchantId-${item.product.id}'),
+      key: UniqueKey(),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,

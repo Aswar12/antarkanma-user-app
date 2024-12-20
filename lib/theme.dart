@@ -113,6 +113,12 @@ class Dimenssions {
   static double height10 = screenHeight / 84.4;
   static double height12 = screenHeight / 70.33;
   static double height15 = screenHeight / 56.27;
+  static double height16 = screenHeight / 52.75;
+  static double height18 = screenHeight / 46.89;
+  static double height24 = screenHeight / 35.17;
+  static double height28 = screenHeight / 30.14;
+  static double height32 = screenHeight / 26.38;
+  static double height48 = screenHeight / 17.58;
   static double height20 = screenHeight / 42.2;
   static double height22 = screenHeight / 38.45;
   static double height25 = screenHeight / 33.76;
@@ -151,6 +157,8 @@ class Dimenssions {
   static double width10 = screenHeight / 84.4;
   static double width12 = screenHeight / 70.33;
   static double width15 = screenHeight / 56.27;
+  static double width16 = screenHeight / 52.75;
+  static double width18 = screenHeight / 46.89;
   static double width20 = screenHeight / 42.2;
   static double width25 = screenHeight / 33.64;
   static double width30 = screenHeight / 28.13;
@@ -186,12 +194,15 @@ class Dimenssions {
   static double font22 = screenHeight / 37.78;
   static double font24 = screenHeight / 34.29;
   static double font26 = screenHeight / 32.46;
+  static double font28 = screenHeight / 30.14;
 
   // Radius
   static double radius4 = screenHeight / 211;
   static double radius6 = screenHeight / 140.67;
   static double radius8 = screenHeight / 105.5;
+  static double radius12 = screenHeight / 70.33;
   static double radius15 = screenHeight / 52.75;
+  static double radius16 = screenHeight / 52.75;
   static double radius20 = screenHeight / 42.2;
   static double radius30 = screenHeight / 28.13;
 

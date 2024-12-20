@@ -6,6 +6,7 @@ import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/utils/image_viewer_page.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
+import 'package:antarkanma/app/widgets/quantity_button.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,8 +17,25 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 
-class ProductDetailPage extends GetView<ProductDetailController> {
-  const ProductDetailPage({super.key});
+class ProductDetailPage extends StatefulWidget {
+  const ProductDetailPage({Key? key}) : super(key: key);
+
+  @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  late ProductDetailController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<ProductDetailController>();
+    _initializeDateFormatting();
+    final product = Get.arguments as ProductModel;
+    controller.setProduct(product);
+  }
+
   void _addToCart() {
     try {
       final merchant = controller.product.value.merchant;
@@ -32,16 +50,12 @@ class ProductDetailPage extends GetView<ProductDetailController> {
       }
 
       final cartController = Get.find<CartController>();
-
-      // Langsung menambahkan ke keranjang tanpa pengecekan canAddFromMerchant
       cartController.addToCart(
         controller.product.value,
         controller.quantity.value,
         selectedVariant: controller.selectedVariant.value,
         merchant: merchant,
       );
-
-      // Pesan sukses sudah ditangani di dalam addToCart, jadi tidak perlu ditambahkan di sini
     } catch (e, stackTrace) {
       showCustomSnackbar(
         title: 'Error',
@@ -65,7 +79,6 @@ class ProductDetailPage extends GetView<ProductDetailController> {
         return;
       }
 
-      // Create a map structure similar to merchantItems in cart
       final merchantId = merchant.id;
       if (merchantId == null) {
         showCustomSnackbar(
@@ -112,20 +125,40 @@ class ProductDetailPage extends GetView<ProductDetailController> {
   Widget build(BuildContext context) {
     _initializeDateFormatting();
     final product = Get.arguments as ProductModel;
-
     controller.setProduct(product);
 
     return GetBuilder<ProductDetailController>(
-      // Ganti Obx dengan GetBuilder
       builder: (controller) {
         return Scaffold(
-          backgroundColor: backgroundColor5,
-          appBar: _buildAppBar(controller.product.value),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildImageSlider(),
-                _buildProductInfo(controller.product.value),
+          backgroundColor: backgroundColor1,
+          body: WillPopScope(
+            onWillPop: () async {
+              Get.back();
+              return false;
+            },
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(controller.product.value),
+                SliverPadding(
+                  padding: EdgeInsets.zero,
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      Container(
+                        width: MediaQuery.of(context).size.width,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildProductInfo(controller.product.value),
+                            _buildVariantSelector(controller.product.value),
+                            _buildMerchantInfo(controller.product.value),
+                            _buildReviewSection(),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
               ],
             ),
           ),
@@ -135,18 +168,24 @@ class ProductDetailPage extends GetView<ProductDetailController> {
     );
   }
 
-  // AppBar Widget
-  AppBar _buildAppBar(ProductModel product) {
-    return AppBar(
-      title: Text(
-        product.name,
-        style: priceTextStyle.copyWith(fontSize: Dimenssions.font24),
-      ),
-      centerTitle: true,
-      backgroundColor: transparentColor,
+  Widget _buildSliverAppBar(ProductModel product) {
+    return SliverAppBar(
+      expandedHeight: MediaQuery.of(Get.context!).size.width,
+      floating: false,
+      pinned: true,
+      backgroundColor: backgroundColor1,
+      elevation: 0,
+      stretch: true,
+      stretchTriggerOffset: 150,
       leading: IconButton(
-        color: logoColorSecondary,
-        icon: const Icon(Icons.arrow_back),
+        icon: Container(
+          padding: EdgeInsets.all(Dimenssions.height8),
+          decoration: BoxDecoration(
+            color: backgroundColor1.withOpacity(0.9),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.arrow_back, color: logoColorSecondary),
+        ),
         onPressed: () => Get.back(),
       ),
       actions: [
@@ -157,43 +196,40 @@ class ProductDetailPage extends GetView<ProductDetailController> {
           return Stack(
             alignment: Alignment.topRight,
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.shopping_cart,
-                  color: logoColorSecondary,
+              Container(
+                margin: EdgeInsets.all(Dimenssions.height8),
+                padding: EdgeInsets.all(Dimenssions.height8),
+                decoration: BoxDecoration(
+                  color: backgroundColor1.withOpacity(0.9),
+                  shape: BoxShape.circle,
                 ),
-                onPressed: () {
-                  try {
-                    Get.toNamed('/cart');
-                  } catch (e) {
-                    showCustomSnackbar(
-                      title: 'Error',
-                      message: 'Tidak dapat membuka keranjang',
-                      backgroundColor: Colors.red,
-                      snackPosition: SnackPosition.BOTTOM,
-                    );
-                  }
-                },
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.shopping_cart, color: logoColorSecondary),
+                  onPressed: () => Get.toNamed('/cart'),
+                ),
               ),
               if (itemCount > 0)
                 Positioned(
-                  right: 0,
-                  top: 0,
+                  right: Dimenssions.width8,
+                  top: Dimenssions.height8,
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: EdgeInsets.all(Dimenssions.height4),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: alertColor,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
+                    constraints: BoxConstraints(
+                      minWidth: Dimenssions.width18,
+                      minHeight: Dimenssions.height18,
                     ),
                     child: Text(
                       itemCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
+                      style: TextStyle(
+                        color: backgroundColor1,
+                        fontSize: Dimenssions.font10,
+                        fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -203,473 +239,48 @@ class ProductDetailPage extends GetView<ProductDetailController> {
           );
         }),
       ],
-    );
-  }
-
-  Widget _buildReviewSection() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildReviewHeader(),
-          const SizedBox(height: 16),
-          _buildReviewList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ulasan Produk',
-              style: TextStyle(
-                color: primaryTextColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Obx(() {
-              final averageRating = controller.product.value.averageRating;
-              return Row(
-                children: [
-                  Row(
-                    children: List.generate(5, (index) {
-                      return Icon(
-                        index < averageRating.floor()
-                            ? Icons.star
-                            : index < averageRating
-                                ? Icons.star_half
-                                : Icons.star_border,
-                        color: Colors.amber,
-                        size: 16,
-                      );
-                    }),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    averageRating.toStringAsFixed(1),
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: Dimenssions.font14,
-                      fontWeight: FontWeight.bold,
+      flexibleSpace: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return FlexibleSpaceBar(
+            stretchModes: const [
+              StretchMode.zoomBackground,
+              StretchMode.blurBackground,
+            ],
+            background: Container(
+              height: constraints.maxHeight,
+              child: InteractiveViewer(
+                minScale: 1.0,
+                maxScale: 4.0,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: _buildImageSlider(),
                     ),
-                  ),
-                ],
-              );
-            }),
-          ],
-        ),
-        Obx(() {
-          final reviewCount = controller.product.value.reviews?.length ?? 0;
-          return Text(
-            '$reviewCount ${reviewCount == 1 ? 'Ulasan' : 'Ulasan'}',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: Dimenssions.font14,
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: Dimenssions.height30,
+                        decoration: BoxDecoration(
+                          color: backgroundColor1,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(Dimenssions.radius30),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildReviewList() {
-    return Obx(() {
-      final reviews = controller.product.value.reviews;
-
-      if (reviews == null || reviews.isEmpty) {
-        return _buildEmptyReviewState();
-      }
-
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: reviews.length,
-        separatorBuilder: (context, index) => Divider(
-          color: Colors.grey[200],
-          height: 24,
-          thickness: 1,
-        ),
-        itemBuilder: (context, index) => _buildReviewItem(reviews[index]),
-      );
-    });
-  }
-
-  Widget _buildEmptyReviewState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24.0),
-        child: Column(
-          children: [
-            Icon(
-              Icons.rate_review_outlined,
-              size: 48,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada ulasan untuk produk ini.',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: Dimenssions.font14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Jadilah yang pertama memberikan ulasan!',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: Dimenssions.font12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReviewItem(ProductReviewModel review) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildReviewerAvatar(review),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildReviewContent(review),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewerAvatar(ProductReviewModel review) {
-    final user = review.user;
-    if (user == null) {
-      // Jika user null, tampilkan avatar default
-      return Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.grey[200],
-        ),
-        child: Icon(
-          Icons.person,
-          color: Colors.grey[400],
-        ),
-      );
-    }
-
-    // Jika user tidak null, gunakan ProfileImage
-    return ProfileImage(
-      user: user,
-      size: 40, // Anda bisa menyesuaikan ukuran sesuai kebutuhan
-    );
-  }
-
-  Widget _buildReviewContent(ProductReviewModel review) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              review.user?.name ?? 'Pengguna',
-              style: TextStyle(
-                fontSize: Dimenssions.font16,
-                fontWeight: FontWeight.bold,
-                color: primaryTextColor,
-              ),
-            ),
-            Text(
-              _formatDate(review.createdAt),
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: Dimenssions.font12,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: Dimenssions.height5),
-        Text(
-          review.comment,
-          style: TextStyle(
-            color: Colors.grey[800],
-            fontSize: Dimenssions.font14,
-            height: 1.5,
-          ),
-        ),
-        Row(
-          children: [
-            ...List.generate(5, (index) {
-              return Icon(
-                index < review.rating ? Icons.star : Icons.star_border,
-                color: Colors.amber,
-                size: 16,
-              );
-            }),
-            SizedBox(width: Dimenssions.height5),
-            Text(
-              '${review.rating}/5',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: Dimenssions.font12,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes} menit yang lalu';
-      }
-      return '${difference.inHours} jam yang lalu';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} hari yang lalu';
-    } else {
-      return DateFormat('dd MMM yyyy', 'id_ID').format(date);
-    }
-  }
-
-  Widget _buildVariantSelector(ProductModel product) {
-    if (product.variants.isEmpty) return const SizedBox();
-
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: Dimenssions.height15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Pilih Varian',
-            style: primaryTextStyle.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: product.variants.map((variant) {
-              return Obx(() => GestureDetector(
-                    onTap: () => controller.selectVariant(variant),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimenssions.width10,
-                        vertical: Dimenssions.height5,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            controller.selectedVariant.value?.id == variant.id
-                                ? logoColorSecondary
-                                : Colors.white,
-                        border: Border.all(
-                          color:
-                              controller.selectedVariant.value?.id == variant.id
-                                  ? logoColorSecondary
-                                  : Colors.grey,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: Dimenssions.height20,
-                            width: Dimenssions.width55,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  variant.name,
-                                  style: TextStyle(
-                                    fontSize: Dimenssions.font16,
-                                    color:
-                                        controller.selectedVariant.value?.id ==
-                                                variant.id
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  variant.value,
-                                  style: TextStyle(
-                                    fontSize: Dimenssions.font16,
-                                    color:
-                                        controller.selectedVariant.value?.id ==
-                                                variant.id
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '+ Rp ${variant.priceAdjustment}',
-                            style: TextStyle(
-                              color: controller.selectedVariant.value?.id ==
-                                      variant.id
-                                  ? Colors.white
-                                  : logoColorSecondary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ));
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Bottom Navigation Bar
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Dimenssions.width20,
-        vertical: Dimenssions.height10,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // Membuat transparan
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            _buildChatButton(),
-            SizedBox(width: Dimenssions.width10),
-            _buildBuyNowButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Chat Button
-  Widget _buildChatButton() {
-    return Container(
-      width: Dimenssions.width45,
-      height: Dimenssions.height45,
-      decoration: BoxDecoration(
-        border: Border.all(color: logoColorSecondary),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(Icons.chat, color: logoColorSecondary, size: 20),
-        onPressed: () {
-          final merchant = controller.product.value.merchant;
-          if (merchant != null) {
-            Get.toNamed('/chat', arguments: {
-              'merchantId': merchant.id,
-              'merchantName': merchant.name,
-            });
-          }
         },
       ),
     );
   }
 
-  // Buy Now Button
-  Widget _buildBuyNowButton() {
-    return Expanded(
-      child: SizedBox(
-        height: Dimenssions.height45,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: controller.quantity.value > 0
-                ? logoColorSecondary
-                : Colors.grey,
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: controller.quantity.value > 0
-              ? () {
-                  if (controller.product.value.status != 'ACTIVE') {
-                    Get.snackbar(
-                      'Tidak Tersedia',
-                      'Produk ini sedang tidak tersedia',
-                      backgroundColor: Colors.red,
-                      colorText: Colors.white,
-                    );
-                    return;
-                  }
-
-                  _buyNow();
-                }
-              : null,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.shopping_cart_checkout,
-                  color: Colors.white, size: 18),
-              SizedBox(width: Dimenssions.width10),
-              Text(
-                'Beli Sekarang',
-                style: primaryTextStyle.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Image Indicator
-  // Image Slider
   static const List<String> PLACEHOLDER_IMAGES = [
     'assets/image_shoes.png',
     'assets/image_shoes2.png',
@@ -688,18 +299,14 @@ class ProductDetailPage extends GetView<ProductDetailController> {
             CarouselSlider.builder(
               itemCount: displayImages.length,
               options: CarouselOptions(
-                height: Dimenssions.height240,
-                viewportFraction: 0.7,
-                enlargeCenterPage: true,
-                autoPlayCurve: Curves.fastOutSlowIn,
-                enlargeStrategy: CenterPageEnlargeStrategy.scale,
-                enlargeFactor: 0.2,
+                height: double.infinity,
+                viewportFraction: 1.0,
+                enlargeCenterPage: false,
                 autoPlay: displayImages.length > 1,
                 autoPlayInterval: const Duration(seconds: 3),
                 onPageChanged: (index, _) {
                   controller.updateImageIndex(index);
                 },
-                padEnds: true,
               ),
               itemBuilder: (context, index, realIndex) {
                 return _buildImageSliderItem(
@@ -736,18 +343,13 @@ class ProductDetailPage extends GetView<ProductDetailController> {
           transition: Transition.zoom,
         );
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 5.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: Colors.grey[200],
-        ),
-        child: Hero(
-          tag: 'product_image_${uniqueId}_$index',
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: _buildImage(imageUrl),
+      child: Hero(
+        tag: 'product_image_${uniqueId}_$index',
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor3,
           ),
+          child: _buildImage(imageUrl),
         ),
       ),
     );
@@ -763,6 +365,8 @@ class ProductDetailPage extends GetView<ProductDetailController> {
     return Image.asset(
       imageUrl,
       fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
       errorBuilder: (context, error, stackTrace) {
         return _buildErrorPlaceholder();
       },
@@ -773,6 +377,8 @@ class ProductDetailPage extends GetView<ProductDetailController> {
     return Image.network(
       imageUrl,
       fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Center(
@@ -781,6 +387,7 @@ class ProductDetailPage extends GetView<ProductDetailController> {
                 ? loadingProgress.cumulativeBytesLoaded /
                     loadingProgress.expectedTotalBytes!
                 : null,
+            color: logoColorSecondary,
           ),
         );
       },
@@ -792,21 +399,20 @@ class ProductDetailPage extends GetView<ProductDetailController> {
 
   Widget _buildErrorPlaceholder() {
     return Container(
-      color: Colors.grey[300],
-      child: const Center(
+      color: backgroundColor3,
+      child: Center(
         child: Icon(
           Icons.error_outline,
-          color: Colors.red,
+          color: alertColor,
           size: 40,
         ),
       ),
     );
   }
 
-// Image Indicator
   Widget _buildImageIndicator(int imageCount) {
     return Positioned(
-      bottom: 16,
+      bottom: Dimenssions.height40,
       left: 0,
       right: 0,
       child: Obx(() {
@@ -815,137 +421,534 @@ class ProductDetailPage extends GetView<ProductDetailController> {
           child: AnimatedSmoothIndicator(
             activeIndex: currentIndex,
             count: imageCount,
-            effect: WormEffect(
-                dotWidth: 11,
-                dotHeight: 11,
-                spacing: 10,
-                strokeWidth: 1,
-                dotColor: Colors.grey.shade400,
-                activeDotColor: logoColorSecondary,
-                paintStyle: PaintingStyle.stroke,
-                type: WormType.thinUnderground,
-                offset: 1),
+            effect: ExpandingDotsEffect(
+              dotWidth: Dimenssions.width8,
+              dotHeight: Dimenssions.height8,
+              spacing: Dimenssions.width6,
+              activeDotColor: logoColorSecondary,
+              dotColor: backgroundColor1.withOpacity(0.5),
+            ),
           ),
         );
       }),
     );
   }
 
-  // Product Information
   Widget _buildProductInfo(ProductModel product) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
+    return Padding(
+      padding: EdgeInsets.all(Dimenssions.height20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildProductHeader(product),
-          const SizedBox(height: 8),
-          _buildPriceAndCategory(product),
-          _buildDescription(product),
-          _buildVariantSelector(product),
-          SizedBox(height: Dimenssions.height25),
-          _buildMerchantInfo(product),
-          _buildReviewSection(),
-          SizedBox(height: Dimenssions.height20),
-          _buildQuantityAndCart(product),
-          // Tambahkan jarak
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font16, // Updated size
+                        fontWeight: semiBold,
+                      ),
+                    ),
+                    SizedBox(height: Dimenssions.height8),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimenssions.width12,
+                        vertical: Dimenssions.height6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: logoColorSecondary.withOpacity(0.1),
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius20),
+                      ),
+                      child: Text(
+                        product.category?.name ?? 'No Category',
+                        style: primaryTextOrange.copyWith(
+                          fontWeight: medium,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimenssions.width12,
+                  vertical: Dimenssions.height6,
+                ),
+                decoration: BoxDecoration(
+                  color: product.status == 'ACTIVE'
+                      ? Colors.green.withOpacity(0.1)
+                      : alertColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(Dimenssions.radius20),
+                ),
+                child: Text(
+                  product.status ?? 'Habis',
+                  style: TextStyle(
+                    color:
+                        product.status == 'ACTIVE' ? Colors.green : alertColor,
+                    fontWeight: medium,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Dimenssions.height16),
+          Obx(() {
+            final total = controller.totalPrice;
+            return Text(
+              'Rp ${NumberFormat('#,###', 'id_ID').format(total)}',
+              style: priceTextStyle.copyWith(
+                fontSize: Dimenssions.font20, // Updated size
+                fontWeight: semiBold,
+              ),
+            );
+          }),
+          SizedBox(height: Dimenssions.height24),
+          Text(
+            'Deskripsi Produk',
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font16, // Updated size
+              fontWeight: semiBold,
+            ),
+          ),
+          SizedBox(height: Dimenssions.height8),
+          Text(
+            product.description,
+            style: secondaryTextStyle.copyWith(
+              height: 1.5,
+              fontSize: Dimenssions.font16,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // Product Header
-  Widget _buildProductHeader(ProductModel product) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            product.name,
+  Widget _buildVariantSelector(ProductModel product) {
+    if (product.variants.isEmpty) return const SizedBox();
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: Dimenssions.width20,
+        vertical: Dimenssions.height10,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pilih Varian',
             style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.height30,
+              fontSize: Dimenssions.font16, // Updated size
+              fontWeight: semiBold,
             ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: product.status == 'ACTIVE'
-                ? Colors.green.withOpacity(0.1)
-                : Colors.red.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+          SizedBox(height: Dimenssions.height16),
+          Wrap(
+            spacing: Dimenssions.width12,
+            runSpacing: Dimenssions.height12,
+            children: product.variants.map((variant) {
+              return Obx(() => GestureDetector(
+                    onTap: () => controller.selectVariant(variant),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimenssions.width16,
+                        vertical: Dimenssions.height12,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            controller.selectedVariant.value?.id == variant.id
+                                ? logoColorSecondary
+                                : backgroundColor1,
+                        border: Border.all(
+                          color:
+                              controller.selectedVariant.value?.id == variant.id
+                                  ? logoColorSecondary
+                                  : backgroundColor3,
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius12),
+                        boxShadow: [
+                          if (controller.selectedVariant.value?.id ==
+                              variant.id)
+                            BoxShadow(
+                              color: logoColorSecondary.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                variant.name,
+                                style: TextStyle(
+                                  fontSize: Dimenssions.font16,
+                                  color: controller.selectedVariant.value?.id ==
+                                          variant.id
+                                      ? backgroundColor1
+                                      : primaryTextColor,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                              SizedBox(width: Dimenssions.width8),
+                              Text(
+                                variant.value,
+                                style: TextStyle(
+                                  fontSize: Dimenssions.font16,
+                                  color: controller.selectedVariant.value?.id ==
+                                          variant.id
+                                      ? backgroundColor1
+                                      : primaryTextColor,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: Dimenssions.height4),
+                          Text(
+                            '+ Rp ${NumberFormat('#,###', 'id_ID').format(variant.priceAdjustment)}',
+                            style: TextStyle(
+                              color: controller.selectedVariant.value?.id ==
+                                      variant.id
+                                  ? backgroundColor1
+                                  : logoColorSecondary,
+                              fontWeight: semiBold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ));
+            }).toList(),
           ),
-          child: Text(
-            product.status ?? 'Habis',
-            style: TextStyle(
-              color: product.status == 'ACTIVE' ? Colors.green : Colors.red,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // Price and Category
-  Widget _buildPriceAndCategory(ProductModel product) {
+  Widget _buildMerchantInfo(ProductModel product) {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: Dimenssions.width20,
+        vertical: Dimenssions.height10,
+      ),
+      padding: EdgeInsets.all(Dimenssions.height20),
+      decoration: BoxDecoration(
+        color: backgroundColor1,
+        borderRadius: BorderRadius.circular(Dimenssions.radius16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(Dimenssions.height12),
+                decoration: BoxDecoration(
+                  color: logoColorSecondary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.store,
+                  color: logoColorSecondary,
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: Dimenssions.width16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.merchant?.name ?? 'Unknown Merchant',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font16,
+                        fontWeight: semiBold,
+                      ),
+                    ),
+                    SizedBox(height: Dimenssions.height4),
+                    Text(
+                      product.merchant?.address ?? 'No address available',
+                      style: secondaryTextStyle,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Dimenssions.height16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final merchant = controller.product.value.merchant;
+                    if (merchant != null) {
+                      Get.toNamed('/chat', arguments: {
+                        'merchantId': merchant.id,
+                        'merchantName': merchant.name,
+                      });
+                    }
+                  },
+                  icon: Icon(Icons.chat_outlined, color: logoColorSecondary),
+                  label: Text(
+                    'Chat Penjual',
+                    style: primaryTextOrange,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: logoColorSecondary,
+                    side: BorderSide(color: logoColorSecondary),
+                    padding:
+                        EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius12),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: Dimenssions.width12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: Icon(Icons.phone_outlined, color: logoColorSecondary),
+                  label: Text(
+                    'Hubungi',
+                    style: primaryTextOrange,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: logoColorSecondary,
+                    side: BorderSide(color: logoColorSecondary),
+                    padding:
+                        EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewSection() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: constraints.maxWidth,
+          margin: EdgeInsets.symmetric(
+            horizontal: Dimenssions.width20,
+            vertical: Dimenssions.height10,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildReviewHeader(),
+              SizedBox(height: Dimenssions.height16),
+              _buildReviewList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReviewHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ulasan Produk',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font16,
+                fontWeight: semiBold,
+              ),
+            ),
+            SizedBox(height: Dimenssions.height8),
+            Obx(() {
+              final averageRating = controller.product.value.averageRating;
+              return Row(
+                children: [
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Icon(
+                        index < averageRating.floor()
+                            ? Icons.star
+                            : index < averageRating
+                                ? Icons.star_half
+                                : Icons.star_border,
+                        color: Colors.amber,
+                        size: Dimenssions.iconSize20,
+                      );
+                    }),
+                  ),
+                  SizedBox(width: Dimenssions.width8),
+                  Text(
+                    averageRating.toStringAsFixed(1),
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font16,
+                      fontWeight: semiBold,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
         Obx(() {
-          final total = controller.totalPrice;
-          return Text(
-            'Rp ${total.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontSize: 20,
-              color: logoColorSecondary,
-              fontWeight: FontWeight.bold,
+          final reviewCount = controller.product.value.reviews?.length ?? 0;
+          return Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: Dimenssions.width12,
+              vertical: Dimenssions.height6,
+            ),
+            decoration: BoxDecoration(
+              color: logoColorSecondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(Dimenssions.radius20),
+            ),
+            child: Text(
+              '$reviewCount Ulasan',
+              style: primaryTextOrange.copyWith(
+                fontWeight: medium,
+              ),
             ),
           );
         }),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: logoColorSecondary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            product.category?.name ?? 'No Category',
-            style: TextStyle(
-              color: logoColorSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
       ],
     );
   }
 
-  // Description
-  Widget _buildDescription(ProductModel product) {
+  Widget _buildReviewList() {
+    return Obx(() {
+      final reviews = controller.product.value.reviews;
+
+      if (reviews == null || reviews.isEmpty) {
+        return _buildEmptyReviewState();
+      }
+
+      return Column(
+        children: List.generate(reviews.length, (index) {
+          if (index > 0) {
+            return Column(
+              children: [
+                Divider(
+                  color: backgroundColor3,
+                  height: Dimenssions.height32,
+                  thickness: 1,
+                ),
+                _buildReviewItem(reviews[index]),
+              ],
+            );
+          }
+          return _buildReviewItem(reviews[index]);
+        }),
+      );
+    });
+  }
+
+  Widget _buildEmptyReviewState() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: Dimenssions.height32),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.rate_review_outlined,
+              size: Dimenssions.height48,
+              color: backgroundColor3,
+            ),
+            SizedBox(height: Dimenssions.height16),
+            Text(
+              'Belum ada ulasan untuk produk ini.',
+              style: secondaryTextStyle.copyWith(
+                fontSize: Dimenssions.font16,
+              ),
+            ),
+            SizedBox(height: Dimenssions.height8),
+            Text(
+              'Jadilah yang pertama memberikan ulasan!',
+              style: subtitleTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewItem(ProductReviewModel review) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Deskripsi Produk',
-          style: TextStyle(
-            color: primaryTextColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            _buildReviewerAvatar(review),
+            SizedBox(width: Dimenssions.width12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    review.user?.name ?? 'Pengguna',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font16,
+                      fontWeight: semiBold,
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height4),
+                  Row(
+                    children: [
+                      ...List.generate(5, (index) {
+                        return Icon(
+                          index < review.rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: Dimenssions.iconSize16,
+                        );
+                      }),
+                      SizedBox(width: Dimenssions.width8),
+                      Text(
+                        _formatDate(review.createdAt),
+                        style: subtitleTextStyle.copyWith(
+                          fontSize: Dimenssions.font12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: Dimenssions.height12),
         Text(
-          product.description,
-          style: TextStyle(
-            color: Colors.grey[600],
+          review.comment,
+          style: secondaryTextStyle.copyWith(
+            fontSize: Dimenssions.font14,
             height: 1.5,
           ),
         ),
@@ -953,165 +956,154 @@ class ProductDetailPage extends GetView<ProductDetailController> {
     );
   }
 
-  // Merchant Information
-  Widget _buildMerchantInfo(ProductModel product) {
-    return Container(
-      padding: EdgeInsets.all(Dimenssions.height22),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Informasi Toko',
-            style: TextStyle(
-              fontSize: 18,
-              color: primaryTextColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.store, color: logoColorSecondary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  product.merchant?.name ?? 'Unknown Merchant',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.location_on, color: logoColorSecondary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  product.merchant?.address ?? 'No address available',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.phone, color: logoColorSecondary),
-              const SizedBox(width: 8),
-              Text(
-                product.merchant?.phoneNumber ?? 'No phone number',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Quantity and Add to Cart Button
-  Widget _buildQuantityAndCart(ProductModel product) {
-    return Row(
-      children: [
-        _buildQuantitySelector(),
-        SizedBox(width: Dimenssions.width10),
-        Expanded(
-          child: SizedBox(
-            height: Dimenssions.height45,
-            child: ElevatedButton(
-              onPressed: () {
-                _addToCart();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: logoColorSecondary,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Tambah ke Keranjang',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Quantity Selector
-  Widget _buildQuantitySelector() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Text(
-            'Jumlah:',
-            style: primaryTextStyle.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(width: Dimenssions.width10),
-          Row(
-            children: [
-              _buildQuantityButton(
-                icon: Icons.remove,
-                onTap: () => controller.decrementQuantity(),
-              ),
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
-                child: Obx(() => Text(
-                      controller.quantity.value.toString(),
-                      style: primaryTextStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )),
-              ),
-              _buildQuantityButton(
-                icon: Icons.add,
-                onTap: () => controller.incrementQuantity(),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Quantity Button
-  Widget _buildQuantityButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(7),
+  Widget _buildReviewerAvatar(ProductReviewModel review) {
+    final user = review.user;
+    if (user == null) {
+      return Container(
+        width: Dimenssions.width40,
+        height: Dimenssions.height40,
         decoration: BoxDecoration(
-          color: logoColorSecondary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
+          shape: BoxShape.circle,
+          color: backgroundColor3,
         ),
         child: Icon(
-          icon,
-          size: 16,
-          color: logoColorSecondary,
+          Icons.person,
+          color: backgroundColor5,
+        ),
+      );
+    }
+
+    return ProfileImage(
+      user: user,
+      size: Dimenssions.width40,
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        return '${difference.inMinutes} menit yang lalu';
+      }
+      return '${difference.inHours} jam yang lalu';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} hari yang lalu';
+    } else {
+      return DateFormat('dd MMM yyyy', 'id_ID').format(date);
+    }
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      padding: EdgeInsets.all(Dimenssions.height15),
+      decoration: BoxDecoration(
+        color: backgroundColor1,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Row(
+              children: [
+                QuantityButton(
+                  icon: Icons.remove,
+                  onTap: () => controller.decrementQuantity(),
+                ),
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: Dimenssions.width12),
+                  child: Obx(() => Text(
+                        controller.quantity.value.toString(),
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          fontWeight: semiBold,
+                        ),
+                      )),
+                ),
+                QuantityButton(
+                  icon: Icons.add,
+                  onTap: () => controller.incrementQuantity(),
+                ),
+              ],
+            ),
+            SizedBox(width: Dimenssions.width12),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: controller.quantity.value > 0
+                          ? () => _addToCart()
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: logoColorSecondary,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(
+                            vertical: Dimenssions.height16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius12),
+                          side: BorderSide(color: logoColorSecondary),
+                        ),
+                      ),
+                      child: Text(
+                        'Keranjang',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font16,
+                          fontWeight: semiBold,
+                          color: logoColorSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimenssions.width12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: controller.quantity.value > 0
+                          ? () {
+                              if (controller.product.value.status != 'ACTIVE') {
+                                Get.snackbar(
+                                  'Tidak Tersedia',
+                                  'Produk ini sedang tidak tersedia',
+                                  backgroundColor: Colors.red,
+                                  colorText: Colors.white,
+                                );
+                                return;
+                              }
+                              _buyNow();
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: logoColorSecondary,
+                        padding: EdgeInsets.symmetric(
+                            vertical: Dimenssions.height16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius12),
+                        ),
+                      ),
+                      child: Text(
+                        'Beli Sekarang',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font16,
+                          fontWeight: semiBold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
