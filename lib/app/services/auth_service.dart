@@ -236,40 +236,72 @@ class AuthService extends GetxService {
         return false;
       }
 
-      // Create form data
+      // Check file size before creating FormData (2MB limit)
+      final fileSize = await photo.length();
+      if (fileSize > 2 * 1024 * 1024) {
+        showCustomSnackbar(
+            title: 'Error',
+            message: 'Ukuran file melebihi batas 2MB',
+            isError: true);
+        return false;
+      }
+
+      // Check file type
+      final extension = photo.path.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png'].contains(extension)) {
+        showCustomSnackbar(
+            title: 'Error',
+            message: 'Format file tidak valid. Gunakan JPG, JPEG, atau PNG',
+            isError: true);
+        return false;
+      }
+
+      // Create form data with the correct field name
       final formData = FormData.fromMap({
         'photo': await MultipartFile.fromFile(
           photo.path,
-          filename: 'profile_photo.jpg',
+          filename: 'profile_photo.$extension',
         ),
       });
 
-      final response = await _authProvider.updateProfilePhoto(token, formData);
+      try {
+        final response =
+            await _authProvider.updateProfilePhoto(token, formData);
 
-      if (response.statusCode == 200) {
-        // Fetch fresh user data after update
-        final userResponse = await _authProvider.getCurrentUser(token);
-        if (userResponse.statusCode == 200) {
-          final userData = userResponse.data['data'];
-          await _storageService.saveUser(userData);
-          currentUser.value = UserModel.fromJson(userData);
+        if (response.statusCode == 200) {
+          // Get fresh user data
+          final userResponse = await _authProvider.getProfile(token);
+          if (userResponse.statusCode == 200) {
+            final userData = userResponse.data['data'];
+            await _storageService.saveUser(userData);
+            currentUser.value = UserModel.fromJson(userData);
 
-          showCustomSnackbar(
-              title: 'Sukses', message: 'Foto profil berhasil diperbarui');
-          return true;
+            showCustomSnackbar(
+                title: 'Sukses', message: 'Foto profil berhasil diperbarui');
+            return true;
+          }
         }
-      }
 
-      showCustomSnackbar(
-          title: 'Error',
-          message: response.data['message'] ?? 'Gagal memperbarui foto profil',
-          isError: true);
-      return false;
+        final errorMessage =
+            response.data['message'] ?? 'Gagal memperbarui foto profil';
+        print('Upload failed: $errorMessage');
+        print('Response data: ${response.data}');
+        showCustomSnackbar(
+            title: 'Error', message: errorMessage, isError: true);
+        return false;
+      } catch (e) {
+        print('Error during API call: $e');
+        throw e;
+      }
     } catch (e) {
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal memperbarui foto profil: ${e.toString()}',
-          isError: true);
+      print('Error in updateProfilePhoto: $e');
+      String errorMessage = 'Gagal memperbarui foto profil';
+      if (e.toString().contains('File size exceeds 2MB limit')) {
+        errorMessage = 'Ukuran file melebihi batas 2MB';
+      } else if (e.toString().contains('Invalid file type')) {
+        errorMessage = 'Format file tidak valid. Gunakan JPG, JPEG, atau PNG';
+      }
+      showCustomSnackbar(title: 'Error', message: errorMessage, isError: true);
       return false;
     }
   }
@@ -287,17 +319,41 @@ class AuthService extends GetxService {
         return false;
       }
 
+      // Validate input
+      if (name.isEmpty) {
+        showCustomSnackbar(
+            title: 'Error', message: 'Nama tidak boleh kosong', isError: true);
+        return false;
+      }
+
+      if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+        showCustomSnackbar(
+            title: 'Error', message: 'Format email tidak valid', isError: true);
+        return false;
+      }
+
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        if (!GetUtils.isPhoneNumber(phoneNumber)) {
+          showCustomSnackbar(
+              title: 'Error',
+              message: 'Format nomor telepon tidak valid',
+              isError: true);
+          return false;
+        }
+      }
+
       final updateData = {
         'name': name,
         'email': email,
-        if (phoneNumber != null) 'phone_number': phoneNumber,
+        if (phoneNumber != null && phoneNumber.isNotEmpty)
+          'phone_number': phoneNumber,
       };
 
       final response = await _authProvider.updateProfile(token, updateData);
 
       if (response.statusCode == 200) {
-        // Fetch fresh user data after update
-        final userResponse = await _authProvider.getCurrentUser(token);
+        // Get fresh user data
+        final userResponse = await _authProvider.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
           await _storageService.saveUser(userData);
@@ -315,11 +371,41 @@ class AuthService extends GetxService {
           isError: true);
       return false;
     } catch (e) {
+      String errorMessage = 'Gagal memperbarui profil';
+      if (e.toString().contains('Email already exists')) {
+        errorMessage = 'Email sudah digunakan';
+      } else if (e.toString().contains('Phone number already exists')) {
+        errorMessage = 'Nomor telepon sudah digunakan';
+      }
+      showCustomSnackbar(title: 'Error', message: errorMessage, isError: true);
+      return false;
+    }
+  }
+
+  Future<UserModel?> getProfile() async {
+    try {
+      final token = _storageService.getToken();
+      if (token == null) {
+        showCustomSnackbar(
+            title: 'Error', message: 'Token tidak valid', isError: true);
+        return null;
+      }
+
+      final response = await _authProvider.getProfile(token);
+      if (response.statusCode == 200) {
+        final userData = response.data['data'];
+        await _storageService.saveUser(userData);
+        currentUser.value = UserModel.fromJson(userData);
+        return currentUser.value;
+      }
+
+      return null;
+    } catch (e) {
       showCustomSnackbar(
           title: 'Error',
-          message: 'Gagal memperbarui profil: ${e.toString()}',
+          message: 'Gagal mengambil data profil: ${e.toString()}',
           isError: true);
-      return false;
+      return null;
     }
   }
 

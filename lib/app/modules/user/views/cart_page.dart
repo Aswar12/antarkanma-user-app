@@ -59,7 +59,12 @@ class _CartPageState extends State<CartPage> {
           if (controller.merchantItems.isEmpty) {
             return _buildEmptyCart();
           }
-          return _buildCartList(controller);
+          return SafeArea(
+            child: Container(
+              color: backgroundColor3,
+              child: _buildCartList(controller),
+            ),
+          );
         },
       ),
       bottomNavigationBar: _buildCheckoutBar(),
@@ -108,20 +113,24 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              Get.find<UserMainController>().currentIndex.value = 0;
-              Get.offAllNamed('/main');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: logoColorSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Container(
+            constraints: BoxConstraints(maxWidth: 200),
+            child: ElevatedButton(
+              onPressed: () {
+                Get.find<UserMainController>().currentIndex.value = 0;
+                Get.offAllNamed('/main');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: logoColorSecondary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              child: Text('Mulai Belanja',
+                  style: primaryTextStyle.copyWith(color: backgroundColor1)),
             ),
-            child: Text('Mulai Belanja',
-                style: primaryTextStyle.copyWith(color: backgroundColor1)),
           ),
         ],
       ),
@@ -129,24 +138,15 @@ class _CartPageState extends State<CartPage> {
   }
 
   Widget _buildCartList(CartController controller) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(Dimenssions.height10),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight,
-            ),
-            child: Column(
-              children: controller.merchantItems.entries.map((entry) {
-                final merchantId = entry.key;
-                final merchantItems = entry.value;
-                return _buildMerchantSection(merchantId, merchantItems);
-              }).toList(),
-            ),
-          ),
-        );
-      },
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(Dimenssions.height10),
+      child: Column(
+        children: controller.merchantItems.entries.map((entry) {
+          final merchantId = entry.key;
+          final merchantItems = entry.value;
+          return _buildMerchantSection(merchantId, merchantItems);
+        }).toList(),
+      ),
     );
   }
 
@@ -241,7 +241,6 @@ class _CartPageState extends State<CartPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Checkbox with custom border color
                   Transform.scale(
                     scale: 1.1,
                     child: Checkbox(
@@ -337,7 +336,6 @@ class _CartPageState extends State<CartPage> {
                           ),
                         ),
                         SizedBox(height: Dimenssions.height6),
-                        // Quantity controls with border
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
@@ -403,7 +401,6 @@ class _CartPageState extends State<CartPage> {
                 ],
               ),
             ),
-            // Right indicator for swipe
             Positioned(
               right: 0,
               top: 0,
@@ -489,40 +486,42 @@ class _CartPageState extends State<CartPage> {
               ),
             ),
             GetBuilder<CartController>(
-              builder: (controller) => ElevatedButton(
-                onPressed: controller.selectedItemCount > 0
-                    ? () {
-                        // Group selected items by merchant
-                        Map<int, List<CartItemModel>> groupedItems = {};
-                        for (var item in controller.selectedItems) {
-                          final merchantId = item.merchant.id!;
-                          if (!groupedItems.containsKey(merchantId)) {
-                            groupedItems[merchantId] = [];
+              builder: (controller) => Container(
+                width: 180, // Fixed width for the button
+                child: ElevatedButton(
+                  onPressed: controller.selectedItemCount > 0
+                      ? () {
+                          Map<int, List<CartItemModel>> groupedItems = {};
+                          for (var item in controller.selectedItems) {
+                            final merchantId = item.merchant.id!;
+                            if (!groupedItems.containsKey(merchantId)) {
+                              groupedItems[merchantId] = [];
+                            }
+                            groupedItems[merchantId]!.add(item);
                           }
-                          groupedItems[merchantId]!.add(item);
-                        }
 
-                        Get.toNamed('/main/checkout', arguments: {
-                          'merchantItems': groupedItems,
-                          'type': 'cart',
-                        });
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: controller.selectedItemCount > 0
-                      ? logoColorSecondary
-                      : Colors.grey,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                          Get.toNamed('/main/checkout', arguments: {
+                            'merchantItems': groupedItems,
+                            'type': 'cart',
+                          });
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: controller.selectedItemCount > 0
+                        ? logoColorSecondary
+                        : Colors.grey,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Checkout (${controller.selectedItemCount})',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
+                  child: Text(
+                    'Checkout (${controller.selectedItemCount})',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

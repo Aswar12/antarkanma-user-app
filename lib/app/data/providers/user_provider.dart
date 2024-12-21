@@ -72,6 +72,26 @@ class UserProvider {
     }
   }
 
+  Future<Response> uploadProfileImage(String token, String imagePath) async {
+    try {
+      FormData formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(imagePath),
+      });
+
+      return await _dio.post(
+        '/user/profile/photo', // Adjust the endpoint as necessary
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: formData,
+      );
+    } catch (e) {
+      throw Exception('Failed to upload image: $e');
+    }
+  }
+
   void _handleError(DioException error) {
     String message;
     switch (error.response?.statusCode) {

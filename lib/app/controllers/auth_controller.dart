@@ -6,30 +6,28 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'package:antarkanma/app/utils/validators.dart'; // Import validators
+import 'package:antarkanma/app/utils/validators.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
 
   var isConfirmPasswordHidden = true.obs;
   final formKey = GlobalKey<FormState>();
-  final identifierController =
-      TextEditingController(); // Untuk login (email/nomor telepon)
+  final identifierController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
-  final nameController = TextEditingController(); // Kontroler untuk nama
-  final emailController = TextEditingController(); // Kontroler untuk email
-  final phoneNumberController =
-      TextEditingController(); // Kontroler untuk nomor telepon
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneNumberController = TextEditingController();
   final RxBool isLoading = false.obs;
   final RxBool isPasswordHidden = true.obs;
   final rememberMe = false.obs;
   final StorageService _storageService = StorageService.instance;
+
   @override
   void onInit() {
     super.onInit();
     rememberMe.value = _storageService.getRememberMe();
-    print('Initial Remember Me Value: ${rememberMe.value}'); // Debug print
   }
 
   void togglePasswordVisibility() =>
@@ -127,8 +125,24 @@ class AuthController extends GetxController {
   Future<void> logout() async {
     try {
       await _authService.logout();
-      await _storageService
-          .clearAuth(); // Menggunakan clearAuth() alih-alih removeUser()
+
+      // Clear all local storage data
+      await _storageService.clearAll(); // Clear all stored data
+
+      // Reset controllers
+      identifierController.clear();
+      passwordController.clear();
+      confirmPasswordController.clear();
+      nameController.clear();
+      emailController.clear();
+      phoneNumberController.clear();
+
+      // Reset observable values
+      rememberMe.value = false;
+      isLoading.value = false;
+      isPasswordHidden.value = true;
+      isConfirmPasswordHidden.value = true;
+
       Get.offAllNamed(Routes.login);
       showCustomSnackbar(
         title: 'Logout Berhasil',
@@ -146,28 +160,24 @@ class AuthController extends GetxController {
 
   void navigateToHome(String role) {
     if (role == 'USER ') {
-      Get.offAllNamed(
-          Routes.home); // Pastikan Routes.home mengarah ke UserMainPage
+      Get.offAllNamed(Routes.home);
     } else if (role == 'MERCHANT') {
-      Get.offAllNamed(Routes
-          .merchantHome); // Pastikan Routes.merchantHome mengarah ke MerchantMainPage
+      Get.offAllNamed(Routes.merchantHome);
     } else if (role == 'COURIER') {
-      Get.offAllNamed(Routes
-          .courierHome); // Pastikan Routes.courierHome mengarah ke CourierMainPage
+      Get.offAllNamed(Routes.courierHome);
     }
   }
 
   String? validateIdentifier(String? value) {
-    return Validators.validateIdentifier(value!); // Menggunakan validator
+    return Validators.validateIdentifier(value!);
   }
 
   String? validatePassword(String? value) {
-    return Validators.validatePassword(value); // Menggunakan validator
+    return Validators.validatePassword(value);
   }
 
   String? validateConfirmPassword(String? value) {
-    return Validators.validateConfirmPassword(
-        value, passwordController.text); // Menggunakan validator
+    return Validators.validateConfirmPassword(value, passwordController.text);
   }
 
   String? validateName(String? value) {
@@ -178,12 +188,11 @@ class AuthController extends GetxController {
   }
 
   String? validateEmail(String? value) {
-    return Validators.validateEmail(
-        value); // Pastikan ada validator untuk email
+    return Validators.validateEmail(value);
   }
 
   String? validatePhoneNumber(String? value) {
-    return Validators.validatePhoneNumber(value); // Menggunakan validator
+    return Validators.validatePhoneNumber(value);
   }
 
   @override
@@ -191,32 +200,12 @@ class AuthController extends GetxController {
     identifierController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
-    nameController.dispose(); // Dispose kontroler nama
-    emailController.dispose(); // Dispose kontroler email
+    nameController.dispose();
+    emailController.dispose();
+    phoneNumberController.dispose();
     super.onClose();
   }
 
-  Future<void> updateProfileImage() async {
-    // Implementasi untuk memilih dan mengupdate foto profil
-    try {
-      // Tambahkan logika untuk memilih gambar
-      // Contoh menggunakan image_picker
-      // final ImagePicker _picker = ImagePicker();
-      // final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      // if (image != null) {
-      //   // Upload image dan update profile
-      // }
-    } catch (e) {
-      print('Error updating profile image: $e');
-      showCustomSnackbar(
-        title: 'Error',
-        message: 'Gagal mengupdate foto profil',
-        isError: true,
-      );
-    }
-  }
-
-  // Untuk menangani rating
   final RxInt _rating = 0.obs;
   int get rating => _rating.value;
 
@@ -229,8 +218,6 @@ class AuthController extends GetxController {
   Future<void> submitRating() async {
     try {
       if (_rating.value > 0) {
-        // Implementasi untuk mengirim rating ke backend
-        // await _authService.submitRating(_rating.value);
         showCustomSnackbar(
           title: 'Sukses',
           message: 'Terima kasih atas penilaian Anda!',

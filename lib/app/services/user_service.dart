@@ -36,6 +36,7 @@ class UserService extends GetxService {
     String? email,
     String? phoneNumber,
     String? username,
+    String? profileImageUrl, // Ensure this parameter is included
   }) async {
     try {
       final token = _storage.getToken();
@@ -46,6 +47,8 @@ class UserService extends GetxService {
         if (email != null) 'email': email,
         if (phoneNumber != null) 'phone_number': phoneNumber,
         if (username != null) 'username': username,
+        if (profileImageUrl != null)
+          'profile_image_url': profileImageUrl, // Ensure this line is included
       };
 
       final response = await _userProvider.updateUserProfile(token, data);
@@ -63,6 +66,28 @@ class UserService extends GetxService {
           message: 'Failed to update profile: ${e.toString()}',
           isError: true);
       return false;
+    }
+  }
+
+  Future<String> uploadProfileImage(String imagePath) async {
+    try {
+      final token = _storage.getToken();
+      if (token == null) throw Exception('Token not found');
+
+      final response = await _userProvider.uploadProfileImage(token, imagePath);
+
+      if (response.statusCode == 200) {
+        return response.data['data']
+            ['imageUrl']; // Adjust based on your API response
+      }
+
+      throw Exception(response.data['meta']['message']);
+    } catch (e) {
+      showCustomSnackbar(
+          title: 'Error',
+          message: 'Failed to upload image: ${e.toString()}',
+          isError: true);
+      return '';
     }
   }
 }

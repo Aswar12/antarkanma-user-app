@@ -22,7 +22,7 @@ class AuthProvider {
   Future<Response> deleteAccount(String token) async {
     try {
       return await _dio.delete(
-        '/auth/delete-account', // Ganti dengan endpoint yang sesuai
+        '/auth/delete-account',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -49,19 +49,28 @@ class AuthProvider {
     }
   }
 
-  Future<Response> updateProfilePhoto(String token, dynamic formData) async {
+  Future<Response> updateProfilePhoto(String token, FormData formData) async {
     try {
       return await _dio.post(
-        '/auth/update-profile-photo',
+        '/user/profile/photo',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
           },
         ),
         data: formData,
       );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 413) {
+        throw Exception('File size too large. Maximum size is 2MB.');
+      } else if (e.response?.statusCode == 415) {
+        throw Exception('Invalid file type. Please upload an image file.');
+      }
+      print('Error response: ${e.response?.data}');
+      throw Exception('Failed to update profile photo: ${e.message}');
     } catch (e) {
+      print('Error updating photo: $e');
       throw Exception('Failed to update profile photo: $e');
     }
   }
@@ -70,7 +79,7 @@ class AuthProvider {
       String token, Map<String, dynamic> data) async {
     try {
       return await _dio.put(
-        '/auth/update-profile', // Ganti dengan endpoint yang sesuai
+        '/user/profile',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -78,8 +87,36 @@ class AuthProvider {
         ),
         data: data,
       );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 422) {
+        final errors = e.response?.data['errors'];
+        if (errors != null) {
+          if (errors['email'] != null) {
+            throw Exception('Email already exists');
+          }
+          if (errors['phone_number'] != null) {
+            throw Exception('Phone number already exists');
+          }
+        }
+      }
+      throw Exception('Failed to update profile: ${e.message}');
     } catch (e) {
       throw Exception('Failed to update profile: $e');
+    }
+  }
+
+  Future<Response> getProfile(String token) async {
+    try {
+      return await _dio.get(
+        '/user/profile',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } catch (e) {
+      throw Exception('Failed to get profile: $e');
     }
   }
 
@@ -87,10 +124,8 @@ class AuthProvider {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          options.headers.addAll({
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          });
+          // Don't set Content-Type here as it will be set per-request
+          options.headers['Accept'] = 'application/json';
           return handler.next(options);
         },
         onResponse: (response, handler) {
@@ -112,7 +147,7 @@ class AuthProvider {
         'password': password,
       };
 
-      return await _dio.post('/login', data: loginData);
+      return await _dio.post(Config.login, data: loginData);
     } catch (e) {
       throw Exception('Login failed: $e');
     }
@@ -121,7 +156,7 @@ class AuthProvider {
   /// Register
   Future<Response> register(Map<String, dynamic> userData) async {
     try {
-      return await _dio.post('/register', data: userData);
+      return await _dio.post(Config.register, data: userData);
     } catch (e) {
       throw Exception('Registration failed: $e');
     }
@@ -134,7 +169,7 @@ class AuthProvider {
       return await _dio.put(
         '/auth/change-password',
         options: _getAuthOptions(token),
-        data: data, // Pastikan ini adalah Map<String, dynamic>
+        data: data,
       );
     } catch (e) {
       throw Exception('Failed to change password: $e');

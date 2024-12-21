@@ -114,10 +114,11 @@ class ProductDetailController extends GetxController {
       return false;
     }
 
-    if (!product.value.merchant!.isActive) {
+    // Check variant selection first
+    if (product.value.variants.isNotEmpty && selectedVariant.value == null) {
       showCustomSnackbar(
-        title: 'Merchant Tidak Aktif',
-        message: 'Maaf, merchant ini sedang tidak aktif',
+        title: 'Pilih Varian',
+        message: 'Silakan pilih varian produk terlebih dahulu',
         backgroundColor: logoColorSecondary,
         snackPosition: SnackPosition.BOTTOM,
         isError: true,
@@ -125,10 +126,10 @@ class ProductDetailController extends GetxController {
       return false;
     }
 
-    if (product.value.variants.isNotEmpty && selectedVariant.value == null) {
+    if (!product.value.merchant!.isActive) {
       showCustomSnackbar(
-        title: 'Pilih Varian',
-        message: 'Silakan pilih varian produk terlebih dahulu',
+        title: 'Merchant Tidak Aktif',
+        message: 'Maaf, merchant ini sedang tidak aktif',
         backgroundColor: logoColorSecondary,
         snackPosition: SnackPosition.BOTTOM,
         isError: true,

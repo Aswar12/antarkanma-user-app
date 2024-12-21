@@ -1,23 +1,29 @@
 class CategoryModel {
-  final int? id; // ID kategori
-  final String name; // Nama kategori
-  final DateTime createdAt; // Waktu pembuatan
-  final DateTime updatedAt; // Waktu pembaruan
+  final int id;
+  final String name;
+  final String? description;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   CategoryModel({
-    this.id,
+    required this.id,
     required this.name,
-    required this.createdAt,
-    required this.updatedAt,
+    this.description,
+    this.createdAt,
+    this.updatedAt,
   });
 
-  // Constructor untuk data dari API
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'] as int?,
-      name: json['name'] as String,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 
@@ -25,20 +31,12 @@ class CategoryModel {
     return {
       'id': id,
       'name': name,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'description': description,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    return other is CategoryModel && other.id == id && other.name == name;
-  }
-
-  @override
-  int get hashCode {
-    return id.hashCode ^ name.hashCode;
-  }
+  String toString() => name;
 }

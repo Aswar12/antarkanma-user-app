@@ -3,6 +3,7 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
+import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/utils/image_viewer_page.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
@@ -38,6 +39,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   void _addToCart() {
     try {
+      if (!controller.validateCheckout()) {
+        return;
+      }
+
       final merchant = controller.product.value.merchant;
       if (merchant == null) {
         showCustomSnackbar(
@@ -56,6 +61,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         selectedVariant: controller.selectedVariant.value,
         merchant: merchant,
       );
+
+      showCustomSnackbar(
+        title: 'Berhasil',
+        message: 'Produk berhasil ditambahkan ke keranjang',
+        backgroundColor: Colors.green,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } catch (e, stackTrace) {
       showCustomSnackbar(
         title: 'Error',
@@ -68,6 +80,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   void _buyNow() {
     try {
+      if (!controller.validateCheckout()) {
+        return;
+      }
+
       final merchant = controller.product.value.merchant;
       if (merchant == null) {
         showCustomSnackbar(
@@ -533,103 +549,135 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Widget _buildVariantSelector(ProductModel product) {
     if (product.variants.isEmpty) return const SizedBox();
 
+    // Group variants by name
+    final variantGroups = <String, List<VariantModel>>{};
+    for (var variant in product.variants) {
+      if (!variantGroups.containsKey(variant.name)) {
+        variantGroups[variant.name] = [];
+      }
+      variantGroups[variant.name]!.add(variant);
+    }
+
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: Dimenssions.width20,
         vertical: Dimenssions.height10,
       ),
+      padding: EdgeInsets.all(Dimenssions.height16),
+      decoration: BoxDecoration(
+        color: backgroundColor1,
+        borderRadius: BorderRadius.circular(Dimenssions.radius12),
+        border: Border.all(color: backgroundColor3.withOpacity(0.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Pilih Varian',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font16, // Updated size
-              fontWeight: semiBold,
-            ),
+          Row(
+            children: [
+              Text(
+                'Pilih Varian',
+                style: primaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font16,
+                  fontWeight: semiBold,
+                ),
+              ),
+              SizedBox(width: Dimenssions.width8),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimenssions.width8,
+                  vertical: Dimenssions.height4,
+                ),
+                decoration: BoxDecoration(
+                  color: alertColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                ),
+                child: Text(
+                  'Wajib',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font12,
+                    color: alertColor,
+                    fontWeight: medium,
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: Dimenssions.height16),
-          Wrap(
-            spacing: Dimenssions.width12,
-            runSpacing: Dimenssions.height12,
-            children: product.variants.map((variant) {
-              return Obx(() => GestureDetector(
-                    onTap: () => controller.selectVariant(variant),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimenssions.width16,
-                        vertical: Dimenssions.height12,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            controller.selectedVariant.value?.id == variant.id
+          ...variantGroups.entries.map((entry) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.key,
+                  style: secondaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height8),
+                Wrap(
+                  spacing: Dimenssions.width8,
+                  runSpacing: Dimenssions.height8,
+                  children: entry.value.map((variant) {
+                    return Obx(() {
+                      final isSelected =
+                          controller.selectedVariant.value?.id == variant.id;
+                      return GestureDetector(
+                        onTap: () => controller.selectVariant(variant),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width12,
+                            vertical: Dimenssions.height8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
                                 ? logoColorSecondary
                                 : backgroundColor1,
-                        border: Border.all(
-                          color:
-                              controller.selectedVariant.value?.id == variant.id
+                            border: Border.all(
+                              color: isSelected
                                   ? logoColorSecondary
                                   : backgroundColor3,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius12),
-                        boxShadow: [
-                          if (controller.selectedVariant.value?.id ==
-                              variant.id)
-                            BoxShadow(
-                              color: logoColorSecondary.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              width: 1.5,
                             ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius8),
+                          ),
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                variant.name,
-                                style: TextStyle(
-                                  fontSize: Dimenssions.font16,
-                                  color: controller.selectedVariant.value?.id ==
-                                          variant.id
-                                      ? backgroundColor1
-                                      : primaryTextColor,
-                                  fontWeight: medium,
-                                ),
-                              ),
-                              SizedBox(width: Dimenssions.width8),
-                              Text(
                                 variant.value,
                                 style: TextStyle(
-                                  fontSize: Dimenssions.font16,
-                                  color: controller.selectedVariant.value?.id ==
-                                          variant.id
+                                  fontSize: Dimenssions.font14,
+                                  color: isSelected
                                       ? backgroundColor1
                                       : primaryTextColor,
                                   fontWeight: medium,
                                 ),
                               ),
+                              if (variant.priceAdjustment > 0) ...[
+                                SizedBox(width: Dimenssions.width4),
+                                Text(
+                                  '+${NumberFormat('#,###', 'id_ID').format(variant.priceAdjustment)}',
+                                  style: TextStyle(
+                                    fontSize: Dimenssions.font12,
+                                    color: isSelected
+                                        ? backgroundColor1
+                                        : logoColorSecondary,
+                                    fontWeight: medium,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                          SizedBox(height: Dimenssions.height4),
-                          Text(
-                            '+ Rp ${NumberFormat('#,###', 'id_ID').format(variant.priceAdjustment)}',
-                            style: TextStyle(
-                              color: controller.selectedVariant.value?.id ==
-                                      variant.id
-                                  ? backgroundColor1
-                                  : logoColorSecondary,
-                              fontWeight: semiBold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ));
-            }).toList(),
-          ),
+                        ),
+                      );
+                    });
+                  }).toList(),
+                ),
+                SizedBox(height: Dimenssions.height12),
+              ],
+            );
+          }).toList(),
         ],
       ),
     );

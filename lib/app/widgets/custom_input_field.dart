@@ -9,7 +9,7 @@ class CustomInputField extends StatefulWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final bool initialObscureText;
-  final dynamic icon; // Bisa menerima String (path) atau Icon
+  final dynamic icon;
   final bool showVisibilityToggle;
 
   const CustomInputField({
@@ -19,7 +19,7 @@ class CustomInputField extends StatefulWidget {
     required this.controller,
     this.validator,
     this.initialObscureText = false,
-    required this.icon, // Ubah iconPath menjadi icon
+    required this.icon,
     this.showVisibilityToggle = false,
   });
 
@@ -58,12 +58,10 @@ class _CustomInputFieldState extends State<CustomInputField> {
     });
   }
 
-  // Method untuk membangun widget icon
   Widget _buildIcon() {
     final color = (_isFocused || _hasText) ? logoColorSecondary : Colors.grey;
 
     if (widget.icon is String) {
-      // Jika icon adalah path gambar (String)
       return SizedBox(
         width: 18,
         height: 18,
@@ -73,7 +71,6 @@ class _CustomInputFieldState extends State<CustomInputField> {
         ),
       );
     } else if (widget.icon is Icon) {
-      // Jika icon adalah Icon widget
       final Icon originalIcon = widget.icon as Icon;
       return Icon(
         originalIcon.icon,
@@ -82,7 +79,6 @@ class _CustomInputFieldState extends State<CustomInputField> {
       );
     }
 
-    // Default fallback icon
     return Icon(
       Icons.error,
       size: 18,
@@ -93,7 +89,7 @@ class _CustomInputFieldState extends State<CustomInputField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 20),
+      margin: const EdgeInsets.only(top: 10), // Reduced margin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -113,15 +109,15 @@ class _CustomInputFieldState extends State<CustomInputField> {
               border: Border.all(
                 color: (_isFocused || _hasText)
                     ? logoColorSecondary
-                    : Colors.transparent,
-                width: 2,
+                    : Colors.grey.withOpacity(0.2),
+                width: 1.5,
               ),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 16),
-                _buildIcon(), // Menggunakan method buildIcon
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
+                _buildIcon(),
+                SizedBox(width: 16),
                 Expanded(
                   child: Focus(
                     onFocusChange: (hasFocus) {
@@ -138,6 +134,10 @@ class _CustomInputFieldState extends State<CustomInputField> {
                         hintText: widget.hintText,
                         hintStyle: subtitleTextStyle,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
                         isCollapsed: true,
                       ),
                     ),

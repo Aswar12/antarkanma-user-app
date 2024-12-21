@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:flutter/painting.dart';
 
 class EditProfileController extends GetxController {
   final AuthService authService = Get.find<AuthService>();
@@ -28,24 +31,118 @@ class EditProfileController extends GetxController {
     }
   }
 
-  Future<void> pickImage() async {
+  Future<void> pickImage({ImageSource source = ImageSource.gallery}) async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
+      // Pick the image
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        preferredCameraDevice: CameraDevice.rear,
       );
 
-      if (image != null) {
-        selectedImage.value = File(image.path);
-        await authService.updateProfilePhoto(selectedImage.value!);
+      if (pickedFile == null) {
+        return; // User cancelled image picker
       }
+
+      // Verify file exists and is readable
+      final file = File(pickedFile.path);
+      if (!await file.exists()) {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'File tidak ditemukan, coba lagi nanti',
+          isError: true,
+        );
+        return;
+      }
+
+      selectedImage.value = file;
     } catch (e) {
+      print('Error picking image: $e');
       showCustomSnackbar(
         title: 'Error',
-        message: 'Gagal memilih gambar: ${e.toString()}',
+        message: 'Gagal memilih foto, coba lagi nanti',
         isError: true,
       );
     }
+  }
+
+  Future<void> uploadSelectedImage() async {
+    if (selectedImage.value == null) {
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Pilih foto terlebih dahulu',
+        isError: true,
+      );
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      final success =
+          await authService.updateProfilePhoto(selectedImage.value!);
+      if (success) {
+        // Fetch fresh user data and ensure it's loaded
+        final updatedUser = await authService.getProfile();
+        if (updatedUser != null) {
+          // Clear the cached image
+          imageCache.clear();
+          imageCache.clearLiveImages();
+
+          showCustomSnackbar(
+            title: 'Sukses',
+            message: 'Foto profil berhasil diperbarui',
+          );
+
+          // Reset selected image after successful upload
+          selectedImage.value = null;
+        }
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal mengupload foto, coba lagi nanti',
+        isError: true,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void showImageSourceDialog() {
+    showDialog(
+      context: Get.context!,
+      builder: (context) => SimpleDialog(
+        title: Text('Pilih Sumber Gambar'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(context);
+              pickImage(source: ImageSource.camera);
+            },
+            child: Row(
+              children: [
+                Icon(Icons.camera_alt),
+                SizedBox(width: 10),
+                Text('Kamera'),
+              ],
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(context);
+              pickImage(source: ImageSource.gallery);
+            },
+            child: Row(
+              children: [
+                Icon(Icons.photo_library),
+                SizedBox(width: 10),
+                Text('Galeri'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> updateProfile() async {
@@ -60,11 +157,21 @@ class EditProfileController extends GetxController {
       );
 
       if (success) {
-        showCustomSnackbar(
-          title: 'Sukses',
-          message: 'Profil berhasil diperbarui',
-        );
-        Get.back(); // Return to previous screen
+        // Fetch fresh user data and ensure it's loaded
+        final updatedUser = await authService.getProfile();
+        if (updatedUser != null) {
+          // Clear the cached image in case profile photo URL changed
+          imageCache.clear();
+          imageCache.clearLiveImages();
+
+          showCustomSnackbar(
+            title: 'Sukses',
+            message: 'Profil berhasil diperbarui',
+          );
+
+          // Return to main page
+          Get.offAllNamed('/main');
+        }
       }
     } finally {
       isLoading.value = false;

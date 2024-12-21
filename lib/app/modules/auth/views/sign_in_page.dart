@@ -13,24 +13,22 @@ class SignInPage extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor3,
+      backgroundColor: backgroundColor1,
       resizeToAvoidBottomInset: false,
-      body: Padding(
-        padding: EdgeInsets.all(Dimenssions.height15),
-        child: SafeArea(
-          child: Form(
-            key: _signInFormKey,
+      body: SafeArea(
+        child: Form(
+          key: _signInFormKey,
+          child: SingleChildScrollView(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: defaultMargin),
+              padding: EdgeInsets.all(Dimenssions.height20),
               child: Column(
                 children: [
                   header(),
-                  emailInput(),
-                  SizedBox(height: Dimenssions.height15),
-                  passwordInput(),
-                  rememberMeCheckbox(),
+                  SizedBox(height: Dimenssions.height30),
+                  loginForm(),
+                  SizedBox(height: Dimenssions.height20),
                   signButton(),
-                  const Spacer(),
+                  SizedBox(height: Dimenssions.height30),
                   footer(),
                 ],
               ),
@@ -41,55 +39,60 @@ class SignInPage extends GetView<AuthController> {
     );
   }
 
-  Widget rememberMeCheckbox() {
-    return Obx(
-      () => Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: Dimenssions.width10,
+  Widget header() {
+    return Column(
+      children: [
+        Image.asset(
+          'assets/Logo_AntarkanMaNoFont.png',
+          height: Dimenssions
+              .height80, // Reduced from height100 to height80 (20% smaller)
+          fit: BoxFit.contain,
         ),
-        child: CheckboxListTile(
-          title: Text(
-            'Ingat Saya',
-            style: primaryTextStyle.copyWith(
-              fontSize: 14,
-              fontWeight: medium,
-            ),
+        SizedBox(height: Dimenssions.height20),
+        Text(
+          'Selamat Datang Kembali!',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font24,
+            fontWeight: semiBold,
           ),
-          value: controller.rememberMe.value,
-          onChanged: (value) => controller.toggleRememberMe(),
-          controlAffinity: ListTileControlAffinity.trailing, // Ubah ke trailing
-          contentPadding: EdgeInsets.zero,
-          dense: true,
-          activeColor: logoColorSecondary,
-          checkColor: Colors.white,
         ),
-      ),
+        SizedBox(height: Dimenssions.height10),
+        Text(
+          'Silahkan masuk untuk melanjutkan',
+          style: subtitleTextStyle.copyWith(
+            fontSize: Dimenssions.font16,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget header() {
+  Widget loginForm() {
     return Container(
-      margin: const EdgeInsets.only(
-          top: AppValues.height10, left: AppValues.height10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: Text(
-              'Login',
-              style:
-                  primaryTextStyle.copyWith(fontSize: 24, fontWeight: semiBold),
-            ),
+      decoration: BoxDecoration(
+        color: backgroundColor2,
+        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
           ),
-          const SizedBox(height: 2),
-          const Text('Masuk Untuk lanjut'),
+        ],
+      ),
+      padding: EdgeInsets.all(Dimenssions.height20),
+      child: Column(
+        children: [
+          emailInput(),
+          SizedBox(height: Dimenssions.height15),
+          passwordInput(),
+          SizedBox(height: Dimenssions.height10),
+          rememberMeCheckbox(),
         ],
       ),
     );
   }
-
-  // Di dalam class SignInPage
 
   Widget emailInput() {
     return CustomInputField(
@@ -113,17 +116,39 @@ class SignInPage extends GetView<AuthController> {
     );
   }
 
+  Widget rememberMeCheckbox() {
+    return Obx(
+      () => Container(
+        margin: EdgeInsets.only(top: Dimenssions.height5),
+        child: Row(
+          children: [
+            Checkbox(
+              value: controller.rememberMe.value,
+              onChanged: (value) => controller.toggleRememberMe(),
+              activeColor: logoColorSecondary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            Text(
+              'Ingat Saya',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+                fontWeight: medium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget signButton() {
     return Container(
-      height: AppValues.height50,
+      height: Dimenssions.height50,
       width: double.infinity,
-      margin: EdgeInsets.only(
-        top: Dimenssions.height10,
-        left: AppValues.height10,
-        right: AppValues.height10,
-      ),
       child: Obx(
-        () => TextButton(
+        () => ElevatedButton(
           onPressed: controller.isLoading.value
               ? null
               : () {
@@ -131,21 +156,22 @@ class SignInPage extends GetView<AuthController> {
                     controller.login();
                   }
                 },
-          style: TextButton.styleFrom(
+          style: ElevatedButton.styleFrom(
             backgroundColor: logoColorSecondary,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppValues.radius15),
+              borderRadius: BorderRadius.circular(Dimenssions.radius15),
             ),
+            elevation: 2,
           ),
           child: controller.isLoading.value
               ? const CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 )
               : Text(
-                  'Login',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: AppValues.font16,
-                    fontWeight: medium,
+                  'Masuk',
+                  style: textwhite.copyWith(
+                    fontSize: Dimenssions.font16,
+                    fontWeight: semiBold,
                   ),
                 ),
         ),
@@ -154,29 +180,26 @@ class SignInPage extends GetView<AuthController> {
   }
 
   Widget footer() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppValues.height30),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Belum Punya Akun? ',
-            style: subtitleTextStyle.copyWith(
-              fontSize: AppValues.font14,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Belum Punya Akun? ',
+          style: subtitleTextStyle.copyWith(
+            fontSize: Dimenssions.font14,
+          ),
+        ),
+        GestureDetector(
+          onTap: () => Get.toNamed('/register'),
+          child: Text(
+            'Daftar',
+            style: primaryTextOrange.copyWith(
+              fontSize: Dimenssions.font14,
+              fontWeight: semiBold,
             ),
           ),
-          GestureDetector(
-            onTap: () => Get.toNamed('/register'),
-            child: Text(
-              'Daftar',
-              style: primaryTextOrange.copyWith(
-                fontSize: AppValues.font14,
-                fontWeight: medium,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

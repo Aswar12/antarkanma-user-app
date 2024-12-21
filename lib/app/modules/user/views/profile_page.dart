@@ -26,12 +26,18 @@ class ProfilePage extends GetView<AuthController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor3,
-      body: ListView(
-        children: [
-          _buildHeader(authService),
-          _buildAddressCard(),
-          _buildMenuSection(),
-        ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              _buildHeader(authService),
+              _buildAddressCard(),
+              _buildMenuSection(),
+              SizedBox(height: Dimenssions.height10),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -39,73 +45,115 @@ class ProfilePage extends GetView<AuthController> {
   Widget _buildHeader(AuthService authService) {
     final user = authService.getUser();
     return Container(
-      padding: EdgeInsets.only(
-        top: Dimenssions.height45,
-        bottom: Dimenssions.height30,
-      ),
-      decoration: BoxDecoration(
-        color: backgroundColor2,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
+      height: Dimenssions.height250,
+      child: Stack(
         children: [
-          GestureDetector(
-            onTap: () => Get.toNamed('/main/edit-profile'),
-            child: Stack(
-              children: [
-                user != null
-                    ? ProfileImage(
-                        user: user,
-                        size: Dimenssions.height90,
-                      )
-                    : CircleAvatar(
-                        radius: Dimenssions.height45,
-                        backgroundColor: Colors.grey[300],
-                        child: Icon(
-                          Icons.person,
-                          size: Dimenssions.height45,
-                          color: Colors.grey[600],
-                        ),
+          // Background Image with Overlay
+          Container(
+            width: double.infinity,
+            height: Dimenssions.height250,
+            child: user?.profilePhotoUrl != null
+                ? Stack(
+                    children: [
+                      // Blurred Background Image
+                      Image.network(
+                        user!.profilePhotoUrl!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
+                      // Dark Overlay
+                      Container(
+                        color: Colors.black.withOpacity(0.5),
+                      ),
+                    ],
+                  )
+                : Container(
+                    color: backgroundColor2,
+                  ),
+          ),
+          Align(
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Profile Image
+                GestureDetector(
+                  onTap: () => Get.toNamed('/main/edit-profile'),
                   child: Container(
-                    padding: EdgeInsets.all(Dimenssions.height5),
-                    decoration: BoxDecoration(
-                      color: logoColorSecondary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.edit,
-                      size: Dimenssions.height15,
-                      color: backgroundColor1,
+                    margin: EdgeInsets.only(top: Dimenssions.height30),
+                    child: Stack(
+                      children: [
+                        Hero(
+                          tag: 'profile_image',
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 3,
+                              ),
+                            ),
+                            child: user != null
+                                ? ProfileImage(
+                                    user: user,
+                                    size: Dimenssions.height100,
+                                  )
+                                : CircleAvatar(
+                                    radius: Dimenssions.height50,
+                                    backgroundColor: Colors.grey[300],
+                                    child: Icon(
+                                      Icons.person,
+                                      size: Dimenssions.height50,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(Dimenssions.height5),
+                            decoration: BoxDecoration(
+                              color: logoColorSecondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.edit,
+                              size: Dimenssions.height15,
+                              color: backgroundColor1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+                SizedBox(height: Dimenssions.height15),
+                // User Info
+                Text(
+                  authService.userName,
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font20,
+                    fontWeight: semiBold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height5),
+                Text(
+                  authService.userPhone,
+                  style: secondaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
               ],
-            ),
-          ),
-          SizedBox(height: Dimenssions.height15),
-          Text(
-            authService.userName,
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font20,
-              fontWeight: semiBold,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height5),
-          Text(
-            authService.userPhone,
-            style: secondaryTextStyle.copyWith(
-              fontSize: Dimenssions.font14,
             ),
           ),
         ],

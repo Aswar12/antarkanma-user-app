@@ -4,6 +4,7 @@ import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
+import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -88,77 +89,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategories() {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor1,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(
-          horizontal: Dimenssions.width15,
-          vertical: Dimenssions.height5,
-        ),
-        child: Row(
-          children: [
-            _buildCategoryItem("Semua"),
-            _buildCategoryItem("Elektronik"),
-            _buildCategoryItem("Fashion"),
-            _buildCategoryItem("Rumah"),
-            _buildCategoryItem("Kecantikan"),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(String category) {
-    return Container(
-      margin: EdgeInsets.only(right: Dimenssions.width10),
-      child: Obx(() {
-        bool isSelected = controller.selectedCategory.value == category;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => controller.selectedCategory.value = category,
-            borderRadius: BorderRadius.circular(Dimenssions.radius15),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: Dimenssions.width15,
-                vertical: Dimenssions.height5,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? logoColorSecondary.withOpacity(0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(Dimenssions.radius15),
-                border: Border.all(
-                  color: isSelected
-                      ? logoColorSecondary
-                      : secondaryTextColor.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                category,
-                style: primaryTextStyle.copyWith(
-                  color: isSelected ? logoColorSecondary : secondaryTextColor,
-                  fontSize: Dimenssions.font14,
-                  fontWeight: isSelected ? semiBold : regular,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
+    return const CategoryWidget();
   }
 
   Widget popularProductsTitle() {
@@ -187,15 +118,28 @@ class _HomePageState extends State<HomePage> {
               fontWeight: semiBold,
             ),
           ),
-          TextButton(
-            onPressed: () {},
-            child: Text(
-              'Lihat Semua',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                color: logoColorSecondary,
+          Row(
+            children: [
+              TextButton(
+                onPressed: () {},
+                child: Text(
+                  'Lihat Semua',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                    color: logoColorSecondary,
+                  ),
+                ),
               ),
-            ),
+              IconButton(
+                onPressed: controller.forceRefreshFromServer,
+                icon: Icon(
+                  Icons.refresh,
+                  color: logoColorSecondary,
+                  size: Dimenssions.height22,
+                ),
+                tooltip: 'Perbarui data dari server',
+              ),
+            ],
           ),
         ],
       ),

@@ -87,4 +87,10 @@ class ProductService extends GetxService {
   bool hasLocalData() {
     return _storage.hasData(_productsKey);
   }
+
+  Future<void> clearLocalStorage() async {
+    await _storage.remove(_productsKey);
+    await _storage.remove(_lastRefreshKey);
+    products.clear();
+  }
 }

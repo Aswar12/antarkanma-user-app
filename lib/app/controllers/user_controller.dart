@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/data/models/user_model.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import '../services/user_service.dart';
 
@@ -36,6 +37,7 @@ class UserController extends GetxController {
     String? email,
     String? phoneNumber,
     String? username,
+    String? profileImageUrl, // Ensure this parameter is included
   }) async {
     try {
       isLoading.value = true;
@@ -46,6 +48,7 @@ class UserController extends GetxController {
         email: email,
         phoneNumber: phoneNumber,
         username: username,
+        profileImageUrl: profileImageUrl, // Ensure this line is included
       );
 
       if (success) {
@@ -58,7 +61,24 @@ class UserController extends GetxController {
     }
   }
 
-  // Getters
+  Future<void> pickImage() async {
+    final ImagePicker _picker = ImagePicker();
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      // Assuming you have a method to upload the image and get the URL
+      String imageUrl = await _userService.uploadProfileImage(image.path);
+      await updateProfile(
+        name: currentUser.value?.name ?? '',
+        email: currentUser.value?.email,
+        phoneNumber: currentUser.value?.phoneNumber,
+        username: currentUser.value?.username,
+        profileImageUrl:
+            imageUrl, // Add this line to update the profile image URL
+      );
+    }
+  }
+
   bool get isAdmin => currentUser.value?.role == 'ADMIN';
   bool get isMerchant => currentUser.value?.role == 'MERCHANT';
   bool get isCourier => currentUser.value?.role == 'COURIER';

@@ -1,32 +1,38 @@
-// ignore_for_file: unrelated_type_equality_checks, avoid_print
-
 import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/data/models/category_model.dart';
+import 'package:antarkanma/app/services/category_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/services/product_service.dart';
 
 class HomePageController extends GetxController {
-  final ProductService productService;
+  final ProductService productService = Get.find<ProductService>();
+  final CategoryService _categoryService = Get.find<CategoryService>();
+
   final RxList<ProductModel> products = <ProductModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool isRefreshing = false.obs;
-  final RxString selectedCategory = "All".obs;
+  final RxString selectedCategory = "Semua".obs;
   final RxInt currentIndex = 0.obs;
 
-  HomePageController(this.productService);
+  HomePageController();
+
+  List<CategoryModel> get categories => _categoryService.categories;
+  bool get isCategoriesLoading => _categoryService.isLoading.value;
 
   @override
   void onInit() {
     super.onInit();
     loadProducts();
+    _categoryService.loadCategories();
   }
 
   List<ProductModel> get filteredProducts {
-    if (selectedCategory.value == "All") {
+    if (selectedCategory.value == "Semua") {
       return products;
     } else {
       return products
-          .where((product) => product.category == selectedCategory.value)
+          .where((product) => product.category?.name == selectedCategory.value)
           .toList();
     }
   }
@@ -48,13 +54,27 @@ class HomePageController extends GetxController {
 
     try {
       isRefreshing(true);
-      await productService.refreshProducts();
+
+      // Clear existing data first
+      products.clear();
+      _categoryService.categories.clear();
+
+      // Refresh both products and categories
+      await Future.wait([
+        productService.refreshProducts(),
+        _categoryService.loadCategories(),
+      ]);
+
+      // Update products list
       products.assignAll(productService.products);
+
+      // Reset category filter to "Semua"
+      selectedCategory.value = "Semua";
 
       if (showMessage) {
         Get.snackbar(
-          'Success',
-          'Products refreshed successfully',
+          'Berhasil',
+          'Data berhasil diperbarui dari server',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
@@ -62,9 +82,36 @@ class HomePageController extends GetxController {
         );
       }
     } catch (e) {
-      _handleError('Failed to refresh products', e);
+      _handleError('Gagal memperbarui data', e);
+
+      // If refresh fails, try to load from local storage
+      try {
+        await productService.fetchProducts();
+        await _categoryService.loadCategories();
+        products.assignAll(productService.products);
+      } catch (localError) {
+        _handleError('Gagal memuat data lokal', localError);
+      }
     } finally {
       isRefreshing(false);
+      isLoading(false);
+    }
+  }
+
+  // Method to force refresh from server
+  Future<void> forceRefreshFromServer() async {
+    try {
+      isLoading(true);
+
+      // Clear local storage for products and categories
+      await productService.clearLocalStorage();
+      await _categoryService.clearLocalStorage();
+
+      // Fetch fresh data from server
+      await refreshProducts(showMessage: true);
+    } catch (e) {
+      _handleError('Gagal memperbarui data dari server', e);
+    } finally {
       isLoading(false);
     }
   }
