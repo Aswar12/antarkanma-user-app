@@ -120,6 +120,30 @@ class ProductProvider {
     }
   }
 
+  Future<Response> getPopularProducts({
+    int? limit,
+    int? categoryId,
+    double? minRating,
+    int? minReviews,
+    String? token,
+  }) async {
+    try {
+      Map<String, dynamic> queryParams = {};
+      if (limit != null) queryParams['limit'] = limit;
+      if (categoryId != null) queryParams['category_id'] = categoryId;
+      if (minRating != null) queryParams['min_rating'] = minRating;
+      if (minReviews != null) queryParams['min_reviews'] = minReviews;
+
+      return await _dio.get(
+        '/products/popular',
+        queryParameters: queryParams,
+        options: token != null ? _getAuthOptions(token) : null,
+      );
+    } catch (e) {
+      throw Exception('Failed to fetch popular products: $e');
+    }
+  }
+
   // Get products by merchant
   Future<Response> getProductsByMerchant(int merchantId,
       {String? token}) async {

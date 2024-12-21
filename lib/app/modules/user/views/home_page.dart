@@ -151,8 +151,7 @@ class _HomePageState extends State<HomePage> {
       key: _carouselKey,
       children: [
         CarouselSlider.builder(
-          itemCount:
-              controller.products.length > 4 ? 4 : controller.products.length,
+          itemCount: controller.popularProducts.length,
           options: CarouselOptions(
             height: Dimenssions.pageView,
             viewportFraction: 0.85,
@@ -160,7 +159,7 @@ class _HomePageState extends State<HomePage> {
             autoPlayCurve: Curves.fastOutSlowIn,
             enlargeStrategy: CenterPageEnlargeStrategy.scale,
             enlargeFactor: 0.15,
-            autoPlay: controller.products.length > 1,
+            autoPlay: controller.popularProducts.length > 1,
             autoPlayInterval: const Duration(seconds: 3),
             onPageChanged: (index, reason) {
               controller.updateCurrentIndex(index);
@@ -174,9 +173,7 @@ class _HomePageState extends State<HomePage> {
         SizedBox(height: Dimenssions.height10),
         Obx(() => AnimatedSmoothIndicator(
               activeIndex: controller.currentIndex.value,
-              count: controller.products.length > 4
-                  ? 4
-                  : controller.products.length,
+              count: controller.popularProducts.length,
               effect: WormEffect(
                 activeDotColor: logoColorSecondary,
                 dotColor: secondaryTextColor.withOpacity(0.2),
@@ -190,10 +187,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCarouselItem(int index) {
-    if (index < 0 || index >= controller.products.length) {
+    if (index < 0 || index >= controller.popularProducts.length) {
       return Container();
     }
-    var product = controller.products[index];
+    var product = controller.popularProducts[index];
     return GestureDetector(
       onTap: () {
         Get.toNamed(Routes.productDetail, arguments: product);

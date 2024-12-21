@@ -9,31 +9,61 @@ class HomePageController extends GetxController {
   final ProductService productService = Get.find<ProductService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
 
+  // Observable state variables
   final RxList<ProductModel> products = <ProductModel>[].obs;
+  final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool isRefreshing = false.obs;
   final RxString selectedCategory = "Semua".obs;
   final RxInt currentIndex = 0.obs;
 
-  HomePageController();
-
+  // Getters
   List<CategoryModel> get categories => _categoryService.categories;
   bool get isCategoriesLoading => _categoryService.isLoading.value;
+  List<ProductModel> get filteredProducts => products;
 
   @override
   void onInit() {
     super.onInit();
     loadProducts();
     _categoryService.loadCategories();
+    loadPopularProducts();
+    selectedCategory.value = "Semua";
   }
 
-  List<ProductModel> get filteredProducts {
-    if (selectedCategory.value == "Semua") {
-      return products;
-    } else {
-      return products
-          .where((product) => product.category?.name == selectedCategory.value)
-          .toList();
+  Future<void> loadPopularProducts() async {
+    try {
+      final products = await productService.getPopularProducts(
+        limit: 12,
+        minRating: 4.0,
+        minReviews: 5,
+      );
+      popularProducts.assignAll(products);
+    } catch (e) {
+      _handleError('Failed to load popular products', e);
+    }
+  }
+
+  void updateSelectedCategory(String categoryName) async {
+    try {
+      isLoading(true);
+      selectedCategory.value = categoryName;
+
+      if (categoryName == "Semua") {
+        // For "Semua", always use products from local storage
+        final storedProducts = productService.getAllProductsFromStorage();
+        products.assignAll(storedProducts);
+      } else {
+        // For specific category, fetch from API
+        final category = _categoryService.categories
+            .firstWhere((cat) => cat.name == categoryName);
+        await productService.getProductsByCategory(category.id);
+        products.assignAll(productService.products);
+      }
+    } catch (e) {
+      _handleError('Failed to load products for category', e);
+    } finally {
+      isLoading(false);
     }
   }
 
@@ -57,12 +87,14 @@ class HomePageController extends GetxController {
 
       // Clear existing data first
       products.clear();
+      popularProducts.clear();
       _categoryService.categories.clear();
 
-      // Refresh both products and categories
+      // Refresh all data
       await Future.wait([
         productService.refreshProducts(),
         _categoryService.loadCategories(),
+        loadPopularProducts(),
       ]);
 
       // Update products list
@@ -88,6 +120,7 @@ class HomePageController extends GetxController {
       try {
         await productService.fetchProducts();
         await _categoryService.loadCategories();
+        await loadPopularProducts();
         products.assignAll(productService.products);
       } catch (localError) {
         _handleError('Gagal memuat data lokal', localError);
@@ -129,8 +162,6 @@ class HomePageController extends GetxController {
     );
   }
 
-  List<ProductModel> get popularProducts => products.take(5).toList();
-
   List<ProductModel> searchProducts(String query) {
     if (query.isEmpty) return products;
     return products
@@ -153,9 +184,9 @@ class HomePageController extends GetxController {
     }
   }
 
-  bool get hasValidData => products.isNotEmpty && !isLoading.value;
-
   Future<void> retryLoading() => loadProducts();
 
   void updateCurrentIndex(int index) => currentIndex.value = index;
+
+  bool get hasValidData => products.isNotEmpty && !isLoading.value;
 }

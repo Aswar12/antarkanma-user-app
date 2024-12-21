@@ -1,5 +1,3 @@
-// lib/app/bindings/initial_binding.dart
-
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/services/product_service.dart';
@@ -13,15 +11,19 @@ import 'package:antarkanma/app/services/auth_service.dart';
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
-    // Services
-    Get.put(ProductService(), permanent: true);
-    Get.put(AuthService(), permanent: true);
-    Get.put(TransactionService(), permanent: true);
+    // Services - Order matters due to dependencies
+    Get.put(AuthService(), permanent: true); // AuthService must be first
     Get.put(CategoryService(), permanent: true);
+    Get.put(ProductService(),
+        permanent: true); // ProductService depends on AuthService
+    Get.put(TransactionService(), permanent: true);
+
     // Controllers
     Get.put(AuthController(), permanent: true);
     Get.lazyPut(() => UserController());
     Get.put(UserMainController(), permanent: true);
-    Get.put(HomePageController(), permanent: true);
+    Get.put(HomePageController(),
+        permanent:
+            true); // HomePageController depends on ProductService and CategoryService
   }
 }

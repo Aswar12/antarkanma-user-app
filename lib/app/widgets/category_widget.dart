@@ -4,70 +4,36 @@ import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/theme.dart';
 
-class CategoryWidget extends StatelessWidget {
+class CategoryWidget extends StatefulWidget {
   const CategoryWidget({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final HomePageController homeController = Get.find<HomePageController>();
-    final CategoryService categoryService = Get.find<CategoryService>();
+  State<CategoryWidget> createState() => _CategoryWidgetState();
+}
 
-    // Force load categories if empty
-    if (categoryService.categories.isEmpty) {
-      categoryService.loadCategories();
-    }
+class _CategoryWidgetState extends State<CategoryWidget> {
+  final HomePageController homeController = Get.find<HomePageController>();
+  final CategoryService categoryService = Get.find<CategoryService>();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor1,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Obx(() {
-        if (categoryService.isLoading.value) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(
-            horizontal: Dimenssions.width15,
-            vertical: Dimenssions.height5,
-          ),
-          child: Row(
-            children: [
-              _buildCategoryItem("Semua", homeController),
-              ...categoryService.categories
-                  .map((category) =>
-                      _buildCategoryItem(category.name, homeController))
-                  .toList(),
-            ],
-          ),
-        );
-      }),
-    );
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (categoryService.categories.isEmpty) {
+        categoryService.loadCategories();
+      }
+    });
   }
 
-  Widget _buildCategoryItem(String category, HomePageController controller) {
+  Widget _buildCategoryItem(String category) {
     return Container(
       margin: EdgeInsets.only(right: Dimenssions.width10),
       child: Obx(() {
-        bool isSelected = controller.selectedCategory.value == category;
+        bool isSelected = homeController.selectedCategory.value == category;
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => controller.selectedCategory.value = category,
+            onTap: () => homeController.updateSelectedCategory(category),
             borderRadius: BorderRadius.circular(Dimenssions.radius15),
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -99,5 +65,46 @@ class CategoryWidget extends StatelessWidget {
         );
       }),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      return Container(
+        decoration: BoxDecoration(
+          color: backgroundColor1,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: categoryService.isLoading.value
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimenssions.width15,
+                  vertical: Dimenssions.height5,
+                ),
+                child: Row(
+                  children: [
+                    _buildCategoryItem("Semua"),
+                    ...categoryService.categories
+                        .map((category) => _buildCategoryItem(category.name))
+                        .toList(),
+                  ],
+                ),
+              ),
+      );
+    });
   }
 }
