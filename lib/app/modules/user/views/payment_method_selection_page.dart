@@ -31,14 +31,15 @@ class PaymentMethodSelectionPage extends GetView<CheckoutController> {
         itemCount: controller.paymentMethods.length,
         itemBuilder: (context, index) {
           final method = controller.paymentMethods[index];
-          return _buildPaymentMethodCard(method);
+          final isDisabled = method != 'COD';
+          return _buildPaymentMethodCard(method, isDisabled);
         },
       ),
       bottomNavigationBar: _buildSaveButton(),
     );
   }
 
-  Widget _buildPaymentMethodCard(String method) {
+  Widget _buildPaymentMethodCard(String method, bool isDisabled) {
     return Obx(() {
       final isSelected = controller.selectedPaymentMethod.value == method;
       return Card(
@@ -62,15 +63,20 @@ class PaymentMethodSelectionPage extends GetView<CheckoutController> {
             style: primaryTextStyle.copyWith(
               fontSize: Dimenssions.font18,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? logoColorSecondary : null,
+              color: isDisabled
+                  ? Colors.grey
+                  : (isSelected ? logoColorSecondary : null),
             ),
           ),
           trailing: isSelected
               ? Icon(Icons.check_circle, color: logoColorSecondary)
               : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
-          onTap: () {
-            controller.setPaymentMethod(method);
-          },
+          onTap: isDisabled
+              ? null
+              : () {
+                  controller.setPaymentMethod(method);
+                },
+          tileColor: isDisabled ? Colors.grey[200] : null,
         ),
       );
     });

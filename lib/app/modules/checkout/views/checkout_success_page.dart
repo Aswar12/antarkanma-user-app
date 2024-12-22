@@ -4,20 +4,77 @@ import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/theme.dart';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 
 class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
+
+  Widget _buildInstructionItem(String number, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Dimenssions.height10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: Dimenssions.height24,
+            height: Dimenssions.height24,
+            decoration: BoxDecoration(
+              color: logoColorSecondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(Dimenssions.radius12),
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: primaryTextStyle.copyWith(
+                  color: logoColorSecondary,
+                  fontWeight: semiBold,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: Dimenssions.width10),
+          Expanded(
+            child: Text(
+              text,
+              style: primaryTextStyle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderDetail(String label, String value, Color? valueColor) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Dimenssions.height10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: secondaryTextStyle,
+          ),
+          Text(
+            value,
+            style: primaryTextStyle.copyWith(
+              color: valueColor,
+              fontWeight: medium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     try {
       if (Get.arguments == null) {
-        Get.snackbar(
-          'Error',
-          'Data transaksi tidak ditemukan',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Data transaksi tidak ditemukan',
+          isError: true,
         );
         Get.offAllNamed(Routes.main);
         return const SizedBox.shrink();
@@ -33,91 +90,237 @@ class CheckoutSuccessPage extends StatelessWidget {
           orderItems == null ||
           total == null ||
           deliveryAddress == null) {
-        Get.snackbar(
-          'Error',
-          'Data transaksi tidak lengkap',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Data transaksi tidak lengkap',
+          isError: true,
         );
         Get.offAllNamed(Routes.main);
         return const SizedBox.shrink();
       }
 
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.green,
-                  size: 80,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Checkout Berhasil!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+      return WillPopScope(
+        onWillPop: () async {
+          Get.offAllNamed(Routes.main);
+          return false;
+        },
+        child: Scaffold(
+          backgroundColor: backgroundColor8,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(Dimenssions.width20),
+              child: Column(
+                children: [
+                  // Success Icon and Message
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: logoColorSecondary,
+                    size: Dimenssions.height80,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Order ID: ${transaction.orderId}',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Card(
+                  SizedBox(height: Dimenssions.height20),
+                  Text(
+                    'Pesanan Berhasil!',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font24,
+                      fontWeight: semiBold,
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height10),
+                  Text(
+                    'Order ID: ${transaction.orderId}',
+                    style: secondaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font16,
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height30),
+
+                  // COD Instructions if applicable
+                  if (transaction.paymentMethod.toUpperCase() == 'MANUAL')
+                    Card(
+                      color: backgroundColor1,
+                      child: Padding(
+                        padding: EdgeInsets.all(Dimenssions.width16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: logoColorSecondary,
+                                  size: Dimenssions.height24,
+                                ),
+                                SizedBox(width: Dimenssions.width10),
+                                Text(
+                                  'Instruksi Pembayaran COD',
+                                  style: primaryTextStyle.copyWith(
+                                    fontSize: Dimenssions.font18,
+                                    fontWeight: semiBold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: Dimenssions.height15),
+                            _buildInstructionItem(
+                              '1',
+                              'Siapkan uang tunai sebesar ${transaction.formattedGrandTotal}',
+                            ),
+                            _buildInstructionItem(
+                              '2',
+                              'Kurir akan menghubungi Anda saat pesanan tiba',
+                            ),
+                            _buildInstructionItem(
+                              '3',
+                              'Lakukan pembayaran tunai kepada kurir saat menerima pesanan',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  SizedBox(height: Dimenssions.height20),
+
+                  // Order Summary
+                  Card(
+                    color: backgroundColor1,
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(Dimenssions.width16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Ringkasan Pesanan:',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Text(
+                            'Ringkasan Pesanan',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font18,
+                              fontWeight: semiBold,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                              'Total Pembayaran: ${transaction.formattedGrandTotal}'),
-                          Text('Status: ${transaction.statusDisplay}'),
-                          Text(
-                              'Metode Pembayaran: ${transaction.paymentMethod}'),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Alamat Pengiriman:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          SizedBox(height: Dimenssions.height15),
+                          _buildOrderDetail(
+                            'Status Pesanan',
+                            transaction.statusDisplay,
+                            transaction.status.toUpperCase() == 'PENDING'
+                                ? priceColor
+                                : logoColorSecondary,
                           ),
-                          Text(deliveryAddress.address),
+                          _buildOrderDetail(
+                            'Metode Pembayaran',
+                            transaction.paymentMethod == 'MANUAL'
+                                ? 'COD (Bayar di Tempat)'
+                                : transaction.paymentMethod,
+                            null,
+                          ),
+                          _buildOrderDetail(
+                            'Total Pembayaran',
+                            transaction.formattedGrandTotal,
+                            logoColorSecondary,
+                          ),
                         ],
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () => Get.offAllNamed(Routes.main),
-                  child: const Text('Kembali ke Beranda'),
-                ),
-              ],
+                  SizedBox(height: Dimenssions.height20),
+
+                  // Delivery Address
+                  Card(
+                    color: backgroundColor1,
+                    child: Padding(
+                      padding: EdgeInsets.all(Dimenssions.width16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Alamat Pengiriman',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font18,
+                              fontWeight: semiBold,
+                            ),
+                          ),
+                          SizedBox(height: Dimenssions.height15),
+                          Text(
+                            deliveryAddress.customerName ?? '',
+                            style: primaryTextStyle.copyWith(
+                              fontWeight: medium,
+                            ),
+                          ),
+                          SizedBox(height: Dimenssions.height5),
+                          Text(
+                            deliveryAddress.formattedPhoneNumber,
+                            style: primaryTextStyle,
+                          ),
+                          SizedBox(height: Dimenssions.height5),
+                          Text(
+                            deliveryAddress.fullAddress,
+                            style: primaryTextStyle,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height30),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Get.toNamed(Routes.orderHistory),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: backgroundColor1,
+                            foregroundColor: logoColorSecondary,
+                            padding: EdgeInsets.symmetric(
+                              vertical: Dimenssions.height15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius8),
+                              side: BorderSide(color: logoColorSecondary),
+                            ),
+                          ),
+                          child: Text(
+                            'Lihat Pesanan',
+                            style: primaryTextStyle.copyWith(
+                              color: logoColorSecondary,
+                              fontWeight: medium,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: Dimenssions.width15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Get.offAllNamed(Routes.main),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: logoColorSecondary,
+                            padding: EdgeInsets.symmetric(
+                              vertical: Dimenssions.height15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius8),
+                            ),
+                          ),
+                          child: Text(
+                            'Kembali ke Beranda',
+                            style: primaryTextStyle.copyWith(
+                              color: backgroundColor1,
+                              fontWeight: medium,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       );
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Terjadi kesalahan: $e',
+        isError: true,
       );
       Get.offAllNamed(Routes.main);
       return const SizedBox.shrink();

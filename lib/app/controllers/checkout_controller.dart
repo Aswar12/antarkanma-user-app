@@ -34,10 +34,6 @@ class CheckoutController extends GetxController {
 
   final List<String> paymentMethods = [
     'COD',
-    'Transfer Bank',
-    'DANA',
-    'OVO',
-    'GoPay',
   ];
 
   @override

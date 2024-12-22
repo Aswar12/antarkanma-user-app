@@ -6,6 +6,7 @@ import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
+import 'package:antarkanma/app/widgets/cached_image_view.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -130,14 +131,21 @@ class _HomePageState extends State<HomePage> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image(
-                image: product.galleries.isNotEmpty &&
-                        product.imageUrls[0].isNotEmpty
-                    ? NetworkImage(product.imageUrls[0])
-                    : const AssetImage('assets/image_shoes.png')
-                        as ImageProvider,
-                fit: BoxFit.cover,
-              ),
+              if (product.galleries.isNotEmpty &&
+                  product.imageUrls[0].isNotEmpty)
+                CachedImageView(
+                  imageUrl: product.imageUrls[0],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                )
+              else
+                Image.asset(
+                  'assets/image_shoes.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -378,21 +386,25 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(Dimenssions.radius15),
-                          topRight: Radius.circular(Dimenssions.radius15),
-                        ),
-                        image: DecorationImage(
-                          image: product.galleries.isNotEmpty &&
-                                  product.imageUrls[0].isNotEmpty
-                              ? NetworkImage(product.imageUrls[0])
-                              : const AssetImage('assets/image_shoes.png')
-                                  as ImageProvider,
-                          fit: BoxFit.cover,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(Dimenssions.radius15),
+                        topRight: Radius.circular(Dimenssions.radius15),
                       ),
+                      child: product.galleries.isNotEmpty &&
+                              product.imageUrls[0].isNotEmpty
+                          ? CachedImageView(
+                              imageUrl: product.imageUrls[0],
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                          : Image.asset(
+                              'assets/image_shoes.png',
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
                     ),
                   ),
                   Expanded(
