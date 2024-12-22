@@ -1,15 +1,34 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/product_gallery_model.dart';
-import 'package:antarkanma/app/data/models/product_review_model.dart';
+import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
+import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:antarkanma/app/services/storage_service.dart';
 
 class ProductDetailController extends GetxController {
+  final ReviewRepository reviewRepository;
+  final RxList<ProductReviewModel> apiReviews = <ProductReviewModel>[].obs;
+  final isLoadingReviews = false.obs;
   final RxInt currentImageIndex = RxInt(0);
+  final RxInt selectedRatingFilter = RxInt(0); // 0 means all ratings
+  final RxBool isExpanded = RxBool(false);
+
+  List<ProductReviewModel> get visibleReviews =>
+      isExpanded.value ? apiReviews : apiReviews.take(3).toList();
+
+  bool get hasMoreReviews => apiReviews.length > 3;
+
+  void toggleReviews() {
+    isExpanded.value = !isExpanded.value;
+  }
+
+  ProductDetailController({required this.reviewRepository});
+
   var product = ProductModel(
     id: null,
     name: 'Unknown Product',
@@ -26,6 +45,89 @@ class ProductDetailController extends GetxController {
 
   final quantity = 1.obs;
   final Rx<VariantModel?> selectedVariant = Rx<VariantModel?>(null);
+
+  // Review getters
+  List<ProductReviewModel> get reviews => apiReviews;
+  int get reviewCount => apiReviews.length;
+  double get averageRating {
+    if (apiReviews.isEmpty) return 0.0;
+    final total = apiReviews.fold(0, (sum, review) => sum + review.rating);
+    return total / apiReviews.length;
+  }
+
+  void setRatingFilter(int rating) {
+    if (selectedRatingFilter.value == rating) {
+      selectedRatingFilter.value = 0; // Reset to show all ratings
+    } else {
+      selectedRatingFilter.value = rating;
+    }
+    fetchReviews();
+  }
+
+  Future<void> fetchReviews() async {
+    try {
+      if (isLoadingReviews.value) return;
+
+      print('Fetching reviews for product ID: ${product.value.id}');
+      if (product.value.id == null) {
+        print('Product ID is null, cannot fetch reviews');
+        return;
+      }
+
+      isLoadingReviews.value = true;
+
+      // Try to get cached reviews first
+      final cachedReviews =
+          StorageService.instance.getProductReviews(product.value.id!);
+      if (cachedReviews != null) {
+        print('Using cached reviews: ${cachedReviews.length}');
+        apiReviews.value = cachedReviews
+            .map((json) => ProductReviewModel.fromJson(json))
+            .toList();
+
+        // Apply rating filter to cached reviews if needed
+        if (selectedRatingFilter.value != 0) {
+          apiReviews.value = apiReviews
+              .where((review) => review.rating == selectedRatingFilter.value)
+              .toList();
+        }
+      }
+
+      // Fetch fresh reviews from API
+      final token = StorageService.instance.getToken();
+      print('Token available: ${token != null}');
+
+      final reviews = await reviewRepository.getProductReviews(
+        product.value.id!,
+        rating:
+            selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
+        token: token,
+      );
+
+      print('Reviews fetched from API: ${reviews.length}');
+
+      // Update cache with new reviews if rating filter is not applied
+      if (selectedRatingFilter.value == 0) {
+        await StorageService.instance.saveProductReviews(
+          product.value.id!,
+          reviews.map((review) => review.toJson()).toList(),
+        );
+      }
+
+      // Update UI with new reviews
+      apiReviews.value = reviews;
+    } catch (e) {
+      print('Error fetching reviews: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal memuat ulasan',
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      isLoadingReviews.value = false;
+    }
+  }
 
   void selectVariant(VariantModel variant) {
     if (selectedVariant.value?.id == variant.id) {
@@ -79,13 +181,8 @@ class ProductDetailController extends GetxController {
     return product.value.galleries[currentImageIndex.value].url;
   }
 
-  List<String> get imageUrls {
-    return product.value.imageUrls;
-  }
-
-  int get imageCount {
-    return product.value.galleries.length;
-  }
+  List<String> get imageUrls => product.value.imageUrls;
+  int get imageCount => product.value.galleries.length;
 
   void updateImageIndex(int index) {
     currentImageIndex.value = index;
@@ -114,7 +211,6 @@ class ProductDetailController extends GetxController {
       return false;
     }
 
-    // Check variant selection first
     if (product.value.variants.isNotEmpty && selectedVariant.value == null) {
       showCustomSnackbar(
         title: 'Pilih Varian',
@@ -176,30 +272,18 @@ class ProductDetailController extends GetxController {
     return null;
   }
 
-  List<ProductReviewModel>? get reviews => product.value.reviews;
+  bool get isProductValid =>
+      product.value.id != null && product.value.status == 'ACTIVE';
 
-  bool get isProductValid {
-    return product.value.id != null && product.value.status == 'ACTIVE';
-  }
-
-  int? get reviewCount => reviews?.length;
-
-  double get averageRating {
-    if (reviews == null || reviews!.isEmpty) return 0;
-    double total = reviews!.fold(0, (sum, review) => sum + review.rating);
-    return total / reviews!.length;
-  }
-
-  String formatReviewDate(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
-  }
+  String formatReviewDate(DateTime date) =>
+      DateFormat('dd/MM/yyyy').format(date);
 
   @override
   void onInit() {
     super.onInit();
-
     if (Get.arguments != null) {
       setProduct(Get.arguments as ProductModel);
+      fetchReviews();
     }
   }
 
@@ -221,6 +305,8 @@ class ProductDetailController extends GetxController {
     currentImageIndex.value = 0;
     quantity.value = 1;
     selectedVariant.value = null;
+    apiReviews.clear();
+    selectedRatingFilter.value = 0;
     super.onClose();
   }
 }

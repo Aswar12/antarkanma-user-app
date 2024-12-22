@@ -120,6 +120,77 @@ class ProductProvider {
     }
   }
 
+  // Submit a product review
+  Future<Response> submitProductReview(
+      Map<String, dynamic> reviewData, String token) async {
+    try {
+      return await _dio.post(
+        '/product-reviews',
+        data: reviewData,
+        options: _getAuthOptions(token),
+      );
+    } catch (e) {
+      throw Exception('Failed to submit review: $e');
+    }
+  }
+
+  // Update a product review
+  Future<Response> updateProductReview(
+      int reviewId, Map<String, dynamic> reviewData, String token) async {
+    try {
+      return await _dio.put(
+        '/product-reviews/$reviewId',
+        data: reviewData,
+        options: _getAuthOptions(token),
+      );
+    } catch (e) {
+      throw Exception('Failed to update review: $e');
+    }
+  }
+
+  // Delete a product review
+  Future<Response> deleteProductReview(int reviewId, String token) async {
+    try {
+      return await _dio.delete(
+        '/product-reviews/$reviewId',
+        options: _getAuthOptions(token),
+      );
+    } catch (e) {
+      throw Exception('Failed to delete review: $e');
+    }
+  }
+
+  // Get user's reviews
+  Future<Response> getUserReviews(String token) async {
+    try {
+      return await _dio.get(
+        '/user/reviews',
+        options: _getAuthOptions(token),
+      );
+    } catch (e) {
+      throw Exception('Failed to fetch user reviews: $e');
+    }
+  }
+
+  // Get product reviews
+  Future<Response> getProductReviews(int productId,
+      {String? token, int? rating}) async {
+    try {
+      Map<String, dynamic> queryParams = {};
+      if (rating != null && rating > 0) {
+        queryParams['rating'] = rating;
+      }
+
+      return await _dio.get(
+        '/products/$productId/reviews',
+        queryParameters: queryParams,
+        options: token != null ? _getAuthOptions(token) : null,
+      );
+    } catch (e) {
+      throw Exception('Failed to fetch product reviews: $e');
+    }
+  }
+
   Future<Response> getPopularProducts({
     int? limit,
     int? categoryId,

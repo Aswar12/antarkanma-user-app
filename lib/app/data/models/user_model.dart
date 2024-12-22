@@ -20,17 +20,27 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle profile photo URL
+    String? photoUrl = json['profile_photo_url'];
+    if (photoUrl == null || photoUrl.isEmpty) {
+      // If no photo URL, check if there's a path and construct the URL
+      final photoPath = json['profile_photo_path'];
+      if (photoPath != null && photoPath.isNotEmpty) {
+        photoUrl = 'storage/$photoPath';
+      }
+    }
+
     return UserModel(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      phoneNumber: json['phone_number'],
+      id: json['id'] as int,
+      name: json['name'] as String,
+      email: json['email'] as String?,
+      phoneNumber: json['phone_number'] as String?,
       role: (json['roles'] is List)
-          ? json['roles'].first
-          : json['roles'], // Mengambil role pertama jika merupakan array
-      username: json['username'],
-      profilePhotoUrl: json['profile_photo_url'],
-      profilePhotoPath: json['profile_photo_path'], // Ambil dari JSON
+          ? (json['roles'] as List).first.toString()
+          : (json['roles']?.toString() ?? 'USER'),
+      username: json['username'] as String?,
+      profilePhotoUrl: photoUrl,
+      profilePhotoPath: json['profile_photo_path'] as String?,
     );
   }
 

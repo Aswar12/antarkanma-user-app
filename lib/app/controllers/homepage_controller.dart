@@ -1,5 +1,6 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/category_model.dart';
+import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -25,10 +26,22 @@ class HomePageController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    loadProducts();
-    _categoryService.loadCategories();
-    loadPopularProducts();
-    selectedCategory.value = "Semua";
+    loadInitialData();
+  }
+
+  Future<void> loadInitialData() async {
+    try {
+      isLoading(true);
+      // Load all data in parallel
+      await Future.wait([
+        loadProducts(),
+        _categoryService.loadCategories(),
+        loadPopularProducts(),
+      ]);
+      selectedCategory.value = "Semua";
+    } finally {
+      isLoading(false);
+    }
   }
 
   Future<void> loadPopularProducts() async {
@@ -41,6 +54,16 @@ class HomePageController extends GetxController {
       popularProducts.assignAll(products);
     } catch (e) {
       _handleError('Failed to load popular products', e);
+      // Try to get from storage if API fails
+      final storedProducts = productService.getAllProductsFromStorage();
+      if (storedProducts.isNotEmpty) {
+        // Filter for products with high ratings
+        final highRatedProducts = storedProducts
+            .where((p) => (p.averageRating ?? 0) >= 4.0)
+            .take(12)
+            .toList();
+        popularProducts.assignAll(highRatedProducts);
+      }
     }
   }
 
@@ -71,7 +94,31 @@ class HomePageController extends GetxController {
     try {
       isLoading(true);
       await productService.fetchProducts();
-      products.assignAll(productService.products);
+
+      // Ensure each product has rating info
+      final List<ProductModel> productsWithRatings = [];
+      for (var product in productService.products) {
+        if (product.id != null) {
+          if (product.ratingInfo == null) {
+            // If no rating info, fetch it
+            final reviewData =
+                await productService.getProductWithReviews(product.id!);
+            final updatedProduct = product.copyWith(
+              averageRatingRaw:
+                  reviewData['rating_info']['average_rating'].toString(),
+              totalReviewsRaw:
+                  reviewData['rating_info']['total_reviews'] as int,
+              ratingInfo: reviewData['rating_info'] as Map<String, dynamic>,
+              reviews:
+                  (reviewData['reviews'] as List).cast<ProductReviewModel>(),
+            );
+            productsWithRatings.add(updatedProduct);
+          } else {
+            productsWithRatings.add(product);
+          }
+        }
+      }
+      products.assignAll(productsWithRatings);
     } catch (e) {
       _handleError('Failed to load products', e);
     } finally {
@@ -186,7 +233,13 @@ class HomePageController extends GetxController {
 
   Future<void> retryLoading() => loadProducts();
 
-  void updateCurrentIndex(int index) => currentIndex.value = index;
+  void updateCurrentIndex(int index) {
+    if (popularProducts.isNotEmpty) {
+      currentIndex.value = index % popularProducts.length;
+    } else {
+      currentIndex.value = 0;
+    }
+  }
 
   bool get hasValidData => products.isNotEmpty && !isLoading.value;
 }

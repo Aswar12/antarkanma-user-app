@@ -19,6 +19,9 @@ class ProductModel {
   final CategoryModel? category;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? averageRatingRaw;
+  final int? totalReviewsRaw;
+  final Map<String, dynamic>? ratingInfo;
 
   ProductModel({
     this.id,
@@ -33,6 +36,9 @@ class ProductModel {
     this.category,
     this.createdAt,
     this.updatedAt,
+    this.averageRatingRaw,
+    this.totalReviewsRaw,
+    this.ratingInfo,
   });
 
   // Getter untuk mendapatkan daftar URL gambar
@@ -69,6 +75,105 @@ class ProductModel {
     return galleries[index].url;
   }
 
+  // Price formatting methods
+  String get formattedPrice {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(price);
+  }
+
+  String getFormattedPriceWithVariant(VariantModel variant) {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(calculatePriceWithVariant(variant));
+  }
+
+  double calculatePriceWithVariant(VariantModel variant) {
+    return price + variant.priceAdjustment;
+  }
+
+  // Rating methods
+  double get averageRating {
+    if (ratingInfo != null && ratingInfo!.containsKey('average_rating')) {
+      return (ratingInfo!['average_rating'] as num).toDouble();
+    }
+    if (averageRatingRaw != null) {
+      return double.tryParse(averageRatingRaw!) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  int get totalReviews {
+    if (ratingInfo != null && ratingInfo!.containsKey('total_reviews')) {
+      return ratingInfo!['total_reviews'] as int;
+    }
+    return totalReviewsRaw ?? 0;
+  }
+
+  // JSON conversion methods
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'price': price,
+      'status': status,
+      'reviews': reviews?.map((review) => review.toJson()).toList(),
+      'variants': variants.map((variant) => variant.toJson()).toList(),
+      'merchant': merchant?.toJson(),
+      'category': category?.toJson(),
+      'galleries': galleries.map((gallery) => gallery.toJson()).toList(),
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'average_rating': averageRatingRaw,
+      'total_reviews': totalReviewsRaw,
+      'rating_info': ratingInfo,
+    };
+  }
+
+  // Copy with method
+  ProductModel copyWith({
+    int? id,
+    String? name,
+    String? description,
+    List<ProductGalleryModel>? galleries,
+    double? price,
+    String? status,
+    List<VariantModel>? variants,
+    List<ProductReviewModel>? reviews,
+    MerchantModel? merchant,
+    CategoryModel? category,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? averageRatingRaw,
+    int? totalReviewsRaw,
+    Map<String, dynamic>? ratingInfo,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      galleries: galleries ?? this.galleries,
+      price: price ?? this.price,
+      status: status ?? this.status,
+      variants: variants ?? this.variants,
+      reviews: reviews ?? this.reviews,
+      merchant: merchant ?? this.merchant,
+      category: category ?? this.category,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      averageRatingRaw: averageRatingRaw ?? this.averageRatingRaw,
+      totalReviewsRaw: totalReviewsRaw ?? this.totalReviewsRaw,
+      ratingInfo: ratingInfo ?? this.ratingInfo,
+    );
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     try {
       // Helper function to safely convert to double
@@ -87,23 +192,20 @@ class ProductModel {
         return null;
       }
 
-      // Helper function to safely parse integer
-      int? parseInt(dynamic value) {
-        if (value == null) return null;
-        if (value is int) return value;
-        if (value is String) {
-          try {
-            return int.parse(value);
-          } catch (e) {
-            print('Error parsing $value to int: $e');
-            return null;
-          }
-        }
-        return null;
+      // Parse rating info
+      Map<String, dynamic>? ratingInfo;
+      if (json['rating_info'] != null) {
+        ratingInfo = json['rating_info'] as Map<String, dynamic>;
+      } else if (json['average_rating'] != null ||
+          json['total_reviews'] != null) {
+        ratingInfo = {
+          'average_rating': toDouble(json['average_rating']) ?? 0.0,
+          'total_reviews': json['total_reviews'] ?? 0,
+        };
       }
 
       return ProductModel(
-        id: parseInt(json['id']),
+        id: json['id'] as int?,
         name: json['name']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
         price: toDouble(json['price']) ?? 0.0,
@@ -135,160 +237,19 @@ class ProductModel {
         updatedAt: json['updated_at'] != null
             ? DateTime.tryParse(json['updated_at'].toString())
             : null,
+        averageRatingRaw: json['average_rating']?.toString(),
+        totalReviewsRaw: json['total_reviews'] as int?,
+        ratingInfo: ratingInfo,
       );
     } catch (e) {
       print('Error parsing product JSON: $e');
       print('Problematic JSON: $json');
-      // Return a minimal valid product in case of error
       return ProductModel(
         name: '',
         description: '',
         price: 0.0,
       );
     }
-  }
-
-  factory ProductModel.local({
-    required String name,
-    required String description,
-    List<ProductGalleryModel> galleries = const [],
-    required double price,
-  }) {
-    return ProductModel(
-      name: name,
-      description: description,
-      galleries: galleries,
-      price: price,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'price': price,
-      'status': status,
-      'reviews': reviews?.map((review) => review.toJson()).toList(),
-      'variants': variants.map((variant) => variant.toJson()).toList(),
-      'merchant': merchant?.toJson(),
-      'category': category?.toJson(),
-      'galleries': galleries.map((gallery) => gallery.toJson()).toList(),
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
-    };
-  }
-
-  ProductModel copyWith({
-    int? id,
-    String? name,
-    String? description,
-    List<ProductGalleryModel>? galleries,
-    double? price,
-    String? status,
-    List<VariantModel>? variants,
-    List<ProductReviewModel>? reviews,
-    MerchantModel? merchant,
-    CategoryModel? category,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return ProductModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      galleries: galleries ?? this.galleries,
-      price: price ?? this.price,
-      status: status ?? this.status,
-      variants: variants ?? this.variants,
-      reviews: reviews ?? this.reviews,
-      merchant: merchant ?? this.merchant,
-      category: category ?? this.category,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    if (other is! ProductModel) return false;
-
-    final ProductModel productModel = other;
-
-    return id == productModel.id &&
-        name == productModel.name &&
-        description == productModel.description &&
-        price == productModel.price &&
-        listEquals(galleries, productModel.galleries) &&
-        listEquals(variants, productModel.variants) &&
-        listEquals(reviews, productModel.reviews);
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      id,
-      name,
-      description,
-      price,
-      Object.hashAll(galleries),
-      Object.hashAll(variants),
-    );
-  }
-
-  List<VariantModel> get activeVariants {
-    return variants.where((variant) => variant.status == 'active').toList();
-  }
-
-  VariantModel? findVariantByName(String name) {
-    try {
-      return variants.firstWhere((variant) => variant.name == name);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  double calculatePriceWithVariant(VariantModel variant) {
-    return price + variant.priceAdjustment;
-  }
-
-  String get formattedPrice {
-    final formatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return formatter.format(price);
-  }
-
-  String getFormattedPriceWithVariant(VariantModel variant) {
-    final formatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return formatter.format(calculatePriceWithVariant(variant));
-  }
-
-  // Menambahkan getter untuk rating rata-rata
-  double get averageRating {
-    if (reviews!.isEmpty) return 0.0; // Jika tidak ada review, kembalikan 0.0
-
-    // Hitung total rating
-    double totalRating =
-        reviews!.fold(0.0, (sum, review) => sum + review.rating);
-
-    // Kembalikan rata-rata
-    return totalRating / reviews!.length;
-  }
-
-// Menambahkan getter untuk total reviews
-  int get totalReviews {
-    if (reviews == null) return 0;
-    // Sesuaikan dengan struktur reviews Anda
-    return 1; // Atau logic perhitungan jumlah review
   }
 
 // Menambahkan getter untuk status aktif

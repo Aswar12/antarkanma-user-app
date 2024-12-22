@@ -2,6 +2,8 @@ import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'package:antarkanma/app/modules/user/controllers/edit_profile_controller.dart';
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/services/category_service.dart';
+import 'package:antarkanma/app/data/providers/product_provider.dart';
+import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/controllers/map_picker_controller.dart';
@@ -31,9 +33,16 @@ class UserBinding extends Bindings {
       Get.put(CategoryService(), permanent: true);
     }
 
+    // Providers and Repositories
+    Get.lazyPut(() => ProductProvider(), fenix: true);
+    Get.lazyPut(() => ReviewRepository(provider: Get.find()), fenix: true);
+
     // Home and Product Controllers
     Get.lazyPut<HomePageController>(() => HomePageController(), fenix: true);
-    Get.lazyPut<ProductDetailController>(() => ProductDetailController());
+    Get.lazyPut<ProductDetailController>(
+      () => ProductDetailController(reviewRepository: Get.find()),
+      fenix: true,
+    );
 
     // Location Related Dependencies
     Get.lazyPut<UserLocationService>(

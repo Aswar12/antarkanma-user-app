@@ -21,6 +21,10 @@ class StorageService {
   static const String _userLocationsKey = 'user_locations';
   static const String _defaultLocationKey = 'default_location';
   static const String _ordersKey = 'orders_cache';
+  static const String _reviewsKey = 'product_reviews_cache';
+
+  // Cache duration (2 days in milliseconds)
+  static const int _cacheDuration = 172800000; // 48 * 60 * 60 * 1000
 
   // Simple encryption key
   static const String _secretKey = 'your_secret_key_here';
@@ -253,6 +257,38 @@ class StorageService {
 
   Future<void> clearOrders() async {
     await _storage.remove(_ordersKey);
+  }
+
+  // Reviews cache methods
+  Future<void> saveProductReviews(
+      int productId, List<Map<String, dynamic>> reviews) async {
+    final key = '${_reviewsKey}_$productId';
+    await saveList(key, reviews);
+    // Save timestamp for cache invalidation
+    await saveInt('${key}_timestamp', DateTime.now().millisecondsSinceEpoch);
+  }
+
+  List<Map<String, dynamic>>? getProductReviews(int productId) {
+    final key = '${_reviewsKey}_$productId';
+    final data = getList(key);
+    if (data == null) return null;
+
+    // Check if cache is older than 2 days
+    final timestamp = getInt('${key}_timestamp') ?? 0;
+    final age = DateTime.now().millisecondsSinceEpoch - timestamp;
+    if (age > _cacheDuration) {
+      remove(key);
+      remove('${key}_timestamp');
+      return null;
+    }
+
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> clearProductReviews(int productId) async {
+    final key = '${_reviewsKey}_$productId';
+    await remove(key);
+    await remove('${key}_timestamp');
   }
 
   Future<void> clearAll() async {

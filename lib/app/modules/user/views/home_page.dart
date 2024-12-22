@@ -171,17 +171,22 @@ class _HomePageState extends State<HomePage> {
           },
         ),
         SizedBox(height: Dimenssions.height10),
-        Obx(() => AnimatedSmoothIndicator(
-              activeIndex: controller.currentIndex.value,
-              count: controller.popularProducts.length,
-              effect: WormEffect(
-                activeDotColor: logoColorSecondary,
-                dotColor: secondaryTextColor.withOpacity(0.2),
-                dotHeight: Dimenssions.height10,
-                dotWidth: Dimenssions.height10,
-                type: WormType.thin,
-              ),
-            )),
+        Obx(() => controller.popularProducts.isNotEmpty
+            ? AnimatedSmoothIndicator(
+                activeIndex: controller.currentIndex.value <
+                        controller.popularProducts.length
+                    ? controller.currentIndex.value
+                    : 0,
+                count: controller.popularProducts.length,
+                effect: WormEffect(
+                  activeDotColor: logoColorSecondary,
+                  dotColor: secondaryTextColor.withOpacity(0.2),
+                  dotHeight: Dimenssions.height10,
+                  dotWidth: Dimenssions.height10,
+                  type: WormType.thin,
+                ),
+              )
+            : const SizedBox()),
       ],
     );
   }
@@ -267,33 +272,21 @@ class _HomePageState extends State<HomePage> {
                             fontWeight: medium,
                           ),
                         ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Dimenssions.width10,
-                            vertical: Dimenssions.height5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.3),
-                            borderRadius:
-                                BorderRadius.circular(Dimenssions.radius15),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.star,
-                                color: Colors.amber,
-                                size: Dimenssions.height15,
+                        Row(
+                          children: [
+                            _buildStarRating(product.ratingInfo != null
+                                ? (product.ratingInfo!['average_rating'] as num)
+                                    .toDouble()
+                                : product.averageRating),
+                            SizedBox(width: Dimenssions.width5),
+                            Text(
+                              '(${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews})',
+                              style: primaryTextStyle.copyWith(
+                                color: backgroundColor1,
+                                fontSize: Dimenssions.font14,
                               ),
-                              SizedBox(width: Dimenssions.width5),
-                              Text(
-                                '${product.averageRating ?? 0}',
-                                style: primaryTextStyle.copyWith(
-                                  color: backgroundColor1,
-                                  fontSize: Dimenssions.font12,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -307,6 +300,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildStarRating(double? rating) {
+    final double actualRating = rating ?? 0.0;
+    int fullStars = actualRating.floor();
+    bool hasHalfStar = (actualRating - fullStars) >= 0.5;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        if (index < fullStars) {
+          return Icon(Icons.star,
+              color: Colors.amber, size: Dimenssions.height18);
+        } else if (index == fullStars && hasHalfStar) {
+          return Icon(Icons.star_half,
+              color: Colors.amber, size: Dimenssions.height18);
+        } else {
+          return Icon(Icons.star_border,
+              color: Colors.amber, size: Dimenssions.height18);
+        }
+      }),
+    );
+  }
+
   Widget listProducts() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
@@ -315,9 +330,9 @@ class _HomePageState extends State<HomePage> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          mainAxisSpacing: Dimenssions.height15,
-          crossAxisSpacing: Dimenssions.width15,
+          childAspectRatio: 0.65,
+          mainAxisSpacing: Dimenssions.height10,
+          crossAxisSpacing: Dimenssions.width10,
         ),
         itemCount: controller.filteredProducts.length,
         itemBuilder: (context, index) {
@@ -362,85 +377,75 @@ class _HomePageState extends State<HomePage> {
                   Expanded(
                     flex: 2,
                     child: Container(
-                      padding: EdgeInsets.all(Dimenssions.height10),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Dimenssions.width8,
+                        vertical: Dimenssions.height8,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Product Name
                           Text(
                             product.name,
                             style: primaryTextStyle.copyWith(
                               fontSize: Dimenssions.font14,
                               fontWeight: semiBold,
                             ),
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          SizedBox(height: Dimenssions.height5),
+                          // Merchant Name
+                          Row(
                             children: [
-                              Text(
-                                NumberFormat.currency(
-                                  locale: 'id',
-                                  symbol: 'Rp ',
-                                  decimalDigits: 0,
-                                ).format(product.price),
-                                style: priceTextStyle.copyWith(
-                                  fontSize: Dimenssions.font14,
-                                  fontWeight: medium,
+                              Icon(
+                                Icons.store,
+                                color: logoColorSecondary,
+                                size: Dimenssions.height15,
+                              ),
+                              SizedBox(width: Dimenssions.width5),
+                              Expanded(
+                                child: Text(
+                                  product.merchant?.name ?? 'Unknown',
+                                  style: secondaryTextStyle.copyWith(
+                                    fontSize: Dimenssions.font12,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              SizedBox(height: Dimenssions.height5),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.store,
-                                    color: logoColorSecondary,
-                                    size: Dimenssions.height15,
-                                  ),
-                                  SizedBox(width: Dimenssions.width5),
-                                  Expanded(
-                                    child: Text(
-                                      product.merchant?.name ?? 'Unknown',
-                                      style: secondaryTextStyle.copyWith(
-                                        fontSize: Dimenssions.font12,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: Dimenssions.width5,
-                                      vertical: Dimenssions.height2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          logoColorSecondary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(
-                                          Dimenssions.radius8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star,
-                                          color: Colors.amber,
-                                          size: Dimenssions.height12,
-                                        ),
-                                        SizedBox(width: Dimenssions.width2),
-                                        Text(
-                                          '${product.averageRating ?? 0}',
-                                          style: primaryTextStyle.copyWith(
-                                            fontSize: Dimenssions.font10,
-                                            color: logoColorSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                            ],
+                          ),
+                          const Spacer(),
+                          // Rating
+                          Row(
+                            children: [
+                              _buildStarRating(product.ratingInfo != null
+                                  ? (product.ratingInfo!['average_rating']
+                                          as num)
+                                      .toDouble()
+                                  : product.averageRating),
+                              SizedBox(width: Dimenssions.width5),
+                              Text(
+                                '(${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews})',
+                                style: secondaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                ),
                               ),
                             ],
+                          ),
+                          SizedBox(height: Dimenssions.height5),
+                          // Price
+                          Text(
+                            NumberFormat.currency(
+                              locale: 'id',
+                              symbol: 'Rp ',
+                              decimalDigits: 0,
+                            ).format(product.price),
+                            style: priceTextStyle.copyWith(
+                              fontSize: Dimenssions.font14,
+                              fontWeight: medium,
+                            ),
                           ),
                         ],
                       ),

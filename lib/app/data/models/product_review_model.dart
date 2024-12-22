@@ -22,16 +22,45 @@ class ProductReviewModel {
   });
 
   factory ProductReviewModel.fromJson(Map<String, dynamic> json) {
-    return ProductReviewModel(
-      id: json['id'] as int?,
-      userId: json['user_id'] as int,
-      productId: json['product_id'] as int,
-      rating: json['rating'] as int,
-      comment: json['comment'] as String,
-      user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-    );
+    try {
+      // Handle user data
+      UserModel? user;
+      if (json['user'] != null) {
+        try {
+          user = UserModel.fromJson(json['user'] as Map<String, dynamic>);
+        } catch (e) {
+          print('Error parsing user in review: $e');
+          print('Problematic user JSON: ${json['user']}');
+        }
+      }
+
+      // Handle dates with error checking
+      DateTime createdAt;
+      DateTime updatedAt;
+      try {
+        createdAt = DateTime.parse(json['created_at'].toString());
+        updatedAt = DateTime.parse(json['updated_at'].toString());
+      } catch (e) {
+        print('Error parsing dates: $e');
+        createdAt = DateTime.now();
+        updatedAt = DateTime.now();
+      }
+
+      return ProductReviewModel(
+        id: json['id'] as int?,
+        userId: int.parse(json['user_id'].toString()),
+        productId: int.parse(json['product_id'].toString()),
+        rating: int.parse(json['rating'].toString()),
+        comment: json['comment']?.toString() ?? '',
+        user: user,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+    } catch (e) {
+      print('Error parsing review: $e');
+      print('Problematic JSON: $json');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {
