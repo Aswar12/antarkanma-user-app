@@ -65,7 +65,6 @@ class HomePageController extends GetxController {
     try {
       final response = await _productProvider.getAllProducts(
         query: searchQuery.value,
-        limit: 20,
       );
 
       if (response.statusCode == 200) {
@@ -93,7 +92,7 @@ class HomePageController extends GetxController {
             results.add(product);
           }
         }
-        // Update results only if we got new data
+        // Update results if we got new data
         if (results.isNotEmpty) {
           searchResults.assignAll(results);
         }
@@ -148,10 +147,8 @@ class HomePageController extends GetxController {
       _handleError('Failed to load popular products', e);
       final storedProducts = productService.getAllProductsFromStorage();
       if (storedProducts.isNotEmpty) {
-        final highRatedProducts = storedProducts
-            .where((p) => (p.averageRating ?? 0) >= 4.0)
-            .take(12)
-            .toList();
+        final highRatedProducts =
+            storedProducts.where((p) => (p.averageRating ?? 0) >= 4.0).toList();
         popularProducts.assignAll(highRatedProducts);
       }
     }
@@ -159,22 +156,32 @@ class HomePageController extends GetxController {
 
   void updateSelectedCategory(String categoryName) async {
     try {
-      isLoading(true);
       selectedCategory.value = categoryName;
 
       if (categoryName == "Semua") {
-        final storedProducts = productService.getAllProductsFromStorage();
+        await productService.fetchProducts();
+        products.assignAll(productService.products);
+      } else {
+        final category = _categoryService.categories
+            .firstWhere((cat) => cat.name == categoryName);
+        final categoryProducts =
+            await productService.getProductsByCategory(category.id);
+        products.assignAll(categoryProducts);
+      }
+    } catch (e) {
+      _handleError('Failed to load products for category', e);
+      // Fallback to stored products if API fails
+      final storedProducts = productService.getAllProductsFromStorage();
+      if (categoryName == "Semua") {
         products.assignAll(storedProducts);
       } else {
         final category = _categoryService.categories
             .firstWhere((cat) => cat.name == categoryName);
-        await productService.getProductsByCategory(category.id);
-        products.assignAll(productService.products);
+        final filteredProducts = storedProducts
+            .where((product) => product.category?.id == category.id)
+            .toList();
+        products.assignAll(filteredProducts);
       }
-    } catch (e) {
-      _handleError('Failed to load products for category', e);
-    } finally {
-      isLoading(false);
     }
   }
 

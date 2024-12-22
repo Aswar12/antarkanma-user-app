@@ -46,7 +46,6 @@ class ProductProvider {
     double? priceFrom,
     double? priceTo,
     int? categoryId,
-    int? limit,
     String? token,
   }) async {
     try {
@@ -55,7 +54,7 @@ class ProductProvider {
       if (priceFrom != null) queryParams['price_from'] = priceFrom;
       if (priceTo != null) queryParams['price_to'] = priceTo;
       if (categoryId != null) queryParams['categories'] = categoryId;
-      if (limit != null) queryParams['limit'] = limit;
+      queryParams['limit'] = 9999; // Request all products
 
       return await _dio.get(
         '/products',
@@ -85,7 +84,10 @@ class ProductProvider {
     try {
       return await _dio.get(
         '/products',
-        queryParameters: {'categories': categoryId},
+        queryParameters: {
+          'categories': categoryId,
+          'limit': 9999, // Request all products
+        },
         options: token != null ? _getAuthOptions(token) : null,
       );
     } catch (e) {

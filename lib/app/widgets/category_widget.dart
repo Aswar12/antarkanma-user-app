@@ -14,6 +14,7 @@ class CategoryWidget extends StatefulWidget {
 class _CategoryWidgetState extends State<CategoryWidget> {
   final HomePageController homeController = Get.find<HomePageController>();
   final CategoryService categoryService = Get.find<CategoryService>();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -25,6 +26,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     });
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Widget _buildCategoryItem(String category) {
     return Container(
       margin: EdgeInsets.only(right: Dimenssions.width10),
@@ -33,7 +40,14 @@ class _CategoryWidgetState extends State<CategoryWidget> {
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => homeController.updateSelectedCategory(category),
+            onTap: () {
+              homeController.updateSelectedCategory(category);
+              _scrollController.animateTo(
+                0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            },
             borderRadius: BorderRadius.circular(Dimenssions.radius15),
             child: Container(
               padding: EdgeInsets.symmetric(
@@ -90,6 +104,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 ),
               )
             : SingleChildScrollView(
+                controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(
                   horizontal: Dimenssions.width15,
@@ -97,8 +112,13 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 ),
                 child: Row(
                   children: [
+                    if (homeController.selectedCategory.value != "Semua")
+                      _buildCategoryItem(homeController.selectedCategory.value),
                     _buildCategoryItem("Semua"),
                     ...categoryService.categories
+                        .where((category) =>
+                            category.name !=
+                            homeController.selectedCategory.value)
                         .map((category) => _buildCategoryItem(category.name))
                         .toList(),
                   ],

@@ -209,9 +209,26 @@ class ProductService extends GetxService {
         final List<dynamic> productList =
             data is Map ? data['data'] as List : data as List;
 
-        return productList
-            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final List<ProductModel> products = [];
+        for (var json in productList) {
+          final product = ProductModel.fromJson(json as Map<String, dynamic>);
+          if (product.id != null && product.ratingInfo == null) {
+            final reviewData = await getProductWithReviews(product.id!);
+            final updatedProduct = product.copyWith(
+              averageRatingRaw:
+                  reviewData['rating_info']['average_rating'].toString(),
+              totalReviewsRaw:
+                  reviewData['rating_info']['total_reviews'] as int,
+              ratingInfo: reviewData['rating_info'] as Map<String, dynamic>,
+              reviews:
+                  (reviewData['reviews'] as List).cast<ProductReviewModel>(),
+            );
+            products.add(updatedProduct);
+          } else {
+            products.add(product);
+          }
+        }
+        return products;
       }
     } catch (e) {
       print('Error getting products by category: $e');
