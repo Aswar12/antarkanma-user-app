@@ -48,7 +48,7 @@ class _SearchInputFieldState extends State<SearchInputField> {
     final color = (_isFocused || _hasText) ? logoColorSecondary : Colors.grey;
     return Icon(
       Icons.search_outlined,
-      size: 20,
+      size: Dimenssions.iconSize20,
       color: color,
     );
   }
@@ -57,22 +57,22 @@ class _SearchInputFieldState extends State<SearchInputField> {
   Widget build(BuildContext context) {
     final borderColor = (_isFocused || _hasText)
         ? logoColorSecondary
-        : Colors.grey.withOpacity(0.2);
+        : Colors.grey.withOpacity(0.5);
     return Container(
-      height: 40, // Thinner height
+      height: Dimenssions.height45,
       decoration: BoxDecoration(
-        color: Colors.white, // Background color
-        borderRadius: BorderRadius.circular(12),
+        color: backgroundColor1,
+        borderRadius: BorderRadius.circular(Dimenssions.radius12),
         border: Border.all(
           color: borderColor,
-          width: 1.5,
+          width: 1.85,
         ),
       ),
       child: Row(
         children: [
-          const SizedBox(width: 16),
+          SizedBox(width: Dimenssions.width15),
           _buildIcon(),
-          const SizedBox(width: 12),
+          SizedBox(width: Dimenssions.width8),
           Expanded(
             child: Focus(
               onFocusChange: (hasFocus) {
@@ -81,20 +81,22 @@ class _SearchInputFieldState extends State<SearchInputField> {
                 });
               },
               child: TextFormField(
-                style: primaryTextStyle.copyWith(fontSize: 14),
+                style: primaryTextStyle.copyWith(fontSize: Dimenssions.font14),
                 controller: widget.controller,
                 focusNode: widget.focusNode,
                 onChanged: widget.onChanged,
                 decoration: InputDecoration(
                   hintText: widget.hintText,
-                  hintStyle: subtitleTextStyle.copyWith(fontSize: 14),
+                  hintStyle:
+                      subtitleTextStyle.copyWith(fontSize: Dimenssions.font14),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   errorBorder: InputBorder.none,
                   focusedErrorBorder: InputBorder.none,
                   isCollapsed: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: Dimenssions.height5),
                 ),
               ),
             ),
@@ -103,10 +105,10 @@ class _SearchInputFieldState extends State<SearchInputField> {
             GestureDetector(
               onTap: widget.onClear,
               child: Padding(
-                padding: const EdgeInsets.only(right: 16),
+                padding: EdgeInsets.only(right: Dimenssions.width10),
                 child: Icon(
                   Icons.close,
-                  size: 20,
+                  size: Dimenssions.iconSize20,
                   color: (_isFocused || _hasText)
                       ? logoColorSecondary
                       : Colors.grey,

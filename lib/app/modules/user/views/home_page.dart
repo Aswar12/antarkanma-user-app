@@ -238,29 +238,7 @@ class _HomePageState extends State<HomePage> {
               fontWeight: semiBold,
             ),
           ),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'Lihat Semua',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    color: logoColorSecondary,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: controller.forceRefreshFromServer,
-                icon: Icon(
-                  Icons.refresh,
-                  color: logoColorSecondary,
-                  size: Dimenssions.height22,
-                ),
-                tooltip: 'Perbarui data dari server',
-              ),
-            ],
-          ),
+          // Removed "Lihat Semua" and refresh button
         ],
       ),
     );
@@ -538,12 +516,10 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: backgroundColor1,
                   floating: true,
                   snap: true,
-                  pinned: false,
                   elevation: 0,
-                  toolbarHeight: 60,
-                  title: Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: Dimenssions.width5),
+                  toolbarHeight: kToolbarHeight,
+                  title: Container(
+                    margin: EdgeInsets.symmetric(vertical: Dimenssions.height2),
                     child: SearchInputField(
                       controller: controller.searchController,
                       hintText: 'Apa Ku AntarkanKi ?',
@@ -561,14 +537,18 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   actions: [
-                    Padding(
-                      padding: EdgeInsets.only(right: Dimenssions.width15),
+                    Container(
+                      margin: EdgeInsets.only(
+                        top: Dimenssions.height2,
+                        right: Dimenssions.width15,
+                        bottom: Dimenssions.height2,
+                      ),
                       child: Obx(() {
                         final user = _authService.getUser();
                         if (user == null) {
                           return Container(
-                            width: 40,
-                            height: 40,
+                            width: Dimenssions.height40,
+                            height: Dimenssions.height40,
                             decoration: BoxDecoration(
                               color: backgroundColor3,
                               shape: BoxShape.circle,
@@ -580,13 +560,13 @@ class _HomePageState extends State<HomePage> {
                             child: Icon(
                               Icons.person,
                               color: secondaryTextColor,
-                              size: 20,
+                              size: Dimenssions.iconSize20,
                             ),
                           );
                         }
                         return ProfileImage(
                           user: user,
-                          size: 40,
+                          size: Dimenssions.height40,
                         );
                       }),
                     ),
@@ -613,6 +593,7 @@ class _HomePageState extends State<HomePage> {
                     maxHeight: Dimenssions.height45,
                     child: Container(
                       color: backgroundColor1,
+                      alignment: Alignment.center,
                       child: _buildCategories(),
                     ),
                   ),
