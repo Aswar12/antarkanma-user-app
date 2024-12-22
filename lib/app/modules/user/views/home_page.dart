@@ -5,6 +5,7 @@ import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/widgets/category_widget.dart';
+import 'package:antarkanma/app/widgets/search_input_field.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -24,14 +25,48 @@ class _HomePageState extends State<HomePage> {
   final CarouselController carouselController = CarouselController();
   late HomePageController controller;
   final GlobalKey _carouselKey = GlobalKey();
+  final GlobalKey _popularTitleKey = GlobalKey();
   bool _isCategorySticky = false;
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     controller = Get.find<HomePageController>();
     _scrollController.addListener(_onScroll);
+    _searchFocusNode.addListener(_onSearchFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _searchFocusNode.removeListener(_onSearchFocusChange);
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchFocusChange() {
+    if (_searchFocusNode.hasFocus) {
+      _scrollToHidePopularProducts();
+    }
+  }
+
+  void _scrollToHidePopularProducts() {
+    double carouselHeight =
+        _carouselKey.currentContext?.findRenderObject()?.paintBounds?.height ??
+            0;
+    double titleHeight =
+        _popularTitleKey.currentContext?.size?.height ?? Dimenssions.height45;
+    double spacingHeight = Dimenssions.height10;
+    double totalScrollHeight = carouselHeight + titleHeight + spacingHeight;
+
+    _scrollController.animateTo(
+      totalScrollHeight,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
   }
 
   void _onScroll() {
@@ -45,150 +80,26 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () {
-        Get.toNamed('/search');
+    return SearchInputField(
+      controller: controller.searchController,
+      hintText: 'Apa Ku AntarkanKi ?',
+      focusNode: _searchFocusNode,
+      onClear: () {
+        controller.searchController.clear();
+        FocusScope.of(context).unfocus();
       },
-      child: Container(
-        height: Dimenssions.height45,
-        padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
-        decoration: BoxDecoration(
-          color: backgroundColor3,
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-          border: Border.all(
-            color: secondaryTextColor.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.search_outlined,
-              color: secondaryTextColor,
-              size: Dimenssions.height22,
-            ),
-            SizedBox(width: Dimenssions.width10),
-            Text(
-              'Apa Ku AntarkanKi ?',
-              style: secondaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-              ),
-            ),
-          ],
-        ),
-      ),
+      onChanged: (value) async {
+        if (value.isNotEmpty) {
+          await controller.performSearch();
+          _scrollToHidePopularProducts();
+        }
+      },
     );
   }
 
   Widget _buildCategories() {
     return const CategoryWidget();
-  }
-
-  Widget popularProductsTitle() {
-    return _buildTitle('Produk Populer');
-  }
-
-  Widget listProductsTitle() {
-    return _buildTitle('Daftar Produk');
-  }
-
-  Widget _buildTitle(String title) {
-    return Container(
-      margin: EdgeInsets.only(
-        top: Dimenssions.height15,
-        left: Dimenssions.width15,
-        right: Dimenssions.width15,
-        bottom: Dimenssions.height10,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font18,
-              fontWeight: semiBold,
-            ),
-          ),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'Lihat Semua',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    color: logoColorSecondary,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: controller.forceRefreshFromServer,
-                icon: Icon(
-                  Icons.refresh,
-                  color: logoColorSecondary,
-                  size: Dimenssions.height22,
-                ),
-                tooltip: 'Perbarui data dari server',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget popularProducts() {
-    return Column(
-      key: _carouselKey,
-      children: [
-        CarouselSlider.builder(
-          itemCount: controller.popularProducts.length,
-          options: CarouselOptions(
-            height: Dimenssions.pageView,
-            viewportFraction: 0.85,
-            enlargeCenterPage: true,
-            autoPlayCurve: Curves.fastOutSlowIn,
-            enlargeStrategy: CenterPageEnlargeStrategy.scale,
-            enlargeFactor: 0.15,
-            autoPlay: controller.popularProducts.length > 1,
-            autoPlayInterval: const Duration(seconds: 3),
-            onPageChanged: (index, reason) {
-              controller.updateCurrentIndex(index);
-            },
-            padEnds: true,
-          ),
-          itemBuilder: (context, index, realIndex) {
-            return _buildCarouselItem(index);
-          },
-        ),
-        SizedBox(height: Dimenssions.height10),
-        Obx(() => controller.popularProducts.isNotEmpty
-            ? AnimatedSmoothIndicator(
-                activeIndex: controller.currentIndex.value <
-                        controller.popularProducts.length
-                    ? controller.currentIndex.value
-                    : 0,
-                count: controller.popularProducts.length,
-                effect: WormEffect(
-                  activeDotColor: logoColorSecondary,
-                  dotColor: secondaryTextColor.withOpacity(0.2),
-                  dotHeight: Dimenssions.height10,
-                  dotWidth: Dimenssions.height10,
-                  type: WormType.thin,
-                ),
-              )
-            : const SizedBox()),
-      ],
-    );
   }
 
   Widget _buildCarouselItem(int index) {
@@ -300,25 +211,135 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStarRating(double? rating) {
-    final double actualRating = rating ?? 0.0;
-    int fullStars = actualRating.floor();
-    bool hasHalfStar = (actualRating - fullStars) >= 0.5;
+  Widget popularProductsTitle() {
+    return Container(
+      key: _popularTitleKey,
+      margin: EdgeInsets.only(
+        top: Dimenssions.height15,
+        left: Dimenssions.width15,
+        right: Dimenssions.width15,
+        bottom: Dimenssions.height10,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Produk Populer',
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font18,
+              fontWeight: semiBold,
+            ),
+          ),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () {},
+                child: Text(
+                  'Lihat Semua',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                    color: logoColorSecondary,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: controller.forceRefreshFromServer,
+                icon: Icon(
+                  Icons.refresh,
+                  color: logoColorSecondary,
+                  size: Dimenssions.height22,
+                ),
+                tooltip: 'Perbarui data dari server',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        if (index < fullStars) {
-          return Icon(Icons.star,
-              color: Colors.amber, size: Dimenssions.height18);
-        } else if (index == fullStars && hasHalfStar) {
-          return Icon(Icons.star_half,
-              color: Colors.amber, size: Dimenssions.height18);
-        } else {
-          return Icon(Icons.star_border,
-              color: Colors.amber, size: Dimenssions.height18);
-        }
-      }),
+  Widget popularProducts() {
+    return Column(
+      key: _carouselKey,
+      children: [
+        CarouselSlider.builder(
+          itemCount: controller.popularProducts.length,
+          options: CarouselOptions(
+            height: Dimenssions.pageView,
+            viewportFraction: 0.85,
+            enlargeCenterPage: true,
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enlargeStrategy: CenterPageEnlargeStrategy.scale,
+            enlargeFactor: 0.15,
+            autoPlay: controller.popularProducts.length > 1,
+            autoPlayInterval: const Duration(seconds: 3),
+            onPageChanged: (index, reason) {
+              controller.updateCurrentIndex(index);
+            },
+            padEnds: true,
+          ),
+          itemBuilder: (context, index, realIndex) {
+            return _buildCarouselItem(index);
+          },
+        ),
+        SizedBox(height: Dimenssions.height10),
+        Obx(() => controller.popularProducts.isNotEmpty
+            ? AnimatedSmoothIndicator(
+                activeIndex: controller.currentIndex.value <
+                        controller.popularProducts.length
+                    ? controller.currentIndex.value
+                    : 0,
+                count: controller.popularProducts.length,
+                effect: WormEffect(
+                  activeDotColor: logoColorSecondary,
+                  dotColor: secondaryTextColor.withOpacity(0.2),
+                  dotHeight: Dimenssions.height10,
+                  dotWidth: Dimenssions.height10,
+                  type: WormType.thin,
+                ),
+              )
+            : const SizedBox()),
+      ],
+    );
+  }
+
+  Widget listProductsTitle() {
+    return Container(
+      margin: EdgeInsets.only(
+        top: Dimenssions.height15,
+        left: Dimenssions.width15,
+        right: Dimenssions.width15,
+        bottom: Dimenssions.height10,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            controller.searchQuery.isEmpty
+                ? 'Daftar Produk'
+                : 'Hasil Pencarian',
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font18,
+              fontWeight: semiBold,
+            ),
+          ),
+          if (controller.searchQuery.isEmpty)
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {},
+                  child: Text(
+                    'Lihat Semua',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font14,
+                      color: logoColorSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -384,7 +405,6 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Product Name
                           Text(
                             product.name,
                             style: primaryTextStyle.copyWith(
@@ -395,7 +415,6 @@ class _HomePageState extends State<HomePage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: Dimenssions.height5),
-                          // Merchant Name
                           Row(
                             children: [
                               Icon(
@@ -417,7 +436,6 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           const Spacer(),
-                          // Rating
                           Row(
                             children: [
                               _buildStarRating(product.ratingInfo != null
@@ -435,7 +453,6 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           SizedBox(height: Dimenssions.height5),
-                          // Price
                           Text(
                             NumberFormat.currency(
                               locale: 'id',
@@ -460,10 +477,33 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildStarRating(double? rating) {
+    final double actualRating = rating ?? 0.0;
+    int fullStars = actualRating.floor();
+    bool hasHalfStar = (actualRating - fullStars) >= 0.5;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        if (index < fullStars) {
+          return Icon(Icons.star,
+              color: Colors.amber, size: Dimenssions.height18);
+        } else if (index == fullStars && hasHalfStar) {
+          return Icon(Icons.star_half,
+              color: Colors.amber, size: Dimenssions.height18);
+        } else {
+          return Icon(Icons.star_border,
+              color: Colors.amber, size: Dimenssions.height18);
+        }
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (controller.isLoading.value) {
+      // Only show loading for initial data load, not during search
+      if (controller.isLoading.value && controller.searchQuery.isEmpty) {
         return Scaffold(
           body: Center(
             child: CircularProgressIndicator(
@@ -488,16 +528,35 @@ class _HomePageState extends State<HomePage> {
                   snap: true,
                   pinned: false,
                   elevation: 0,
-                  title: _buildSearchBar(),
+                  toolbarHeight: 60,
+                  title: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: Dimenssions.width5),
+                    child: SearchInputField(
+                      controller: controller.searchController,
+                      hintText: 'Apa Ku AntarkanKi ?',
+                      focusNode: _searchFocusNode,
+                      onClear: () {
+                        controller.searchController.clear();
+                        FocusScope.of(context).unfocus();
+                      },
+                      onChanged: (value) async {
+                        if (value.isNotEmpty) {
+                          await controller.performSearch();
+                          _scrollToHidePopularProducts();
+                        }
+                      },
+                    ),
+                  ),
                   actions: [
                     Padding(
-                      padding: EdgeInsets.only(right: Dimenssions.width20),
+                      padding: EdgeInsets.only(right: Dimenssions.width15),
                       child: Obx(() {
                         final user = _authService.getUser();
                         if (user == null) {
                           return Container(
-                            width: Dimenssions.height45,
-                            height: Dimenssions.height45,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               color: backgroundColor3,
                               shape: BoxShape.circle,
@@ -509,13 +568,13 @@ class _HomePageState extends State<HomePage> {
                             child: Icon(
                               Icons.person,
                               color: secondaryTextColor,
-                              size: Dimenssions.height22,
+                              size: 20,
                             ),
                           );
                         }
                         return ProfileImage(
                           user: user,
-                          size: Dimenssions.height45,
+                          size: 40,
                         );
                       }),
                     ),
@@ -526,13 +585,15 @@ class _HomePageState extends State<HomePage> {
             body: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                SliverList(
-                  delegate: SliverChildListDelegate([
-                    popularProductsTitle(),
-                    popularProducts(),
-                    SizedBox(height: Dimenssions.height10),
-                  ]),
-                ),
+                if (controller.searchQuery.isEmpty) ...[
+                  SliverList(
+                    delegate: SliverChildListDelegate([
+                      popularProductsTitle(),
+                      popularProducts(),
+                      SizedBox(height: Dimenssions.height10),
+                    ]),
+                  ),
+                ],
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _SliverAppBarDelegate(

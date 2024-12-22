@@ -2,6 +2,7 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/category_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
+import 'package:antarkanma/app/data/providers/product_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/services/product_service.dart';
@@ -9,36 +10,127 @@ import 'package:antarkanma/app/services/product_service.dart';
 class HomePageController extends GetxController {
   final ProductService productService = Get.find<ProductService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
+  final ProductProvider _productProvider = ProductProvider();
 
   // Observable state variables
   final RxList<ProductModel> products = <ProductModel>[].obs;
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
+  final RxList<ProductModel> searchResults = <ProductModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool isRefreshing = false.obs;
   final RxString selectedCategory = "Semua".obs;
   final RxInt currentIndex = 0.obs;
+  final RxString searchQuery = ''.obs;
+  final TextEditingController searchController = TextEditingController();
 
   // Getters
   List<CategoryModel> get categories => _categoryService.categories;
   bool get isCategoriesLoading => _categoryService.isLoading.value;
-  List<ProductModel> get filteredProducts => products;
+  List<ProductModel> get filteredProducts =>
+      searchQuery.isEmpty ? products : searchResults;
 
   @override
   void onInit() {
     super.onInit();
     loadInitialData();
+    _setupSearchListener();
+  }
+
+  void _setupSearchListener() {
+    searchController.addListener(() {
+      searchQuery.value = searchController.text;
+      if (searchQuery.isNotEmpty) {
+        performSearch();
+      } else {
+        searchResults.clear();
+      }
+    });
+  }
+
+  Future<void> performSearch() async {
+    // Show local results first without loading state
+    List<ProductModel> localResults = productService
+        .getAllProductsFromStorage()
+        .where((product) =>
+            product.name
+                .toLowerCase()
+                .contains(searchQuery.value.toLowerCase()) ||
+            (product.merchant?.name ?? '')
+                .toLowerCase()
+                .contains(searchQuery.value.toLowerCase()))
+        .toList();
+    searchResults.assignAll(localResults);
+
+    // Then fetch from API in background without showing loading indicator
+    try {
+      final response = await _productProvider.getAllProducts(
+        query: searchQuery.value,
+        limit: 20,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        final List<dynamic> productList =
+            data is Map ? data['data'] as List : data as List;
+
+        final List<ProductModel> results = [];
+        for (var json in productList) {
+          final product = ProductModel.fromJson(json as Map<String, dynamic>);
+          if (product.id != null && product.ratingInfo == null) {
+            final reviewData =
+                await productService.getProductWithReviews(product.id!);
+            final updatedProduct = product.copyWith(
+              averageRatingRaw:
+                  reviewData['rating_info']['average_rating'].toString(),
+              totalReviewsRaw:
+                  reviewData['rating_info']['total_reviews'] as int,
+              ratingInfo: reviewData['rating_info'] as Map<String, dynamic>,
+              reviews:
+                  (reviewData['reviews'] as List).cast<ProductReviewModel>(),
+            );
+            results.add(updatedProduct);
+          } else {
+            results.add(product);
+          }
+        }
+        // Update results only if we got new data
+        if (results.isNotEmpty) {
+          searchResults.assignAll(results);
+        }
+      }
+    } catch (e) {
+      // Silent error handling - keep showing local results
+      print('Search API error: $e');
+    }
+  }
+
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
   }
 
   Future<void> loadInitialData() async {
     try {
       isLoading(true);
-      // Load all data in parallel
       await Future.wait([
         loadProducts(),
         _categoryService.loadCategories(),
         loadPopularProducts(),
       ]);
       selectedCategory.value = "Semua";
+    } finally {
+      isLoading(false);
+    }
+  }
+
+  Future<void> loadProducts() async {
+    try {
+      isLoading(true);
+      await productService.fetchProducts();
+      products.assignAll(productService.products);
+    } catch (e) {
+      _handleError('Failed to load products', e);
     } finally {
       isLoading(false);
     }
@@ -54,10 +146,8 @@ class HomePageController extends GetxController {
       popularProducts.assignAll(products);
     } catch (e) {
       _handleError('Failed to load popular products', e);
-      // Try to get from storage if API fails
       final storedProducts = productService.getAllProductsFromStorage();
       if (storedProducts.isNotEmpty) {
-        // Filter for products with high ratings
         final highRatedProducts = storedProducts
             .where((p) => (p.averageRating ?? 0) >= 4.0)
             .take(12)
@@ -73,11 +163,9 @@ class HomePageController extends GetxController {
       selectedCategory.value = categoryName;
 
       if (categoryName == "Semua") {
-        // For "Semua", always use products from local storage
         final storedProducts = productService.getAllProductsFromStorage();
         products.assignAll(storedProducts);
       } else {
-        // For specific category, fetch from API
         final category = _categoryService.categories
             .firstWhere((cat) => cat.name == categoryName);
         await productService.getProductsByCategory(category.id);
@@ -90,64 +178,23 @@ class HomePageController extends GetxController {
     }
   }
 
-  Future<void> loadProducts() async {
-    try {
-      isLoading(true);
-      await productService.fetchProducts();
-
-      // Ensure each product has rating info
-      final List<ProductModel> productsWithRatings = [];
-      for (var product in productService.products) {
-        if (product.id != null) {
-          if (product.ratingInfo == null) {
-            // If no rating info, fetch it
-            final reviewData =
-                await productService.getProductWithReviews(product.id!);
-            final updatedProduct = product.copyWith(
-              averageRatingRaw:
-                  reviewData['rating_info']['average_rating'].toString(),
-              totalReviewsRaw:
-                  reviewData['rating_info']['total_reviews'] as int,
-              ratingInfo: reviewData['rating_info'] as Map<String, dynamic>,
-              reviews:
-                  (reviewData['reviews'] as List).cast<ProductReviewModel>(),
-            );
-            productsWithRatings.add(updatedProduct);
-          } else {
-            productsWithRatings.add(product);
-          }
-        }
-      }
-      products.assignAll(productsWithRatings);
-    } catch (e) {
-      _handleError('Failed to load products', e);
-    } finally {
-      isLoading(false);
-    }
-  }
-
   Future<void> refreshProducts({bool showMessage = true}) async {
     if (isRefreshing.value) return;
 
     try {
       isRefreshing(true);
-
-      // Clear existing data first
       products.clear();
       popularProducts.clear();
+      searchResults.clear();
       _categoryService.categories.clear();
 
-      // Refresh all data
       await Future.wait([
         productService.refreshProducts(),
         _categoryService.loadCategories(),
         loadPopularProducts(),
       ]);
 
-      // Update products list
       products.assignAll(productService.products);
-
-      // Reset category filter to "Semua"
       selectedCategory.value = "Semua";
 
       if (showMessage) {
@@ -162,13 +209,10 @@ class HomePageController extends GetxController {
       }
     } catch (e) {
       _handleError('Gagal memperbarui data', e);
-
-      // If refresh fails, try to load from local storage
       try {
-        await productService.fetchProducts();
+        await loadProducts();
         await _categoryService.loadCategories();
         await loadPopularProducts();
-        products.assignAll(productService.products);
       } catch (localError) {
         _handleError('Gagal memuat data lokal', localError);
       }
@@ -178,16 +222,11 @@ class HomePageController extends GetxController {
     }
   }
 
-  // Method to force refresh from server
   Future<void> forceRefreshFromServer() async {
     try {
       isLoading(true);
-
-      // Clear local storage for products and categories
       await productService.clearLocalStorage();
       await _categoryService.clearLocalStorage();
-
-      // Fetch fresh data from server
       await refreshProducts(showMessage: true);
     } catch (e) {
       _handleError('Gagal memperbarui data dari server', e);
@@ -208,30 +247,6 @@ class HomePageController extends GetxController {
       icon: const Icon(Icons.error, color: Colors.white),
     );
   }
-
-  List<ProductModel> searchProducts(String query) {
-    if (query.isEmpty) return products;
-    return products
-        .where((product) =>
-            product.name.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-  }
-
-  void sortProducts({required String sortBy, bool ascending = true}) {
-    switch (sortBy) {
-      case 'name':
-        products.sort((a, b) =>
-            ascending ? a.name.compareTo(b.name) : b.name.compareTo(a.name));
-        break;
-      case 'price':
-        products.sort((a, b) => ascending
-            ? a.price.compareTo(b.price)
-            : b.price.compareTo(a.price));
-        break;
-    }
-  }
-
-  Future<void> retryLoading() => loadProducts();
 
   void updateCurrentIndex(int index) {
     if (popularProducts.isNotEmpty) {

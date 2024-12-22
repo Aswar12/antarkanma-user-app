@@ -40,11 +40,26 @@ class ProductProvider {
     );
   }
 
-  // Get all products
-  Future<Response> getAllProducts({String? token}) async {
+  // Get all products with search and filter capabilities
+  Future<Response> getAllProducts({
+    String? query,
+    double? priceFrom,
+    double? priceTo,
+    int? categoryId,
+    int? limit,
+    String? token,
+  }) async {
     try {
+      Map<String, dynamic> queryParams = {};
+      if (query != null && query.isNotEmpty) queryParams['name'] = query;
+      if (priceFrom != null) queryParams['price_from'] = priceFrom;
+      if (priceTo != null) queryParams['price_to'] = priceTo;
+      if (categoryId != null) queryParams['categories'] = categoryId;
+      if (limit != null) queryParams['limit'] = limit;
+
       return await _dio.get(
         '/products',
+        queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
       );
     } catch (e) {
@@ -64,59 +79,61 @@ class ProductProvider {
     }
   }
 
-  // Create product
-  Future<Response> createProduct(
-      Map<String, dynamic> productData, String token) async {
-    try {
-      return await _dio.post(
-        '/products',
-        data: productData,
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to create product: $e');
-    }
-  }
-
-  // Update product
-  Future<Response> updateProduct(
-    int id,
-    Map<String, dynamic> productData,
-    String token,
-  ) async {
-    try {
-      return await _dio.put(
-        '/products/$id',
-        data: productData,
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to update product: $e');
-    }
-  }
-
-  // Delete product
-  Future<Response> deleteProduct(int id, String token) async {
-    try {
-      return await _dio.delete(
-        '/products/$id',
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to delete product: $e');
-    }
-  }
-
   // Get products by category
   Future<Response> getProductsByCategory(int categoryId,
       {String? token}) async {
     try {
       return await _dio.get(
-        '/products/category/$categoryId',
+        '/products',
+        queryParameters: {'categories': categoryId},
         options: token != null ? _getAuthOptions(token) : null,
       );
     } catch (e) {
       throw Exception('Failed to fetch products by category: $e');
+    }
+  }
+
+  // Get popular products
+  Future<Response> getPopularProducts({
+    int? limit,
+    int? categoryId,
+    double? minRating,
+    int? minReviews,
+    String? token,
+  }) async {
+    try {
+      Map<String, dynamic> queryParams = {};
+      if (limit != null) queryParams['limit'] = limit;
+      if (categoryId != null) queryParams['category_id'] = categoryId;
+      if (minRating != null) queryParams['min_rating'] = minRating;
+      if (minReviews != null) queryParams['min_reviews'] = minReviews;
+
+      return await _dio.get(
+        '/products/popular',
+        queryParameters: queryParams,
+        options: token != null ? _getAuthOptions(token) : null,
+      );
+    } catch (e) {
+      throw Exception('Failed to fetch popular products: $e');
+    }
+  }
+
+  // Get product reviews
+  Future<Response> getProductReviews(int productId,
+      {String? token, int? rating}) async {
+    try {
+      Map<String, dynamic> queryParams = {};
+      if (rating != null && rating > 0) {
+        queryParams['rating'] = rating;
+      }
+
+      return await _dio.get(
+        '/products/$productId/reviews',
+        queryParameters: queryParams,
+        options: token != null ? _getAuthOptions(token) : null,
+      );
+    } catch (e) {
+      throw Exception('Failed to fetch product reviews: $e');
     }
   }
 
@@ -157,120 +174,6 @@ class ProductProvider {
       );
     } catch (e) {
       throw Exception('Failed to delete review: $e');
-    }
-  }
-
-  // Get user's reviews
-  Future<Response> getUserReviews(String token) async {
-    try {
-      return await _dio.get(
-        '/user/reviews',
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to fetch user reviews: $e');
-    }
-  }
-
-  // Get product reviews
-  Future<Response> getProductReviews(int productId,
-      {String? token, int? rating}) async {
-    try {
-      Map<String, dynamic> queryParams = {};
-      if (rating != null && rating > 0) {
-        queryParams['rating'] = rating;
-      }
-
-      return await _dio.get(
-        '/products/$productId/reviews',
-        queryParameters: queryParams,
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-    } catch (e) {
-      throw Exception('Failed to fetch product reviews: $e');
-    }
-  }
-
-  Future<Response> getPopularProducts({
-    int? limit,
-    int? categoryId,
-    double? minRating,
-    int? minReviews,
-    String? token,
-  }) async {
-    try {
-      Map<String, dynamic> queryParams = {};
-      if (limit != null) queryParams['limit'] = limit;
-      if (categoryId != null) queryParams['category_id'] = categoryId;
-      if (minRating != null) queryParams['min_rating'] = minRating;
-      if (minReviews != null) queryParams['min_reviews'] = minReviews;
-
-      return await _dio.get(
-        '/products/popular',
-        queryParameters: queryParams,
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-    } catch (e) {
-      throw Exception('Failed to fetch popular products: $e');
-    }
-  }
-
-  // Get products by merchant
-  Future<Response> getProductsByMerchant(int merchantId,
-      {String? token}) async {
-    try {
-      return await _dio.get(
-        '/products/merchant/$merchantId',
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-    } catch (e) {
-      throw Exception('Failed to fetch products by merchant: $e');
-    }
-  }
-
-  // Search products
-  Future<Response> searchProducts(String query, {String? token}) async {
-    try {
-      return await _dio.get(
-        '/products/search',
-        queryParameters: {'q': query},
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-    } catch (e) {
-      throw Exception('Failed to search products: $e');
-    }
-  }
-
-  // Upload product image
-  Future<Response> uploadProductImage(
-    int productId,
-    FormData imageData,
-    String token,
-  ) async {
-    try {
-      return await _dio.post(
-        '/products/$productId/images',
-        data: imageData,
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to upload product image: $e');
-    }
-  }
-
-  // Delete product image
-  Future<Response> deleteProductImage(
-    int productId,
-    int imageId,
-    String token,
-  ) async {
-    try {
-      return await _dio.delete(
-        '/products/$productId/images/$imageId',
-        options: _getAuthOptions(token),
-      );
-    } catch (e) {
-      throw Exception('Failed to delete product image: $e');
     }
   }
 
