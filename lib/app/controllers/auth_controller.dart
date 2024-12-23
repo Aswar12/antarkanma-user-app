@@ -42,6 +42,8 @@ class AuthController extends GetxController {
   }
 
   Future<void> login() async {
+    // Centralized login logic
+    if (isLoading.value) return; // Prevent multiple login attempts
     isLoading.value = true;
     try {
       final success = await _authService.login(
@@ -60,13 +62,14 @@ class AuthController extends GetxController {
         String role = _authService.userRole;
         switch (role) {
           case 'USER':
-            Get.offAllNamed(Routes.main);
+            print('Navigating to USER main page');
+            Get.offAllNamed(Routes.userMainPage);
             break;
           case 'MERCHANT':
-            Get.offAllNamed(Routes.merchantHome);
+            Get.offAllNamed(Routes.merchantMainPage);
             break;
           case 'COURIER':
-            Get.offAllNamed(Routes.courierHome);
+            Get.offAllNamed(Routes.courierMainPage);
             break;
           default:
             Get.offAllNamed(Routes.login);

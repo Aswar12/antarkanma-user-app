@@ -1,12 +1,16 @@
-// lib/app/routes/app_pages.dart
-
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/modules/auth/auth_binding.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
 import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
+import 'package:antarkanma/app/modules/courier/views/courier_main_page.dart';
+import 'package:antarkanma/app/modules/courier/views/courier_profile_page.dart';
+import 'package:antarkanma/app/modules/merchant/views/merchant_main_page.dart';
+import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
 import 'package:antarkanma/app/modules/splash/views/splash_page.dart';
 import 'package:antarkanma/app/modules/user/user_binding.dart';
+import 'package:antarkanma/app/modules/merchant/merchant_binding.dart';
+import 'package:antarkanma/app/modules/merchant/courier_binding.dart'; // Ensure this import is present
 import 'package:antarkanma/app/modules/user/views/add_edit_address_page.dart';
 import 'package:antarkanma/app/modules/user/views/address_page.dart';
 import 'package:antarkanma/app/modules/user/views/address_selection_page.dart';
@@ -27,17 +31,24 @@ abstract class Routes {
   static const login = '/login';
   static const register = '/register';
   static const checkoutSuccess = '/checkout-success';
-
+  // Merchant Profile Page
+  static const String merchantProfilePage = '/merchantprofile';
+// Courier Profile Page
+  static const String courierProfilePage = '/courierprofile';
   // User routes
   static const home = '/home';
   static const main = '/main';
-  static const profile = '/home/profile';
-  static const chat = '/home/chat';
+  static const profile = '/usermain/profile';
+  static const chat = '/usermain/chat';
   static const cart = '/cart';
-  static const order = '/home/order';
-  static const orderHistory = '/home/order-history';
+  static const order = '/usermain/order';
+  static const orderHistory = '/usermain/order-history';
   static const productDetail = '/product-detail';
-  // Merchant routes
+  // User routes
+  static const String userMainPage = '/usermain';
+  static const String merchantMainPage = '/merchantmain';
+  static const String courierMainPage = '/couriermain';
+
   static const merchantHome = '/merchant';
   static const merchantProducts = '/merchant/products';
   static const merchantOrders = '/merchant/orders';
@@ -86,7 +97,7 @@ class AppPages {
       }),
     ),
     GetPage(
-      name: Routes.main,
+      name: Routes.userMainPage,
       page: () => const UserMainPage(),
       binding: UserBinding(),
       children: [
@@ -138,5 +149,27 @@ class AppPages {
         ),
       ],
     ),
+    GetPage(
+        name: Routes.merchantMainPage,
+        page: () => const MerchantMainPage(),
+        binding: MerchantBinding(),
+        children: [
+          GetPage(
+            name: Routes.merchantProfilePage,
+            page: () => const MerchantProfilePage(),
+            binding: MerchantBinding(),
+          ),
+        ]),
+    GetPage(
+        name: Routes.courierMainPage,
+        page: () => const CourierMainPage(),
+        binding: CourierBinding(),
+        children: [
+          GetPage(
+            name: Routes.courierProfilePage,
+            page: () => const CourierProfilePage(),
+            binding: CourierBinding(),
+          ),
+        ]),
   ];
 }

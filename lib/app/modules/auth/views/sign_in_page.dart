@@ -30,6 +30,8 @@ class SignInPage extends GetView<AuthController> {
                   signButton(),
                   SizedBox(height: Dimenssions.height30),
                   footer(),
+                  SizedBox(height: Dimenssions.height20),
+                  quickLoginButtons(), // Add quick login buttons
                 ],
               ),
             ),
@@ -176,6 +178,40 @@ class SignInPage extends GetView<AuthController> {
                 ),
         ),
       ),
+    );
+  }
+
+  // New method to create quick login buttons
+  Widget quickLoginButtons() {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            controller.identifierController.text = 'aswarthedoctor@gmail.com';
+            controller.passwordController.text = 'aswar123';
+            controller.login(); // Trigger login
+          },
+          child: Text('Login as aswarthedoctor@gmail.com'),
+        ),
+        SizedBox(height: Dimenssions.height10),
+        ElevatedButton(
+          onPressed: () {
+            controller.identifierController.text = 'merchant@test.com';
+            controller.passwordController.text = 'aswar123';
+            controller.login(); // Trigger login
+          },
+          child: Text('Login as merchant@test.com'),
+        ),
+        SizedBox(height: Dimenssions.height10),
+        ElevatedButton(
+          onPressed: () {
+            controller.identifierController.text = 'courier@test.com';
+            controller.passwordController.text = 'aswar123';
+            controller.login(); // Trigger login
+          },
+          child: Text('Login as courier@test.com'),
+        ),
+      ],
     );
   }
 

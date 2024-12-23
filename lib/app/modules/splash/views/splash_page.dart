@@ -28,7 +28,6 @@ class _SplashPageState extends State<SplashPage> {
       // Load data in parallel
       await Future.wait([
         // Check auth status
-        authService.checkLoginStatus(),
 
         // Load products (will check local storage first)
         productService.fetchProducts(),

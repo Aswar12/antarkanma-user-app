@@ -20,50 +20,6 @@ class AuthService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    checkLoginStatus();
-    tryAutoLogin();
-  }
-
-  Future<void> checkLoginStatus() async {
-    print('\n=== Auth Service Debug ===');
-    final token = _storageService.getToken();
-    final userData = _storageService.getUser();
-
-    print('Checking login status:');
-    print('- Token exists: ${token != null}');
-    print('- User data exists: ${userData != null}');
-
-    if (token != null && userData != null) {
-      print('Verifying token...');
-      final isValidToken = await verifyToken(token);
-      print('- Token valid: $isValidToken');
-
-      if (isValidToken) {
-        isLoggedIn.value = true;
-        currentUser.value = UserModel.fromJson(userData);
-        print('- User role: ${currentUser.value?.role}');
-        _redirectBasedOnRole();
-      } else {
-        print('Token invalid, trying auto login...');
-        await tryAutoLogin();
-      }
-    } else {
-      print('No stored credentials found');
-    }
-  }
-
-  Future<void> tryAutoLogin() async {
-    if (!isLoggedIn.value && _storageService.getRememberMe()) {
-      final credentials = _storageService.getSavedCredentials();
-      if (credentials != null) {
-        await login(
-          credentials['identifier']!,
-          credentials['password']!,
-          rememberMe: true,
-          isAutoLogin: true,
-        );
-      }
-    }
   }
 
   Future<bool> verifyToken(String token) async {
@@ -214,13 +170,13 @@ class AuthService extends GetxService {
 
     switch (currentUser.value!.role) {
       case 'USER':
-        Get.offAllNamed(Routes.main);
+        Get.offAllNamed(Routes.userMainPage);
         break;
       case 'MERCHANT':
-        Get.offAllNamed(Routes.merchantHome);
+        Get.offAllNamed(Routes.merchantMainPage);
         break;
       case 'COURIER':
-        Get.offAllNamed(Routes.courierHome);
+        Get.offAllNamed(Routes.courierMainPage);
         break;
       default:
         Get.offAllNamed(Routes.login);
