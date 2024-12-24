@@ -80,7 +80,6 @@ class CourierMainPage extends GetView<CourierController> {
             unselectedItemColor: secondaryTextColor,
             currentIndex: controller.currentIndex.value,
             onTap: (index) {
-              controller.currentIndex.value = index; // Update the current index
               controller.changePage(index); // Update the current index
             },
             type: BottomNavigationBarType.fixed,

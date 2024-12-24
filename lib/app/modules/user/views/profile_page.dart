@@ -44,12 +44,12 @@ class ProfilePage extends GetView<AuthController> {
 
   Widget _buildHeader(AuthService authService) {
     final user = authService.getUser();
-    return Container(
+    return SizedBox(
       height: Dimenssions.height250,
       child: Stack(
         children: [
           // Background Image with Overlay
-          Container(
+          SizedBox(
             width: double.infinity,
             height: Dimenssions.height250,
             child: user?.profilePhotoUrl != null
@@ -237,7 +237,7 @@ class ProfilePage extends GetView<AuthController> {
                   ),
                 ),
                 SizedBox(height: Dimenssions.height15),
-                Container(
+                SizedBox(
                   height: Dimenssions.height45,
                   width: double.infinity,
                   child: TextButton(
@@ -322,7 +322,7 @@ class ProfilePage extends GetView<AuthController> {
             ),
           ]),
           SizedBox(height: Dimenssions.height20),
-          Container(
+          SizedBox(
             height: Dimenssions.height45,
             width: double.infinity,
             child: TextButton(

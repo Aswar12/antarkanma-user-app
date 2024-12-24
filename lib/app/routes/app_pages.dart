@@ -3,14 +3,15 @@ import 'package:antarkanma/app/modules/auth/auth_binding.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
 import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
+import 'package:antarkanma/app/modules/courier/courier_binding.dart';
 import 'package:antarkanma/app/modules/courier/views/courier_main_page.dart';
 import 'package:antarkanma/app/modules/courier/views/courier_profile_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_main_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
+import 'package:antarkanma/app/modules/merchant/merchant_binding.dart';
 import 'package:antarkanma/app/modules/splash/views/splash_page.dart';
 import 'package:antarkanma/app/modules/user/user_binding.dart';
-import 'package:antarkanma/app/modules/merchant/merchant_binding.dart';
-import 'package:antarkanma/app/modules/merchant/courier_binding.dart'; // Ensure this import is present
+// Ensure this import is present
 import 'package:antarkanma/app/modules/user/views/add_edit_address_page.dart';
 import 'package:antarkanma/app/modules/user/views/address_page.dart';
 import 'package:antarkanma/app/modules/user/views/address_selection_page.dart';
@@ -150,26 +151,27 @@ class AppPages {
       ],
     ),
     GetPage(
-        name: Routes.merchantMainPage,
-        page: () => const MerchantMainPage(),
-        binding: MerchantBinding(),
-        children: [
-          GetPage(
-            name: Routes.merchantProfilePage,
-            page: () => const MerchantProfilePage(),
-            binding: MerchantBinding(),
-          ),
-        ]),
+      name: Routes.merchantMainPage,
+      page: () => const MerchantMainPage(),
+      binding: MerchantBinding(),
+      children: [
+        GetPage(
+          name: Routes.merchantProfilePage,
+          page: () => MerchantProfilePage(),
+          binding: MerchantBinding(),
+        ),
+      ],
+    ),
     GetPage(
-        name: Routes.courierMainPage,
-        page: () => const CourierMainPage(),
-        binding: CourierBinding(),
-        children: [
-          GetPage(
-            name: Routes.courierProfilePage,
-            page: () => const CourierProfilePage(),
-            binding: CourierBinding(),
-          ),
-        ]),
+      name: Routes.courierMainPage,
+      page: () => const CourierMainPage(),
+      binding: CourierBinding(),
+      children: [
+        GetPage(
+          name: Routes.courierProfilePage,
+          page: () => const CourierProfilePage(),
+        ),
+      ],
+    ),
   ];
 }

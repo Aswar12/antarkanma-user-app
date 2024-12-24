@@ -63,12 +63,6 @@ class TransactionProvider {
   // Ganti _handleForceLogout dengan metode yang lebih sederhana
 
   void _handleError(dio.DioException error) {
-    print('\n=== API Error Debug ===');
-    print('Status code: ${error.response?.statusCode}');
-    print('Response data: ${error.response?.data}');
-    print('Error type: ${error.type}');
-    print('Error message: ${error.message}');
-
     String message;
     switch (error.response?.statusCode) {
       case 401:

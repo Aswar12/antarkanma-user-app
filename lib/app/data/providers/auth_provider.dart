@@ -193,7 +193,6 @@ class AuthProvider {
     }
   }
 
-  /// Error Handling
   void _handleError(DioException error) {
     String message;
     switch (error.response?.statusCode) {

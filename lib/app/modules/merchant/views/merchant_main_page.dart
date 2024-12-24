@@ -1,8 +1,7 @@
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_home_page.dart';
+import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/order_management_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/product_management_view.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,8 +15,7 @@ class MerchantMainPage extends GetView<MerchantController> {
 
     final List<Widget> pages = [
       const MerchantHomePage(),
-      const ProductManagementPage(),
-      const OrderManagementPage(),
+      const MerchantOrderPage(),
       MerchantProfilePage(),
     ];
 
@@ -33,17 +31,17 @@ class MerchantMainPage extends GetView<MerchantController> {
     }
 
     BottomNavigationBarItem createNavItem(
-        String assetPath, String label, int index) {
+        IconData icon, String label, int index) {
       return BottomNavigationBarItem(
         icon: Container(
           margin: EdgeInsets.only(top: Dimenssions.height5),
           child: GetX<MerchantController>(
-            builder: (_) => Image.asset(
-              assetPath,
-              width: Dimenssions.height22,
+            builder: (_) => Icon(
+              icon,
+              size: Dimenssions.height22,
               color: controller.currentIndex.value == index
-                  ? logoColorSecondary
-                  : secondaryTextColor,
+                  ? logoColor
+                  : Colors.grey,
             ),
           ),
         ),
@@ -55,7 +53,7 @@ class MerchantMainPage extends GetView<MerchantController> {
       return GetX<MerchantController>(
         builder: (_) => Container(
           decoration: BoxDecoration(
-            color: backgroundColor2,
+            color: backgroundColor1,
             boxShadow: controller.currentIndex.value == 1
                 ? []
                 : [
@@ -73,24 +71,21 @@ class MerchantMainPage extends GetView<MerchantController> {
                     ),
                   ],
           ),
-          child: BottomNavigationBar(
-            selectedItemColor: logoColorSecondary,
-            unselectedItemColor: secondaryTextColor,
-            currentIndex: controller.currentIndex.value,
-            onTap: (index) {
-              controller.currentIndex.value = index; // Update the current index
-              Get.to(pages[
-                  index]); // Navigate to the new page without the bottom navigation bar
-            },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: backgroundColor2,
-            elevation: 0,
-            items: [
-              createNavItem('assets/icon_home.png', 'Home', 0),
-              createNavItem('assets/list.png', 'Products', 1),
-              createNavItem('assets/icon_cart.png', 'Orders', 2),
-              createNavItem('assets/icon_profile.png', 'Profile', 3),
-            ],
+          child: ClipRRect(
+            child: BottomNavigationBar(
+              selectedItemColor: logoColor,
+              unselectedItemColor: Colors.grey,
+              currentIndex: controller.currentIndex.value,
+              onTap: (index) => controller.changePage(index),
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: backgroundColor1,
+              elevation: 0,
+              items: [
+                createNavItem(Icons.home, 'Home', 0),
+                createNavItem(Icons.list, 'Orders', 1), // Updated here
+                createNavItem(Icons.person, 'Profile', 2),
+              ],
+            ),
           ),
         ),
       );
@@ -105,9 +100,9 @@ class MerchantMainPage extends GetView<MerchantController> {
         return true;
       },
       child: Scaffold(
-        backgroundColor: backgroundColor1,
-        body: body(),
+        backgroundColor: backgroundColor3,
         bottomNavigationBar: customBottomNav(),
+        body: body(),
       ),
     );
   }

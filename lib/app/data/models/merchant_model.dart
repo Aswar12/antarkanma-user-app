@@ -5,6 +5,8 @@ class MerchantModel {
   final String address;
   final String phoneNumber;
   final String? status; // Menambahkan status merchant
+  final String? description; // New field for merchant description
+  final String? logo; // New field for merchant logo
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -15,6 +17,8 @@ class MerchantModel {
     required this.address,
     required this.phoneNumber,
     this.status = 'ACTIVE', // Default status
+    this.description, // Accept description
+    this.logo, // Accept logo
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,11 +43,13 @@ class MerchantModel {
 
       return MerchantModel(
         id: parseInt(json['id']),
-        ownerId: parseInt(json['owner_id']) ?? 0,
+        ownerId: parseInt(json['owner_id'].toString()) ?? 0,
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
         phoneNumber: json['phone_number']?.toString() ?? '',
         status: json['status']?.toString() ?? 'ACTIVE',
+        description: json['description']?.toString(), // Parse description
+        logo: json['logo']?.toString(), // Parse logo
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
             : DateTime.now(),
@@ -60,6 +66,8 @@ class MerchantModel {
         name: '',
         address: '',
         phoneNumber: '',
+        description: null, // Default value for description
+        logo: null, // Default value for logo
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -74,6 +82,8 @@ class MerchantModel {
       'address': address,
       'phone_number': phoneNumber,
       'status': status,
+      'description': description, // Include description
+      'logo': logo, // Include logo
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -87,6 +97,8 @@ class MerchantModel {
     String? address,
     String? phoneNumber,
     String? status,
+    String? description,
+    String? logo,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -97,6 +109,8 @@ class MerchantModel {
       address: address ?? this.address,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       status: status ?? this.status,
+      description: description ?? this.description,
+      logo: logo ?? this.logo,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -122,6 +136,11 @@ class MerchantModel {
   // Method untuk mendapatkan ringkasan merchant
   String get summary => '$name - $address';
 
+  // New getters
+  String? get merchantLogoUrl => logo; // Placeholder for merchant logo URL
+  String get merchantName => name; // Getter for merchant name
+  String get merchantContact => phoneNumber; // Getter for merchant contact
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -132,7 +151,9 @@ class MerchantModel {
         other.name == name &&
         other.address == address &&
         other.phoneNumber == phoneNumber &&
-        other.status == status;
+        other.status == status &&
+        other.description == description &&
+        other.logo == logo;
   }
 
   @override
@@ -142,11 +163,13 @@ class MerchantModel {
         name.hashCode ^
         address.hashCode ^
         phoneNumber.hashCode ^
-        status.hashCode;
+        status.hashCode ^
+        description.hashCode ^
+        logo.hashCode;
   }
 
   @override
   String toString() {
-    return 'MerchantModel(id: $id, name: $name, status: $status)';
+    return 'MerchantModel(id: $id, name: $name, status: $status, description: $description, logo: $logo)';
   }
 }
