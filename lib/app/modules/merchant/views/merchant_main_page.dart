@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_home_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
+import 'package:antarkanma/app/modules/merchant/views/product_management_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +15,9 @@ class MerchantMainPage extends GetView<MerchantController> {
     final MerchantController controller = Get.find();
 
     final List<Widget> pages = [
-      const MerchantHomePage(),
+      MerchantHomePage(),
       const MerchantOrderPage(),
+      ProductManagementPage(), // Added product management page
       MerchantProfilePage(),
     ];
 
@@ -83,7 +85,9 @@ class MerchantMainPage extends GetView<MerchantController> {
               items: [
                 createNavItem(Icons.home, 'Home', 0),
                 createNavItem(Icons.list, 'Orders', 1), // Updated here
-                createNavItem(Icons.person, 'Profile', 2),
+                createNavItem(
+                    Icons.inventory, 'Products', 2), // New item for products
+                createNavItem(Icons.person, 'Profile', 3),
               ],
             ),
           ),

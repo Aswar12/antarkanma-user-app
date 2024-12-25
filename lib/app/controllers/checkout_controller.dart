@@ -4,8 +4,6 @@ import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
-import 'package:flutter/material.dart';
-import 'package:antarkanma/app/services/order_item_service.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';

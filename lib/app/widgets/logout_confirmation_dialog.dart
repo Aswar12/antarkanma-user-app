@@ -1,5 +1,3 @@
-// lib/app/widgets/logout_confirmation_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/theme.dart';
@@ -13,26 +11,72 @@ class LogoutConfirmationDialog extends StatelessWidget {
     final AuthController authController = Get.find<AuthController>();
 
     return AlertDialog(
-      title: Text('Konfirmasi Logout', style: primaryTextStyle),
-      content:
-          Text('Apakah Anda yakin ingin keluar?', style: subtitleTextStyle),
-      backgroundColor: backgroundColor3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      actions: <Widget>[
-        TextButton(
-          child: Text('Batal', style: primaryTextStyle),
-          onPressed: () => Get.back(),
+      title: Text(
+        'Konfirmasi Logout',
+        style: primaryTextStyle.copyWith(
+          fontSize: 18,
+          fontWeight: semiBold,
         ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: logoColorSecondary),
-          onPressed: () {
-            Get.back();
-            authController.logout();
-          },
-          child: Text(
-            'KeluarMi',
-            style: textwhite,
-          ),
+      ),
+      content: Text(
+        'Apakah Anda yakin ingin keluar?',
+        style: subtitleTextStyle.copyWith(
+          fontSize: 14,
+        ),
+      ),
+      backgroundColor: backgroundColor3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      actions: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Cancel Button
+            SizedBox(
+              width: 100,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () => Get.back(),
+                child: Text(
+                  'Batal',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            // Logout Button
+            SizedBox(
+              width: 100,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: logoColorSecondary,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  Get.back();
+                  authController.logout();
+                },
+                child: Text(
+                  'Keluar',
+                  style: textwhite.copyWith(
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

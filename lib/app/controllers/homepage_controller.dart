@@ -148,7 +148,7 @@ class HomePageController extends GetxController {
       final storedProducts = productService.getAllProductsFromStorage();
       if (storedProducts.isNotEmpty) {
         final highRatedProducts =
-            storedProducts.where((p) => (p.averageRating ?? 0) >= 4.0).toList();
+            storedProducts.where((p) => (p.averageRating) >= 4.0).toList();
         popularProducts.assignAll(highRatedProducts);
       }
     }
