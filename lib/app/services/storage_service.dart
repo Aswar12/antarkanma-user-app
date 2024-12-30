@@ -411,7 +411,15 @@ class StorageService {
     return totalSize;
   }
 
-  // Method to get all values
+  // Method to save merchant data
+  Future<void> saveMerchantData(Map<String, dynamic> merchantData) async {
+    await saveMap(_merchantKey, merchantData);
+  }
+
+  Map<String, dynamic>? getMerchantData() {
+    return getMap(_merchantKey);
+  }
+
   List<dynamic> getAllValues() {
     final values = _storage.getValues();
     return values.map((value) {

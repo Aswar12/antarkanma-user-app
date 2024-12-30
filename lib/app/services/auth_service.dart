@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:io';
 import 'package:antarkanma/app/data/models/user_model.dart';
 import 'package:antarkanma/app/data/providers/auth_provider.dart';
@@ -92,6 +90,7 @@ class AuthService extends GetxService {
         }
 
         currentUser.value = UserModel.fromJson(userData);
+        print("User logged in successfully: ${currentUser.value}"); // Debug log
         isLoggedIn.value = true;
         _redirectBasedOnRole();
 
@@ -491,7 +490,8 @@ class AuthService extends GetxService {
     }
   }
 
-  // Getter Methods
+  
+
   String? getToken() => _storageService.getToken();
   UserModel? getUser() => currentUser.value;
   String get userName => currentUser.value?.name ?? '';

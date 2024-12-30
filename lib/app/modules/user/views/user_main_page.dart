@@ -17,6 +17,14 @@ class UserMainPage extends GetView<UserMainController> {
     // Pastikan controller sudah diinisialisasi
     final UserMainController controller = Get.find();
 
+    // Set initial page if provided in arguments
+    if (Get.arguments != null && Get.arguments is Map<String, dynamic>) {
+      final args = Get.arguments as Map<String, dynamic>;
+      if (args.containsKey('initialPage')) {
+        controller.changePage(args['initialPage'] as int);
+      }
+    }
+
     final List<Widget> pages = [
       const HomePage(),
       const CartPage(),

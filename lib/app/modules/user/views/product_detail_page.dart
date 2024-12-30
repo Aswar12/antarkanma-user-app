@@ -118,7 +118,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ]
       };
 
-      Get.toNamed('/main/checkout', arguments: {
+      Get.toNamed('/usermain/checkout', arguments: {
         'merchantItems': merchantItems,
         'type': 'direct_buy',
       });

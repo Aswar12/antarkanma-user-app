@@ -45,6 +45,7 @@ class OrderManagementPageState extends State<OrderManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor1,
       appBar: AppBar(
         title: Text(
           'Manajemen Pesanan',
@@ -64,6 +65,7 @@ class OrderManagementPageState extends State<OrderManagementPage> {
   Widget _buildOrderCard(Map<String, dynamic> order) {
     return Card(
       margin: EdgeInsets.only(bottom: Dimenssions.height16),
+      color: backgroundColor1,
       child: InkWell(
         onTap: () => _showOrderDetails(order),
         child: Padding(
@@ -336,6 +338,7 @@ class OrderManagementPageState extends State<OrderManagementPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor1,
         title: Text('Proses Pesanan'),
         content: Text('Apakah Anda yakin ingin memproses pesanan ini?'),
         actions: [

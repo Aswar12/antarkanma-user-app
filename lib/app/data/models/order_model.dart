@@ -59,7 +59,7 @@ class OrderModel {
       userId: json['user_id']?.toString() ?? '',
       items: (json['order_items'] as List?)
               ?.map((item) => OrderItemModel.fromJson(item))
-              ?.toList() ??
+              .toList() ??
           [],
       totalAmount: (json['total_amount'] is String)
           ? double.tryParse(json['total_amount']) ?? 0.0

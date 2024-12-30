@@ -1,57 +1,14 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Flutter Lightweight Debug",
-            "request": "launch",
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": [
-                "--track-widget-creation"
-            ],
-            "flutterMode": "debug"
-        },
-        {
-            "name": "Profile Performance",
-            "request": "launch",
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": [
-                "--cache-sksl"
-            ],
-            "flutterMode": "profile"
-        },
-        {
-            "name": "Release Optimized",
-            "request": "launch", 
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": [
-                "--suppress-analytics"
-            ],
-            "flutterMode": "release"
-        },
-        {
-            "name": "Web Debug",
-            "request": "launch",
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": [
-                "-d", 
-                "chrome"
-            ],
-            "flutterMode": "debug"
-        },
-        {
-            "name": "Android Debug",
-            "request": "launch",
-            "type": "dart",
-            "program": "lib/main.dart",
-            "args": [
-                "-d",
-                "android"
-            ],
-            "flutterMode": "debug"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Debug Lightweight",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--track-widget-creation"],
+      "flutterMode": "debug",
+      "console": "terminal"
+    }
+  ]
 }

@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_profile_controller.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_home_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/product_management_page.dart';
@@ -7,17 +8,31 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class MerchantMainPage extends GetView<MerchantController> {
+class MerchantMainPage extends StatefulWidget {
   const MerchantMainPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final MerchantController controller = Get.find();
+  State<MerchantMainPage> createState() => _MerchantMainPageState();
+}
 
+class _MerchantMainPageState extends State<MerchantMainPage> {
+  final MerchantController controller = Get.find();
+  final MerchantProfileController profileController = Get.find();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load data in merchant controller
+    controller.fetchMerchantData();
+    profileController.fetchMerchantData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final List<Widget> pages = [
       MerchantHomePage(),
       const MerchantOrderPage(),
-      ProductManagementPage(), // Added product management page
+      ProductManagementPage(),
       MerchantProfilePage(),
     ];
 
@@ -84,9 +99,8 @@ class MerchantMainPage extends GetView<MerchantController> {
               elevation: 0,
               items: [
                 createNavItem(Icons.home, 'Home', 0),
-                createNavItem(Icons.list, 'Orders', 1), // Updated here
-                createNavItem(
-                    Icons.inventory, 'Products', 2), // New item for products
+                createNavItem(Icons.list, 'Orders', 1),
+                createNavItem(Icons.inventory, 'Products', 2),
                 createNavItem(Icons.person, 'Profile', 3),
               ],
             ),
@@ -103,11 +117,25 @@ class MerchantMainPage extends GetView<MerchantController> {
         }
         return true;
       },
-      child: Scaffold(
-        backgroundColor: backgroundColor3,
+      child: Obx(() => Scaffold(
+        backgroundColor: Colors.white,
         bottomNavigationBar: customBottomNav(),
-        body: body(),
-      ),
+        body: controller.isLoading.value
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: logoColor),
+                    SizedBox(height: 16),
+                    Text(
+                      'Memuat data...',
+                      style: primaryTextStyle.copyWith(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
+            : body(),
+      )),
     );
   }
 }

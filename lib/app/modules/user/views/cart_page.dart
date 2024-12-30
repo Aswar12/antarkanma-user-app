@@ -500,7 +500,7 @@ class _CartPageState extends State<CartPage> {
                             groupedItems[merchantId]!.add(item);
                           }
 
-                          Get.toNamed('/main/checkout', arguments: {
+                          Get.toNamed('/usermain/checkout', arguments: {
                             'merchantItems': groupedItems,
                             'type': 'cart',
                           });

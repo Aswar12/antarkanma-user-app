@@ -6,9 +6,31 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:antarkanma/app/controllers/user_main_controller.dart';
+import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 
 class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
+
+  Future<void> _navigateToOrderPage() async {
+    // Initialize controller with order page index
+    final controller = Get.put(UserMainController(), permanent: true);
+    controller.currentIndex.value = 2;
+
+    // Add a small delay to ensure controller is initialized
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Navigate to UserMainPage with no transition animation
+    await Get.offAll(
+      () => const UserMainPage(),
+      transition: Transition.noTransition,
+      duration: const Duration(milliseconds: 0),
+    );
+  }
+
+  void _navigateToHome() {
+    Get.offAllNamed(Routes.userMainPage);
+  }
 
   Widget _buildInstructionItem(String number, String text) {
     return Padding(
@@ -76,7 +98,7 @@ class CheckoutSuccessPage extends StatelessWidget {
           message: 'Data transaksi tidak ditemukan',
           isError: true,
         );
-        Get.offAllNamed(Routes.main);
+        Get.offAllNamed(Routes.userMainPage);
         return const SizedBox.shrink();
       }
 
@@ -95,13 +117,13 @@ class CheckoutSuccessPage extends StatelessWidget {
           message: 'Data transaksi tidak lengkap',
           isError: true,
         );
-        Get.offAllNamed(Routes.main);
+        Get.offAllNamed(Routes.userMainPage);
         return const SizedBox.shrink();
       }
 
       return WillPopScope(
         onWillPop: () async {
-          Get.offAllNamed(Routes.main);
+          Get.offAllNamed(Routes.userMainPage);
           return false;
         },
         child: Scaffold(
@@ -263,7 +285,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => Get.toNamed(Routes.orderHistory),
+                          onPressed: _navigateToOrderPage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: backgroundColor1,
                             foregroundColor: logoColorSecondary,
@@ -288,7 +310,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                       SizedBox(width: Dimenssions.width15),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => Get.offAllNamed(Routes.main),
+                          onPressed: _navigateToHome,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: logoColorSecondary,
                             padding: EdgeInsets.symmetric(
@@ -322,7 +344,7 @@ class CheckoutSuccessPage extends StatelessWidget {
         message: 'Terjadi kesalahan: $e',
         isError: true,
       );
-      Get.offAllNamed(Routes.main);
+      Get.offAllNamed(Routes.userMainPage);
       return const SizedBox.shrink();
     }
   }

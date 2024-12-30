@@ -7,7 +7,15 @@ class MerchantModel {
   final String? status; // Menambahkan status merchant
   final String? description; // New field for merchant description
   final String? logo; // New field for merchant logo
-  final DateTime createdAt;
+  final String? openingTime; // New field for opening time
+  final String? closingTime; // New field for closing time
+  final List<String>? operatingDays; // New field for operating days
+  final DateTime createdAt; 
+  final int? orderCount; // New field for order count
+  final int? productsSold; // New field for products sold
+  final int? totalSales; // New field for total sales
+  final int? monthlyRevenue; // New field for monthly revenue
+  final int? productCount; // New field for product count
   final DateTime updatedAt;
 
   MerchantModel({
@@ -20,7 +28,15 @@ class MerchantModel {
     this.description, // Accept description
     this.logo, // Accept logo
     required this.createdAt,
+    this.productCount, // Accept product count
     required this.updatedAt,
+    this.openingTime, // Accept opening time
+    this.closingTime, // Accept closing time
+    this.operatingDays, // Accept operating days
+    this.orderCount, // Accept order count
+    this.productsSold, // Accept products sold
+    this.totalSales, // Accept total sales
+    this.monthlyRevenue, // Accept monthly revenue
   });
 
   // Constructor untuk data dari API
@@ -41,6 +57,18 @@ class MerchantModel {
         return null;
       }
 
+      // Parse operating days from JSON
+      List<String>? parseOperatingDays(dynamic value) {
+        if (value == null) return null;
+        if (value is List) {
+          return value.map((e) => e.toString()).toList();
+        }
+        if (value is String && value.isNotEmpty) {
+          return value.split(',').map((e) => e.trim()).toList();
+        }
+        return [];
+      }
+
       return MerchantModel(
         id: parseInt(json['id']),
         ownerId: parseInt(json['owner_id'].toString()) ?? 0,
@@ -48,8 +76,16 @@ class MerchantModel {
         address: json['address']?.toString() ?? '',
         phoneNumber: json['phone_number']?.toString() ?? '',
         status: json['status']?.toString() ?? 'ACTIVE',
-        description: json['description']?.toString(), // Parse description
-        logo: json['logo']?.toString(), // Parse logo
+        description: json['description']?.toString(),
+        logo: json['logo']?.toString(),
+        openingTime: json['opening_time']?.toString(),
+        closingTime: json['closing_time']?.toString(),
+        operatingDays: parseOperatingDays(json['operating_days']),
+        productCount: parseInt(json['product_count']),
+        orderCount: parseInt(json['order_count']),
+        productsSold: parseInt(json['products_sold']),
+        totalSales: parseInt(json['total_sales']),
+        monthlyRevenue: parseInt(json['monthly_revenue']),
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
             : DateTime.now(),
@@ -58,38 +94,45 @@ class MerchantModel {
             : DateTime.now(),
       );
     } catch (e) {
-      print('Error parsing merchant JSON: $e');
-      print('Problematic JSON: $json');
       // Return a minimal valid merchant in case of error
       return MerchantModel(
         ownerId: 0,
         name: '',
         address: '',
         phoneNumber: '',
-        description: null, // Default value for description
-        logo: null, // Default value for logo
+        description: null,
+        logo: null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        productCount: 0,
+        orderCount: 0,
+        productsSold: 0,
+        totalSales: 0,
+        monthlyRevenue: 0,
       );
     }
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'owner_id': ownerId,
       'name': name,
       'address': address,
       'phone_number': phoneNumber,
       'status': status,
-      'description': description, // Include description
-      'logo': logo, // Include logo
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'description': description,
+      'logo': logo,
+      'product_count': productCount,
+      'opening_time': openingTime,
+      'closing_time': closingTime,
+      'operating_days': operatingDays,
+      'order_count': orderCount,
+      'products_sold': productsSold,
+      'total_sales': totalSales,
+      'monthly_revenue': monthlyRevenue,
     };
   }
 
-  // Copy with method
   MerchantModel copyWith({
     int? id,
     int? ownerId,
@@ -99,6 +142,14 @@ class MerchantModel {
     String? status,
     String? description,
     String? logo,
+    int? productCount,
+    String? openingTime,
+    String? closingTime,
+    List<String>? operatingDays,
+    int? orderCount,
+    int? productsSold,
+    int? totalSales,
+    int? monthlyRevenue,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -111,15 +162,21 @@ class MerchantModel {
       status: status ?? this.status,
       description: description ?? this.description,
       logo: logo ?? this.logo,
+      productCount: productCount ?? this.productCount,
+      openingTime: openingTime ?? this.openingTime,
+      closingTime: closingTime ?? this.closingTime,
+      operatingDays: operatingDays ?? this.operatingDays,
+      orderCount: orderCount ?? this.orderCount,
+      productsSold: productsSold ?? this.productsSold,
+      totalSales: totalSales ?? this.totalSales,
+      monthlyRevenue: monthlyRevenue ?? this.monthlyRevenue,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
-  // Getter untuk mengecek apakah merchant aktif
   bool get isActive => status?.toUpperCase() == 'ACTIVE';
 
-  // Method untuk memperbarui status
   MerchantModel updateStatus(String newStatus) {
     return copyWith(
       status: newStatus,
@@ -127,19 +184,15 @@ class MerchantModel {
     );
   }
 
-  // Method untuk memformat nomor telepon
-  String get formattedPhoneNumber {
-    // Implementasi formatting nomor telepon
-    return phoneNumber;
-  }
+  String get formattedPhoneNumber => phoneNumber;
 
-  // Method untuk mendapatkan ringkasan merchant
   String get summary => '$name - $address';
 
-  // New getters
-  String? get merchantLogoUrl => logo; // Placeholder for merchant logo URL
-  String get merchantName => name; // Getter for merchant name
-  String get merchantContact => phoneNumber; // Getter for merchant contact
+  String? get merchantLogoUrl => logo;
+  String get merchantName => name;
+  String get merchantContact => phoneNumber;
+  String? get merchantOpeningHours => openingTime;
+  List<String>? get merchantOperatingDays => operatingDays;
 
   @override
   bool operator ==(Object other) {

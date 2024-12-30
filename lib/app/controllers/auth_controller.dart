@@ -6,6 +6,7 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart'; // Importing MerchantController
 import 'package:antarkanma/app/utils/validators.dart';
 
 class AuthController extends GetxController {
@@ -42,8 +43,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> login() async {
-    // Centralized login logic
-    if (isLoading.value) return; // Prevent multiple login attempts
+    if (isLoading.value) return;
     isLoading.value = true;
     try {
       final success = await _authService.login(
@@ -128,9 +128,7 @@ class AuthController extends GetxController {
   Future<void> logout() async {
     try {
       await _authService.logout();
-
-      // Clear all local storage data
-      await _storageService.clearAll(); // Clear all stored data
+      await _storageService.clearAll();
 
       // Reset controllers
       identifierController.clear();
@@ -162,12 +160,18 @@ class AuthController extends GetxController {
   }
 
   void navigateToHome(String role) {
-    if (role == 'USER ') {
-      Get.offAllNamed(Routes.home);
-    } else if (role == 'MERCHANT') {
-      Get.offAllNamed(Routes.merchantHome);
-    } else if (role == 'COURIER') {
-      Get.offAllNamed(Routes.courierHome);
+    switch (role) {
+      case 'USER':
+        Get.offAllNamed(Routes.userHome);
+        break;
+      case 'MERCHANT':
+        Get.offAllNamed(Routes.merchantMainPage);
+        break;
+      case 'COURIER':
+        Get.offAllNamed(Routes.courierMainPage);
+        break;
+      default:
+        Get.offAllNamed(Routes.login);
     }
   }
 

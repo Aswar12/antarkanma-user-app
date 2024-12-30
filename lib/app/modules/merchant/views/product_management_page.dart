@@ -1,83 +1,18 @@
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_product_controller.dart';
+import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/modules/merchant/views/merchant_product_detail_page.dart';
 import 'product_form_page.dart';
 
-class ProductManagementPage extends StatefulWidget {
+class ProductManagementPage extends GetView<MerchantProductController> {
   const ProductManagementPage({super.key});
-
-  @override
-  State<ProductManagementPage> createState() => ProductManagementPageState();
-}
-
-class ProductManagementPageState extends State<ProductManagementPage> {
-  final List<Map<String, dynamic>> products = [
-    {
-      'id': 1,
-      'name': 'Produk A',
-      'price': 150000,
-      'status': true,
-      'image': 'assets/image_shoes.png',
-      'description': 'Deskripsi produk A',
-      'category': 'Kategori 1',
-      'variants': [
-        {
-          'id': 1,
-          'name': 'Ukuran',
-          'value': 'XL',
-          'price_adjustment': 10000,
-          'status': 'ACTIVE'
-        },
-        {
-          'id': 2,
-          'name': 'Ukuran',
-          'value': 'L',
-          'price_adjustment': 5000,
-          'status': 'ACTIVE'
-        }
-      ],
-    },
-  ];
-
-  String searchQuery = '';
-  String selectedCategory = 'Semua';
-  String selectedSort = 'Baru';
-  bool showActiveOnly = false;
-
-  List<Map<String, dynamic>> get filteredProducts {
-    return products.where((product) {
-      if (searchQuery.isNotEmpty &&
-          !product['name'].toLowerCase().contains(searchQuery.toLowerCase())) {
-        return false;
-      }
-      if (selectedCategory != 'Semua' &&
-          product['category'] != selectedCategory) {
-        return false;
-      }
-      if (showActiveOnly && !product['status']) {
-        return false;
-      }
-      return true;
-    }).toList()
-      ..sort((a, b) {
-        switch (selectedSort) {
-          case 'A-Z':
-            return a['name'].compareTo(b['name']);
-          case 'Z-A':
-            return b['name'].compareTo(a['name']);
-          case '↑':
-            return b['price'].compareTo(a['price']);
-          case '↓':
-            return a['price'].compareTo(b['price']);
-          default:
-            return 0;
-        }
-      });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor1,
       appBar: AppBar(
         title: Text(
           'Manajemen Produk',
@@ -90,103 +25,103 @@ class ProductManagementPageState extends State<ProductManagementPage> {
         children: [
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: Dimenssions.width12,
-              vertical: Dimenssions.height8,
+              horizontal: Dimenssions.width16,
+              vertical: Dimenssions.height12,
             ),
+            color: backgroundColor1,
             child: Column(
               children: [
                 SizedBox(
-                  height: 36,
+                  height: 40,
                   child: TextField(
-                    onChanged: (value) => setState(() => searchQuery = value),
-                    style: TextStyle(fontSize: 12),
+                    onChanged: (value) => controller.searchProducts(value),
+                    style: TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       hintText: 'Cari produk...',
-                      hintStyle: TextStyle(fontSize: 12),
-                      prefixIcon:
-                          Icon(Icons.search, color: logoColor, size: 18),
+                      hintStyle: TextStyle(fontSize: 14),
+                      prefixIcon: Icon(Icons.search, color: logoColor, size: 20),
                       contentPadding: EdgeInsets.zero,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(color: logoColor),
                       ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
                     ),
                   ),
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 32,
+                        height: 40,
                         child: DropdownButtonFormField<String>(
-                          value: selectedCategory,
+                          value: 'Semua',
                           isDense: true,
                           isExpanded: true,
-                          itemHeight: null,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: Colors.black,
                           ),
                           decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 6),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
-                            constraints: BoxConstraints(maxHeight: 32),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
                           ),
                           items: ['Semua', 'Kategori 1', 'Kategori 2']
                               .map((cat) => DropdownMenuItem(
                                     value: cat,
-                                    child: Text(cat,
-                                        style: TextStyle(fontSize: 12)),
+                                    child: Text(cat, style: TextStyle(fontSize: 14)),
                                   ))
                               .toList(),
                           onChanged: (value) {
-                            if (value != null)
-                              setState(() => selectedCategory = value);
+                            if (value != null) {
+                              controller.filterByCategory(value);
+                            }
                           },
                         ),
                       ),
                     ),
-                    SizedBox(width: 6),
+                    SizedBox(width: 12),
                     Expanded(
                       child: SizedBox(
-                        height: 32,
+                        height: 40,
                         child: DropdownButtonFormField<String>(
-                          value: selectedSort,
+                          value: 'Baru',
                           isDense: true,
                           isExpanded: true,
-                          itemHeight: null,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: Colors.black,
                           ),
                           decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 6),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
-                            constraints: BoxConstraints(maxHeight: 32),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
                           ),
                           items: ['Baru', 'A-Z', 'Z-A', '↑', '↓']
                               .map((sort) => DropdownMenuItem(
                                     value: sort,
-                                    child: Text(sort,
-                                        style: TextStyle(fontSize: 12)),
+                                    child: Text(sort, style: TextStyle(fontSize: 14)),
                                   ))
                               .toList(),
                           onChanged: (value) {
-                            if (value != null)
-                              setState(() => selectedSort = value);
+                            if (value != null) {
+                              controller.sortProducts(value);
+                            }
                           },
                         ),
                       ),
@@ -194,55 +129,69 @@ class ProductManagementPageState extends State<ProductManagementPage> {
                   ],
                 ),
                 Transform.scale(
-                  scale: 0.8,
+                  scale: 0.9,
                   child: ListTile(
                     dense: true,
                     visualDensity: VisualDensity.compact,
                     contentPadding: EdgeInsets.zero,
                     title: Text(
                       'Produk Aktif',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 14),
                     ),
-                    trailing: Switch(
-                      value: showActiveOnly,
-                      onChanged: (value) =>
-                          setState(() => showActiveOnly = value),
-                      activeColor: logoColor,
-                    ),
+                    trailing: Obx(() => Switch(
+                          value: controller.showActiveOnly.value,
+                          onChanged: controller.toggleActiveOnly,
+                          activeColor: logoColor,
+                        )),
                   ),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                // Implement refresh logic
-              },
-              child: filteredProducts.isEmpty
-                  ? _buildEmptyState()
-                  : GridView.builder(
-                      padding: EdgeInsets.all(Dimenssions.width12),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.7,
-                        crossAxisSpacing: Dimenssions.width8,
-                        mainAxisSpacing: Dimenssions.height8,
-                      ),
-                      itemCount: filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = filteredProducts[index];
-                        return _buildProductCard(product);
-                      },
-                    ),
-            ),
+            child: Obx(() {
+              if (controller.isLoading.value) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (controller.errorMessage.value.isNotEmpty) {
+                return Center(
+                  child: Text(
+                    controller.errorMessage.value,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+
+              if (controller.filteredProducts.isEmpty) {
+                return _buildEmptyState();
+              }
+
+              return RefreshIndicator(
+                onRefresh: () async => controller.fetchProducts(),
+                child: GridView.builder(
+                  padding: EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.68,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: controller.filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = controller.filteredProducts[index];
+                    return _buildProductCard(product);
+                  },
+                ),
+              );
+            }),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToProductForm(),
         backgroundColor: logoColor,
-        child: Icon(Icons.add),
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -252,23 +201,26 @@ class ProductManagementPageState extends State<ProductManagementPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+          Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey.shade300),
           SizedBox(height: 16),
           Text(
             'Belum ada produk',
             style: primaryTextStyle.copyWith(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: semiBold,
             ),
           ),
           SizedBox(height: 8),
-          Text('Tambahkan produk pertama Anda', style: secondaryTextStyle),
+          Text(
+            'Tambahkan produk pertama Anda',
+            style: secondaryTextStyle.copyWith(fontSize: 14),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
+  Widget _buildProductCard(ProductModel product) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -276,84 +228,85 @@ class ProductManagementPageState extends State<ProductManagementPage> {
       ),
       child: InkWell(
         onTap: () => _navigateToProductForm(product: product),
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: Image.asset(
-                      product['image'],
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                if (product['variants']?.isNotEmpty ?? false)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: logoColor.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${product['variants'].length} Varian',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product['name'],
-                          style: primaryTextStyle.copyWith(
-                            fontSize: 12,
-                            fontWeight: semiBold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Rp ${product['price']}',
-                          style: priceTextStyle.copyWith(fontSize: 12),
-                        ),
-                      ],
+                    Image.network(
+                      product.firstImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/image_shoes.png',
+                          fit: BoxFit.cover,
+                        );
+                      },
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      right: 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            style: primaryTextStyle.copyWith(
+                              fontSize: 14,
+                              fontWeight: semiBold,
+                              color: Colors.white,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            product.formattedPrice,
+                            style: priceTextStyle.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
                       child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: product['status']
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          color: product.isActive
+                              ? Colors.green.withOpacity(0.9)
+                              : Colors.red.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          product['status'] ? 'Aktif' : 'Nonaktif',
+                          product.isActive ? 'Aktif' : 'Nonaktif',
                           style: TextStyle(
-                            color:
-                                product['status'] ? Colors.green : Colors.red,
+                            color: Colors.white,
                             fontSize: 10,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -362,34 +315,84 @@ class ProductManagementPageState extends State<ProductManagementPage> {
                 ),
               ),
             ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (product.category != null)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: logoColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        product.category!.name,
+                        style: TextStyle(
+                          color: logoColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.star, size: 14, color: Colors.amber),
+                      SizedBox(width: 4),
+                      Text(
+                        '${product.averageRating.toStringAsFixed(1)}',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        ' (${product.totalReviews})',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Spacer(),
+                      if (product.variants.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(Icons.style, size: 14, color: Colors.grey),
+                            SizedBox(width: 4),
+                            Text(
+                              '${product.variants.length}',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _navigateToProductForm({Map<String, dynamic>? product}) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductFormPage(product: product),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        if (product != null) {
-          final index = products.indexWhere((p) => p['id'] == product['id']);
-          if (index != -1) {
-            products[index] = {...product, ...result};
-          }
-        } else {
-          products.add({
-            'id': products.length + 1,
-            ...result,
-          });
-        }
-      });
+  void _navigateToProductForm({ProductModel? product}) async {
+    if (product != null) {
+      final result = await Get.to(() => MerchantProductDetailPage(product: product));
+      if (result != null) {
+        controller.fetchProducts();
+      }
+    } else {
+      final result = await Get.to(() => ProductFormPage(product: null));
+      if (result != null) {
+        controller.fetchProducts();
+      }
     }
   }
 }

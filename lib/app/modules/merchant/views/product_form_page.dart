@@ -1,50 +1,519 @@
+import 'dart:io';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
+import 'package:antarkanma/app/data/models/product_category_model.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_product_form_controller.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui' as ui;
 
-class ProductFormPage extends StatefulWidget {
+class DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+
+  DashedBorderPainter({
+    this.color = Colors.grey,
+    this.strokeWidth = 1.0,
+    this.gap = 5.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final Path path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Radius.circular(8),
+      ));
+
+    final Path dashPath = Path();
+    final double dashWidth = 5.0;
+
+    for (ui.PathMetric metric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        dashPath.addPath(
+          metric.extractPath(distance, distance + dashWidth),
+          Offset.zero,
+        );
+        distance += dashWidth + gap;
+      }
+    }
+
+    canvas.drawPath(dashPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class ProductFormPage extends GetView<MerchantProductFormController> {
   final Map<String, dynamic>? product;
 
   const ProductFormPage({Key? key, this.product}) : super(key: key);
 
   @override
-  State<ProductFormPage> createState() => _ProductFormPageState();
-}
+  Widget build(BuildContext context) {
+    controller.setInitialData(product);
 
-class _ProductFormPageState extends State<ProductFormPage> {
-  late bool isEditing;
-  List<VariantModel> variants = [];
-  final priceFormatter = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
+    return Scaffold(
+      backgroundColor: backgroundColor1,
+      appBar: AppBar(
+        title: Text(
+          product != null ? 'Edit Produk' : 'Tambah Produk',
+          style: primaryTextStyle.copyWith(color: logoColor),
+        ),
+        backgroundColor: transparentColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: logoColor),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-  @override
-  void initState() {
-    super.initState();
-    isEditing = widget.product != null;
-    if (widget.product != null && widget.product!['variants'] != null) {
-      variants = List<Map<String, dynamic>>.from(widget.product!['variants'])
-          .map((v) => VariantModel.fromJson(v))
-          .toList();
-    }
+        return Form(
+          key: controller.formKey,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildImageUploadSection(),
+                SizedBox(height: 20),
+                _buildTextField(
+                  'Nama Produk',
+                  'Masukkan nama produk',
+                  controller: controller.nameController,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Nama produk tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                _buildTextField(
+                  'Deskripsi',
+                  'Masukkan deskripsi produk',
+                  controller: controller.descriptionController,
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Deskripsi produk tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                _buildCategoryDropdown(),
+                SizedBox(height: 16),
+                _buildTextField(
+                  'Harga',
+                  'Masukkan harga produk',
+                  controller: controller.priceController,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Harga produk tidak boleh kosong';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Harga harus berupa angka';
+                    }
+                    if (double.parse(value) <= 0) {
+                      return 'Harga harus lebih dari 0';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                _buildVariantSection(),
+                SizedBox(height: 16),
+                _buildStatusSwitch(),
+                SizedBox(height: 24),
+                if (controller.errorMessage.value.isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            controller.errorMessage.value,
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: controller.saveProduct,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: logoColor,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Simpan Produk',
+                      style: primaryTextStyle.copyWith(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: semiBold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildImageUploadSection() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor1,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Obx(() {
+            if (controller.images.isEmpty) {
+              return _buildImagePlaceholder();
+            }
+            return _buildImageGrid();
+          }),
+          SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: controller.pickImages,
+            icon: Icon(Icons.add_photo_alternate),
+            label: Text('Tambah Foto'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: logoColor,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          CustomPaint(
+            size: Size(double.infinity, 200),
+            painter: DashedBorderPainter(
+              color: Colors.grey.shade300,
+              strokeWidth: 1,
+              gap: 5.0,
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
+                SizedBox(height: 8),
+                Text(
+                  'Tambahkan Foto Produk',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: controller.images.length,
+      itemBuilder: (context, index) {
+        return Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(controller.images[index].path),
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey.shade200,
+                    child: Icon(Icons.error_outline, color: Colors.red),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: () => controller.removeImage(index),
+                child: Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close, color: Colors.white, size: 16),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    String hint, {
+    TextEditingController? controller,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: primaryTextStyle.copyWith(
+            fontSize: 14,
+            fontWeight: bold,
+          ),
+        ),
+        SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator: validator,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: secondaryTextStyle,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Kategori',
+          style: primaryTextStyle.copyWith(
+            fontSize: 14,
+            fontWeight: bold,
+          ),
+        ),
+        SizedBox(height: 8),
+        Obx(() => DropdownButtonFormField<String>(
+              value: controller.selectedCategoryName.value,
+              hint: Text('Pilih kategori'),
+              items: controller.categories
+                  .map((category) => DropdownMenuItem(
+                        value: category.name,
+                        child: Text(category.name),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  final selectedCategory = controller.categories
+                      .firstWhere((cat) => cat.name == value);
+                  controller.setCategory(selectedCategory);
+                }
+              },
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+            )),
+      ],
+    );
+  }
+
+  Widget _buildVariantSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Varian Produk',
+              style: primaryTextStyle.copyWith(
+                fontSize: 14,
+                fontWeight: bold,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _showVariantDialog(),
+              icon: Icon(Icons.add, color: logoColor),
+              label: Text(
+                'Tambah Varian',
+                style: primaryTextStyle.copyWith(color: logoColor),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Obx(() {
+          if (controller.variants.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'Belum ada varian',
+                  style: secondaryTextStyle,
+                ),
+              ),
+            );
+          }
+
+          final variantGroups = <String, List<VariantModel>>{};
+          for (var variant in controller.variants) {
+            if (!variantGroups.containsKey(variant.name)) {
+              variantGroups[variant.name] = [];
+            }
+            variantGroups[variant.name]!.add(variant);
+          }
+
+          return Column(
+            children: variantGroups.entries.map((entry) {
+              return Card(
+                margin: EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.key,
+                        style: primaryTextStyle.copyWith(
+                          fontWeight: semiBold,
+                        ),
+                      ),
+                      Divider(),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: entry.value.map((variant) {
+                          return Chip(
+                            label: Text(
+                              '${variant.value} (+${NumberFormat.currency(
+                                locale: 'id_ID',
+                                symbol: 'Rp ',
+                                decimalDigits: 0,
+                              ).format(variant.priceAdjustment)})',
+                              style: primaryTextStyle.copyWith(fontSize: 12),
+                            ),
+                            deleteIcon: Icon(Icons.close, size: 16),
+                            onDeleted: () => controller.removeVariant(variant),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildStatusSwitch() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Status Produk',
+          style: primaryTextStyle.copyWith(
+            fontSize: 14,
+            fontWeight: bold,
+          ),
+        ),
+        Obx(() => Switch(
+              value: controller.isActive.value,
+              onChanged: (value) => controller.isActive.value = value,
+              activeColor: logoColor,
+            )),
+      ],
+    );
   }
 
   void _showVariantDialog({VariantModel? existingVariant, int? index}) {
-    final nameController =
-        TextEditingController(text: existingVariant?.name ?? '');
-    final valueController =
-        TextEditingController(text: existingVariant?.value ?? '');
-    final priceAdjustmentController = TextEditingController(
+    final nameController = TextEditingController(text: existingVariant?.name);
+    final valueController = TextEditingController(text: existingVariant?.value);
+    final priceController = TextEditingController(
       text: existingVariant?.priceAdjustment.toString() ?? '0',
     );
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+    Get.dialog(
+      AlertDialog(
         title: Text(
           existingVariant == null ? 'Tambah Varian' : 'Edit Varian',
           style: primaryTextStyle.copyWith(fontWeight: semiBold),
@@ -59,15 +528,11 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 labelStyle: secondaryTextStyle,
                 hintText: 'Contoh: Ukuran, Warna',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: Dimenssions.width12,
-                  vertical: Dimenssions.height12,
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
-            SizedBox(height: Dimenssions.height16),
+            SizedBox(height: 16),
             TextField(
               controller: valueController,
               decoration: InputDecoration(
@@ -75,28 +540,20 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 labelStyle: secondaryTextStyle,
                 hintText: 'Contoh: XL, Merah',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: Dimenssions.width12,
-                  vertical: Dimenssions.height12,
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
-            SizedBox(height: Dimenssions.height16),
+            SizedBox(height: 16),
             TextField(
-              controller: priceAdjustmentController,
+              controller: priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Tambahan Harga',
                 labelStyle: secondaryTextStyle,
                 hintText: 'Masukkan tambahan harga',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: Dimenssions.width12,
-                  vertical: Dimenssions.height12,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 prefixText: 'Rp ',
               ),
@@ -105,7 +562,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Get.back(),
             child: Text(
               'Batal',
               style: primaryTextStyle.copyWith(color: Colors.grey),
@@ -118,23 +575,22 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 productId: existingVariant?.productId,
                 name: nameController.text,
                 value: valueController.text,
-                priceAdjustment:
-                    double.tryParse(priceAdjustmentController.text) ?? 0,
+                priceAdjustment: double.tryParse(priceController.text) ?? 0,
                 status: existingVariant?.status ?? 'ACTIVE',
               );
-              setState(() {
-                if (index != null) {
-                  variants[index] = variant;
-                } else {
-                  variants.add(variant);
-                }
-              });
-              Navigator.pop(context);
+
+              if (index != null) {
+                controller.updateVariant(index, variant);
+              } else {
+                controller.addVariant(variant);
+              }
+
+              Get.back();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: logoColor,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: Text(
@@ -144,326 +600,6 @@ class _ProductFormPageState extends State<ProductFormPage> {
           ),
         ],
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isEditing ? 'Edit Produk' : 'Tambah Produk',
-          style: primaryTextStyle.copyWith(color: logoColor),
-        ),
-        backgroundColor: transparentColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: logoColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(Dimenssions.width16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildImageUploadSection(),
-            SizedBox(height: Dimenssions.height20),
-            _buildTextField('Nama Produk', 'Masukkan nama produk',
-                initialValue: widget.product?['name']),
-            SizedBox(height: Dimenssions.height16),
-            _buildTextField('Deskripsi', 'Masukkan deskripsi produk',
-                maxLines: 3, initialValue: widget.product?['description']),
-            SizedBox(height: Dimenssions.height16),
-            _buildDropdownField('Kategori', ['Kategori 1', 'Kategori 2'],
-                initialValue: widget.product?['category']),
-            SizedBox(height: Dimenssions.height16),
-            _buildTextField('Harga', 'Masukkan harga produk',
-                keyboardType: TextInputType.number,
-                initialValue: widget.product?['price']?.toString()),
-            SizedBox(height: Dimenssions.height16),
-            _buildVariantSection(),
-            SizedBox(height: Dimenssions.height16),
-            _buildStatusSwitch(),
-            SizedBox(height: Dimenssions.height24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final Map<String, dynamic> productData = {
-                    'name': '', // Get from form
-                    'description': '', // Get from form
-                    'price': 0, // Get from form
-                    'category': '', // Get from form
-                    'status': true, // Get from switch
-                    'variants': variants.map((v) => v.toJson()).toList(),
-                  };
-                  Navigator.pop(context, productData);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: logoColor,
-                  padding: EdgeInsets.symmetric(vertical: Dimenssions.height16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                  ),
-                ),
-                child: Text(
-                  'Simpan Produk',
-                  style: primaryTextStyle.copyWith(
-                    color: Colors.white,
-                    fontSize: Dimenssions.font16,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageUploadSection() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(Dimenssions.width16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(Dimenssions.radius8),
-      ),
-      child: Column(
-        children: [
-          if (widget.product != null && widget.product!['image'] != null)
-            Container(
-              width: 200,
-              height: 200,
-              margin: EdgeInsets.only(bottom: Dimenssions.height16),
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(widget.product!['image']),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: BorderRadius.circular(Dimenssions.radius8),
-              ),
-            ),
-          Icon(Icons.cloud_upload, size: 48, color: logoColor),
-          SizedBox(height: Dimenssions.height8),
-          Text(
-            'Upload Gambar Produk',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font16,
-              fontWeight: bold,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height8),
-          Text(
-            'Drag & drop atau klik untuk memilih file',
-            style: secondaryTextStyle,
-          ),
-          SizedBox(height: Dimenssions.height16),
-          ElevatedButton(
-            onPressed: () async {
-              final ImagePicker picker = ImagePicker();
-              await picker.pickMultiImage();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: logoColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Dimenssions.radius8),
-              ),
-            ),
-            child: Text('Pilih File'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, String hint,
-      {int maxLines = 1, TextInputType? keyboardType, String? initialValue}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font14,
-            fontWeight: bold,
-          ),
-        ),
-        SizedBox(height: Dimenssions.height8),
-        TextFormField(
-          initialValue: initialValue,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: secondaryTextStyle,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: Dimenssions.width12,
-              vertical: Dimenssions.height12,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField(String label, List<String> items,
-      {String? initialValue}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font14,
-            fontWeight: bold,
-          ),
-        ),
-        SizedBox(height: Dimenssions.height8),
-        DropdownButtonFormField<String>(
-          value: initialValue,
-          items: items
-              .map((item) => DropdownMenuItem(
-                    value: item,
-                    child: Text(item),
-                  ))
-              .toList(),
-          onChanged: (value) {},
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: Dimenssions.width12,
-              vertical: Dimenssions.height12,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVariantSection() {
-    // Group variants by name
-    final variantGroups = <String, List<VariantModel>>{};
-    for (var variant in variants) {
-      if (!variantGroups.containsKey(variant.name)) {
-        variantGroups[variant.name] = [];
-      }
-      variantGroups[variant.name]!.add(variant);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Varian Produk',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                fontWeight: bold,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () => _showVariantDialog(),
-              icon: Icon(Icons.add, color: logoColor),
-              label: Text(
-                'Tambah Varian',
-                style: primaryTextStyle.copyWith(color: logoColor),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: Dimenssions.height8),
-        if (variants.isEmpty)
-          Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: Dimenssions.height16),
-              child: Text(
-                'Belum ada varian',
-                style: secondaryTextStyle,
-              ),
-            ),
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: variantGroups.length,
-            itemBuilder: (context, index) {
-              final groupName = variantGroups.keys.elementAt(index);
-              final groupVariants = variantGroups[groupName]!;
-              return Card(
-                margin: EdgeInsets.only(bottom: Dimenssions.height16),
-                child: Padding(
-                  padding: EdgeInsets.all(Dimenssions.width12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        groupName,
-                        style: primaryTextStyle.copyWith(
-                          fontWeight: semiBold,
-                        ),
-                      ),
-                      Divider(),
-                      Wrap(
-                        spacing: Dimenssions.width8,
-                        runSpacing: Dimenssions.height8,
-                        children: groupVariants.map((variant) {
-                          return Chip(
-                            label: Text(
-                              '${variant.value} (${variant.formattedPriceAdjustment})',
-                              style: primaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font12,
-                              ),
-                            ),
-                            deleteIcon: Icon(Icons.close, size: 16),
-                            onDeleted: () {
-                              setState(() {
-                                variants.remove(variant);
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
-    );
-  }
-
-  Widget _buildStatusSwitch() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Status Produk',
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font14,
-            fontWeight: bold,
-          ),
-        ),
-        Switch(
-          value: widget.product?['status'] ?? true,
-          onChanged: (value) {
-            setState(() {
-              // Update status
-            });
-          },
-          activeColor: logoColor,
-        ),
-      ],
     );
   }
 }

@@ -1,48 +1,181 @@
-import 'package:antarkanma/app/data/models/user_model.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/services/merchant_service.dart';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
+import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 
 class MerchantProfileController extends GetxController {
+  final AuthService _authService = AuthService();
   final MerchantService _merchantService = MerchantService();
-  MerchantModel? merchant;
+  late final MerchantController _merchantController;
 
-  final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
+  // Observable states
+  var currentIndex = 0.obs;
+  var isLoading = false.obs;
+  var merchantData = Rxn<MerchantModel>();
+  var hasError = false.obs;
+  var errorMessage = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
-    fetchUserData();
-    fetchMerchantData();
-  }
+    print("MerchantProfileController onInit called");
+    _merchantController = Get.find<MerchantController>();
 
-  void fetchUserData() async {
-    final user = AuthService().getUser();
-    if (user != null) {
-      currentUser.value = user;
+    // Listen to merchant controller's data changes
+    ever(_merchantController.merchant, (merchant) {
+      if (merchant != null) {
+        merchantData.value = merchant;
+      }
+    });
+
+    // Initialize with current data if available
+    if (_merchantController.merchant.value != null) {
+      merchantData.value = _merchantController.merchant.value;
     }
   }
 
   Future<void> fetchMerchantData() async {
-    merchant = await _merchantService.fetchMerchantData();
-    merchant ??= MerchantModel(
-      ownerId: 0,
-      name: '',
-      address: '',
-      phoneNumber: '',
-      description: '',
-      logo: '',
-      status: '',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
+    if (isLoading.value) return;
+
+    try {
+      isLoading.value = true;
+      hasError.value = false;
+      errorMessage.value = '';
+
+      final data = await _merchantService.getMerchant();
+
+      if (data != null) {
+        merchantData.value = data;
+        print("Merchant data fetched successfully: ${data.name}");
+      } else {
+        hasError.value = true;
+        errorMessage.value = 'Tidak dapat memuat data merchant';
+      }
+    } catch (e) {
+      print("Error fetching merchant data: $e");
+      hasError.value = true;
+      errorMessage.value = 'Terjadi kesalahan saat memuat data';
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  String get merchantName => merchant?.name ?? '';
-  String get merchantPhone => merchant?.phoneNumber ?? '';
+  void clearMerchantData() {
+    merchantData.value = null;
+    hasError.value = false;
+    errorMessage.value = '';
+  }
 
-  String get merchantDescription => merchant?.description ?? '';
-  String get merchantEmail => currentUser.value?.email ?? '';
-  // double get merchantRating => merchant?.rating ?? 0.0; // Removed for now
+  Future<bool> updateOperationalHours(
+    String openingTime,
+    String closingTime,
+    List<String> operatingDays,
+  ) async {
+    try {
+      if (openingTime.isEmpty || closingTime.isEmpty || operatingDays.isEmpty) {
+        CustomSnackbarX.showError(
+          message: 'Semua field harus diisi',
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+
+      final timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
+      if (!timeRegex.hasMatch(openingTime) ||
+          !timeRegex.hasMatch(closingTime)) {
+        CustomSnackbarX.showError(
+          message: 'Format waktu tidak valid. Gunakan format HH:mm',
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+
+      isLoading.value = true;
+
+      final success = await _merchantService.updateOperationalHours(
+        openingTime,
+        closingTime,
+        operatingDays,
+      );
+
+      if (success) {
+        // Create a new MerchantModel instance with updated values
+        if (merchantData.value != null) {
+          final updatedMerchant = MerchantModel(
+            id: merchantData.value!.id,
+            name: merchantData.value!.name,
+            address: merchantData.value!.address,
+            phoneNumber: merchantData.value!.phoneNumber,
+            description: merchantData.value!.description,
+            logo: merchantData.value!.logo,
+            openingTime: openingTime,
+            closingTime: closingTime,
+            operatingDays: operatingDays,
+            status: merchantData.value!.status,
+            ownerId: merchantData.value!.ownerId,
+            createdAt: merchantData.value!.createdAt,
+            updatedAt: DateTime.now(), // Update to DateTime
+          );
+
+          // Update the merchant data directly
+          merchantData.value = updatedMerchant;
+        } else {
+          CustomSnackbarX.showError(
+            message: 'Data merchant tidak tersedia',
+            position: SnackPosition.BOTTOM,
+          );
+          return false;
+        }
+
+        CustomSnackbarX.showSuccess(
+          message: 'Jam operasional berhasil diperbarui',
+          position: SnackPosition.BOTTOM,
+        );
+        return true;
+      } else {
+        CustomSnackbarX.showError(
+          message: 'Gagal memperbarui jam operasional',
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+    } catch (e) {
+      print('Error updating operational hours: $e');
+      CustomSnackbarX.showError(
+        message: 'Terjadi kesalahan saat memperbarui jam operasional',
+        position: SnackPosition.BOTTOM,
+      );
+      return false;
+    }
+  }
+
+  Future<void> refreshMerchantData() async {
+    await fetchMerchantData();
+    update(); // Trigger UI update
+  }
+
+  // Getters
+  MerchantModel? get merchant => merchantData.value;
+  String? get merchantLogo => merchant?.logo;
+  String? get merchantName => merchant?.name;
+  String? get merchantDescription => merchant?.description;
+  String? get merchantAddress => merchant?.address;
+  String? get merchantPhone => merchant?.phoneNumber;
+  String? get merchantEmail => _authService.currentUser.value?.email;
+
+  void logout() async {
+    try {
+      await _authService.logout();
+      clearMerchantData();
+      Get.offAllNamed('/login');
+    } catch (e) {
+      print("Error during logout: $e");
+      CustomSnackbarX.showError(
+        message: 'Gagal melakukan logout',
+        position: SnackPosition.BOTTOM,
+      );
+    }
+  }
 }

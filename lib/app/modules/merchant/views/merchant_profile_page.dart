@@ -1,20 +1,18 @@
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_profile_controller.dart';
-import 'package:antarkanma/app/services/merchant_service.dart';
+import 'package:antarkanma/app/modules/merchant/views/add_operational_hours_bottom_sheet.dart';
 import 'package:antarkanma/app/widgets/logout_confirmation_dialog.dart';
-import 'package:antarkanma/app/widgets/merchant_profile_image.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class MerchantProfilePage extends GetView<MerchantProfileController> {
-  final MerchantService merchantService = Get.find<MerchantService>();
-
-  MerchantProfilePage({super.key});
+  const MerchantProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor3,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           'Profil Toko',
@@ -23,20 +21,45 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
         backgroundColor: transparentColor,
         elevation: 0,
       ),
-      body: SafeArea(
-        child: ListView(
+      body: Obx(() {
+        // If the merchant data is null, show loading state
+        if (controller.merchantData.value == null) {
+          return Center(
+            child: CircularProgressIndicator(color: logoColor),
+          );
+        }
+
+        // If there's an error, show the error message
+        if (controller.hasError.value) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: alertColor),
+                SizedBox(height: 16),
+                Text(
+                  controller.errorMessage.value,
+                  style: primaryTextStyle.copyWith(color: alertColor),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Display the merchant profile information
+        return ListView(
           padding: EdgeInsets.all(Dimenssions.width16),
           children: [
             _buildHeader(),
             _buildStoreInfoCard(),
             _buildOperationalHoursCard(),
-            _buildShippingSettingsCard(),
             _buildPaymentMethodsCard(),
             _buildMenuSection(),
             SizedBox(height: Dimenssions.height10),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -50,15 +73,29 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
           Container(
             height: Dimenssions.height150,
             decoration: BoxDecoration(
-              color: backgroundColor2,
+              color: backgroundColor1,
               borderRadius: BorderRadius.circular(Dimenssions.radius15),
-              image: merchant?.logo != null
+              image: controller.merchantLogo != null &&
+                      controller.merchantLogo!.isNotEmpty
                   ? DecorationImage(
-                      image: NetworkImage(merchant!.logo!),
+                      image: NetworkImage(controller.merchantLogo!),
                       fit: BoxFit.cover,
+                      onError: (exception, stackTrace) {
+                        print('Error loading image: $exception');
+                      },
                     )
                   : null,
             ),
+            child: controller.merchantLogo == null ||
+                    controller.merchantLogo!.isEmpty
+                ? Center(
+                    child: Icon(
+                      Icons.store,
+                      color: Colors.grey[500],
+                      size: 50,
+                    ),
+                  )
+                : null,
           ),
           Positioned(
             bottom: 0,
@@ -69,19 +106,47 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
                 children: [
                   _buildProfileImage(merchant),
                   SizedBox(height: Dimenssions.height8),
-                  Text(
-                    controller.merchantName,
-                    style: primaryTextStyle.copyWith(
-                      fontSize: Dimenssions.font18,
-                      fontWeight: semiBold,
-                    ),
-                  ),
-                  Text(
-                    controller.merchantDescription,
-                    style: secondaryTextStyle.copyWith(
-                      fontSize: Dimenssions.font14,
-                    ),
-                  ),
+                  Obx(() => Text(
+                        controller.merchantName ?? 'Nama belum ditambahkan',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font18,
+                          fontWeight: semiBold,
+                          color: (controller.merchantName?.isNotEmpty ?? false)
+                              ? null
+                              : Colors.grey,
+                        ),
+                      )),
+                  Obx(() => Text(
+                        controller.merchantDescription ??
+                            'Deskripsi belum ditambahkan',
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          color: controller.merchantDescription?.isNotEmpty ??
+                                  false
+                              ? null
+                              : Colors.grey,
+                        ),
+                      )),
+                  Obx(() => Text(
+                        controller.merchantAddress ??
+                            'Alamat belum ditambahkan',
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          color: controller.merchantAddress?.isNotEmpty ?? false
+                              ? null
+                              : Colors.grey,
+                        ),
+                      )),
+                  Obx(() => Text(
+                        controller.merchantPhone ??
+                            'Nomor telepon belum ditambahkan',
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          color: controller.merchantPhone?.isNotEmpty ?? false
+                              ? null
+                              : Colors.grey,
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -102,22 +167,40 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
         child: CircleAvatar(
           radius: Dimenssions.height40,
           backgroundColor: Colors.grey[300],
-          backgroundImage:
-              merchant?.logo != null ? NetworkImage(merchant.logo) : null,
-          child: merchant?.logo == null
-              ? Icon(
+          child: controller.merchantLogo != null &&
+                  controller.merchantLogo!.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: controller.merchantLogo!,
+                  imageBuilder: (context, imageProvider) => Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: imageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  placeholder: (context, url) => CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => Icon(
+                    Icons.store,
+                    size: Dimenssions.height40,
+                    color: Colors.grey[600],
+                  ),
+                )
+              : Icon(
                   Icons.store,
                   size: Dimenssions.height40,
                   color: Colors.grey[600],
-                )
-              : null,
+                ),
         ),
       ),
     );
   }
 
   Widget _buildStoreInfoCard() {
+    final merchant = controller.merchant;
     return Card(
+      color: backgroundColor1,
       margin: EdgeInsets.only(bottom: Dimenssions.height16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Dimenssions.radius15),
@@ -141,9 +224,23 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
               ],
             ),
             Divider(height: Dimenssions.height24),
-            _buildInfoRow('Email', 'merchant@example.com'),
-            _buildInfoRow('Telepon', '+62 812-3456-7890'),
-            _buildInfoRow('Alamat', 'Jl. Example No. 123, Kota Example'),
+            _buildInfoRow(
+                'Telepon',
+                controller.merchant?.phoneNumber ??
+                    'Telepon belum ditambahkan'),
+            _buildInfoRow('Alamat',
+                controller.merchantAddress ?? 'Alamat belum ditambahkan'),
+            _buildInfoRow('Status', merchant?.status ?? 'Tidak ada status'),
+            _buildInfoRow(
+                'Deskripsi', merchant?.description ?? 'Tidak ada deskripsi'),
+            _buildInfoRow(
+                'Jam Buka', merchant?.openingTime ?? 'Tidak ada jam buka'),
+            _buildInfoRow(
+                'Jam Tutup', merchant?.closingTime ?? 'Tidak ada jam tutup'),
+            _buildInfoRow(
+                'Hari Operasional',
+                (merchant?.operatingDays?.join(', ') ??
+                    'Tidak ada hari operasional')),
             SizedBox(height: Dimenssions.height16),
             SizedBox(
               width: double.infinity,
@@ -184,8 +281,11 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
 
   Widget _buildOperationalHoursCard() {
     return Card(
+      elevation: 1,
+      color: backgroundColor1,
       margin: EdgeInsets.only(bottom: Dimenssions.height16),
       shape: RoundedRectangleBorder(
+        side: BorderSide(color: logoColor),
         borderRadius: BorderRadius.circular(Dimenssions.radius15),
       ),
       child: Padding(
@@ -207,14 +307,138 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
               ],
             ),
             Divider(height: Dimenssions.height24),
-            _buildTimeRow('Senin - Jumat', '08:00 - 17:00'),
-            _buildTimeRow('Sabtu', '09:00 - 15:00'),
-            _buildTimeRow('Minggu', 'Tutup'),
+            Obx(() {
+              final merchant = controller.merchant;
+              if (merchant == null) {
+                return _buildTimeRow('Status', 'Memuat data...');
+              }
+
+              if (merchant.openingTime == null ||
+                  merchant.closingTime == null ||
+                  merchant.operatingDays == null ||
+                  merchant.operatingDays!.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Jam operasional belum diatur',
+                      style: secondaryTextStyle.copyWith(
+                        color: alertColor,
+                        fontSize: Dimenssions.font14,
+                      ),
+                    ),
+                    SizedBox(height: Dimenssions.height8),
+                    Text(
+                      'Atur jam operasional toko Anda agar pembeli mengetahui waktu toko Anda buka',
+                      style: secondaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font12,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(Dimenssions.width12),
+                    decoration: BoxDecoration(
+                      color: logoColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Jam Buka',
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font12,
+                              ),
+                            ),
+                            Text(
+                              merchant.openingTime!,
+                              style: primaryTextStyle.copyWith(
+                                fontWeight: semiBold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Icon(Icons.arrow_forward, color: logoColor),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Jam Tutup',
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font12,
+                              ),
+                            ),
+                            Text(
+                              merchant.closingTime!,
+                              style: primaryTextStyle.copyWith(
+                                fontWeight: semiBold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height16),
+                  Text(
+                    'Hari Operasional',
+                    style: secondaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font14,
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: merchant.operatingDays!
+                        .map((day) => Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Dimenssions.width12,
+                                vertical: Dimenssions.height6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: logoColor.withOpacity(0.1),
+                                borderRadius:
+                                    BorderRadius.circular(Dimenssions.radius15),
+                              ),
+                              child: Text(
+                                day,
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                  color: logoColor,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ],
+              );
+            }),
             SizedBox(height: Dimenssions.height16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => Get.toNamed('/merchant/edit-hours'),
+                onPressed: () {
+                  Get.bottomSheet(
+                    AddOperationalHoursBottomSheet(),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(Dimenssions.radius15),
+                      ),
+                    ),
+                    isScrollControlled: true,
+                  );
+                },
                 icon: Icon(Icons.edit, size: Dimenssions.height18),
                 label: Text('Atur Jam Operasional'),
                 style: OutlinedButton.styleFrom(
@@ -242,95 +466,9 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
     );
   }
 
-  Widget _buildShippingSettingsCard() {
-    return Card(
-      margin: EdgeInsets.only(bottom: Dimenssions.height16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Dimenssions.radius15),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(Dimenssions.width16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.local_shipping, color: logoColor),
-                SizedBox(width: Dimenssions.width8),
-                Text(
-                  'Pengaturan Pengiriman',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font16,
-                    fontWeight: semiBold,
-                  ),
-                ),
-              ],
-            ),
-            Divider(height: Dimenssions.height24),
-            Text(
-              'Wilayah Pengiriman',
-              style: primaryTextStyle.copyWith(fontWeight: medium),
-            ),
-            SizedBox(height: Dimenssions.height8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildAreaChip('Jakarta'),
-                _buildAreaChip('Bogor'),
-                _buildAreaChip('Depok'),
-              ],
-            ),
-            SizedBox(height: Dimenssions.height16),
-            Text(
-              'Biaya Pengiriman',
-              style: primaryTextStyle.copyWith(fontWeight: medium),
-            ),
-            SizedBox(height: Dimenssions.height8),
-            _buildShippingCostRow('Regular', 'Rp 10.000'),
-            _buildShippingCostRow('Express', 'Rp 20.000'),
-            SizedBox(height: Dimenssions.height16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => Get.toNamed('/merchant/edit-shipping'),
-                icon: Icon(Icons.edit, size: Dimenssions.height18),
-                label: Text('Atur Pengiriman'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: logoColor,
-                  side: BorderSide(color: logoColor),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAreaChip(String area) {
-    return Chip(
-      label: Text(area),
-      backgroundColor: logoColor.withOpacity(0.1),
-      labelStyle: TextStyle(color: logoColor),
-    );
-  }
-
-  Widget _buildShippingCostRow(String type, String cost) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: Dimenssions.height8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(type, style: secondaryTextStyle),
-          Text(cost, style: primaryTextStyle),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPaymentMethodsCard() {
     return Card(
+      color: backgroundColor1,
       margin: EdgeInsets.only(bottom: Dimenssions.height16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Dimenssions.radius15),
@@ -354,14 +492,14 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
               ],
             ),
             Divider(height: Dimenssions.height24),
-            _buildPaymentMethodRow('Transfer Bank', true),
-            _buildPaymentMethodRow('E-Wallet', true),
-            _buildPaymentMethodRow('COD', false),
+            _buildPaymentMethodRow('Transfer Bank', false),
+            _buildPaymentMethodRow('E-Wallet', false),
+            _buildPaymentMethodRow('COD', true),
             SizedBox(height: Dimenssions.height16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => Get.toNamed('/merchant/edit-payment'),
+                onPressed: () => {},
                 icon: Icon(Icons.edit, size: Dimenssions.height18),
                 label: Text('Atur Pembayaran'),
                 style: OutlinedButton.styleFrom(
@@ -397,6 +535,7 @@ class MerchantProfilePage extends GetView<MerchantProfileController> {
 
   Widget _buildMenuSection() {
     return Card(
+      color: backgroundColor1,
       margin: EdgeInsets.only(bottom: Dimenssions.height16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Dimenssions.radius15),

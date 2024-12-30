@@ -14,16 +14,24 @@ class ProductCategoryService extends GetxService {
   final RxBool isLoading = false.obs;
   final StorageService _storage = StorageService.instance;
 
-  Future<List<ProductCategory>> getCategories() async {
-    // Try to load categories from local storage first
-    final storedCategories = _storage.getList(CATEGORIES_STORAGE_KEY);
-    if (storedCategories != null) {
-      categories.value = storedCategories
-          .map((json) => ProductCategory.fromJson(json))
-          .toList();
-    }
-
+  Future<List<ProductCategory>> getCategories({bool forceRefresh = false}) async {
     try {
+      // Always try to load from local storage first
+      final storedCategories = _storage.getList(CATEGORIES_STORAGE_KEY);
+      if (storedCategories != null) {
+        print('Loading categories from local storage: ${storedCategories.length}'); // Debug print
+        final localCategories = storedCategories
+            .map((json) => ProductCategory.fromJson(json))
+            .toList();
+        categories.assignAll(localCategories);
+        
+        // If we have local data and don't need to refresh, return it
+        if (!forceRefresh && localCategories.isNotEmpty) {
+          return localCategories;
+        }
+      }
+
+      // Only fetch from API if we need to refresh or don't have local data
       isLoading.value = true;
       final token = _authService.getToken();
       if (token == null) throw Exception('Token not found');
@@ -34,7 +42,8 @@ class ProductCategoryService extends GetxService {
         final List<ProductCategory> newCategories =
             data.map((json) => ProductCategory.fromJson(json)).toList();
 
-        categories.value = newCategories;
+        print('Loaded categories from API: ${newCategories.length}'); // Debug print
+        categories.assignAll(newCategories);
 
         // Save to local storage
         await _storage.saveList(CATEGORIES_STORAGE_KEY,
@@ -44,6 +53,7 @@ class ProductCategoryService extends GetxService {
       }
       throw Exception('Failed to get categories');
     } catch (e) {
+      print('Error in getCategories: $e'); // Debug print
       // If we have local data, use that on error
       if (categories.isNotEmpty) {
         return categories;
@@ -62,6 +72,12 @@ class ProductCategoryService extends GetxService {
 
   Future<ProductCategory?> getCategory(int id) async {
     try {
+      // Check local categories first
+      final localCategory = categories.firstWhereOrNull((cat) => cat.id == id);
+      if (localCategory != null) {
+        return localCategory;
+      }
+
       final token = _authService.getToken();
       if (token == null) throw Exception('Token not found');
 
@@ -93,6 +109,11 @@ class ProductCategoryService extends GetxService {
       if (response.statusCode == 200) {
         final category = ProductCategory.fromJson(response.data['data']);
         categories.add(category);
+        
+        // Update local storage
+        await _storage.saveList(CATEGORIES_STORAGE_KEY,
+            categories.map((cat) => cat.toJson()).toList());
+            
         showCustomSnackbar(
           title: 'Success',
           message: 'Category created successfully',
@@ -127,6 +148,10 @@ class ProductCategoryService extends GetxService {
         final index = categories.indexWhere((cat) => cat.id == id);
         if (index != -1) {
           categories[index] = updatedCategory;
+          
+          // Update local storage
+          await _storage.saveList(CATEGORIES_STORAGE_KEY,
+              categories.map((cat) => cat.toJson()).toList());
         }
         showCustomSnackbar(
           title: 'Success',
@@ -154,6 +179,11 @@ class ProductCategoryService extends GetxService {
       final response = await _provider.deleteCategory(token, id);
       if (response.statusCode == 200) {
         categories.removeWhere((cat) => cat.id == id);
+        
+        // Update local storage
+        await _storage.saveList(CATEGORIES_STORAGE_KEY,
+            categories.map((cat) => cat.toJson()).toList());
+            
         showCustomSnackbar(
           title: 'Success',
           message: 'Category deleted successfully',

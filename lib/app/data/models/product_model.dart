@@ -3,7 +3,6 @@ import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_gallery_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 class ProductModel {
