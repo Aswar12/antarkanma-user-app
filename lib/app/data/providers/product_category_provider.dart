@@ -7,6 +7,7 @@ class ProductCategoryProvider {
 
   ProductCategoryProvider() {
     _setupBaseOptions();
+    _setupInterceptors();
   }
 
   void _setupBaseOptions() {
@@ -18,18 +19,43 @@ class ProductCategoryProvider {
     );
   }
 
+  void _setupInterceptors() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          print('Making request to: ${options.uri}');
+          options.headers.addAll({
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          });
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          print('Received response: ${response.statusCode}');
+          print('Response data: ${response.data}');
+          return handler.next(response);
+        },
+        onError: (DioException error, handler) {
+          print('Request error: ${error.message}');
+          print('Error response: ${error.response?.data}');
+          return handler.next(error);
+        },
+      ),
+    );
+  }
+
   Future<Response> getCategories(String token) async {
     try {
       return await _dio.get(
-        '/api/product-categories',
+        '/product-categories',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
           },
         ),
       );
     } catch (e) {
+      print('Error in getCategories: $e');
       throw Exception('Failed to get categories: $e');
     }
   }
@@ -37,15 +63,15 @@ class ProductCategoryProvider {
   Future<Response> getCategory(String token, int id) async {
     try {
       return await _dio.get(
-        '/api/product-category/$id',
+        '/product-category/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
           },
         ),
       );
     } catch (e) {
+      print('Error in getCategory: $e');
       throw Exception('Failed to get category: $e');
     }
   }
@@ -54,16 +80,16 @@ class ProductCategoryProvider {
       String token, Map<String, dynamic> data) async {
     try {
       return await _dio.post(
-        '/api/product-category',
+        '/product-category',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
           },
         ),
         data: data,
       );
     } catch (e) {
+      print('Error in createCategory: $e');
       throw Exception('Failed to create category: $e');
     }
   }
@@ -72,16 +98,16 @@ class ProductCategoryProvider {
       String token, int id, Map<String, dynamic> data) async {
     try {
       return await _dio.put(
-        '/api/product-category/$id',
+        '/product-category/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
           },
         ),
         data: data,
       );
     } catch (e) {
+      print('Error in updateCategory: $e');
       throw Exception('Failed to update category: $e');
     }
   }
@@ -89,15 +115,15 @@ class ProductCategoryProvider {
   Future<Response> deleteCategory(String token, int id) async {
     try {
       return await _dio.delete(
-        '/api/product-category/$id',
+        '/product-category/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
           },
         ),
       );
     } catch (e) {
+      print('Error in deleteCategory: $e');
       throw Exception('Failed to delete category: $e');
     }
   }

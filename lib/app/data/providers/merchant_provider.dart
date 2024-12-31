@@ -25,10 +25,17 @@ class MerchantProvider {
         onRequest: (options, handler) {
           print('Making request to: ${options.path}');
           print('Request data: ${options.data}');
-          options.headers.addAll({
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          });
+
+          // Only add Content-Type for non-FormData requests
+          if (options.data is! FormData) {
+            options.headers.addAll({
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            });
+          } else {
+            options.headers['Accept'] = 'application/json';
+          }
+
           return handler.next(options);
         },
         onResponse: (response, handler) {
@@ -73,8 +80,6 @@ class MerchantProvider {
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
           },
         ),
         data: data,
@@ -98,8 +103,6 @@ class MerchantProvider {
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
           },
         ),
         data: data,
@@ -112,15 +115,47 @@ class MerchantProvider {
     }
   }
 
+  Future<Response> updateProduct(
+      String token, int productId, Map<String, dynamic> data) async {
+    try {
+      print('Updating product ID: $productId with data: $data');
+      final response = await _dio.put(
+        '/products/$productId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: data,
+      );
+      print('Product update response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error updating product: $e');
+      throw Exception('Failed to update product: $e');
+    }
+  }
+
   Future<Response> uploadProductGallery(
       String token, int productId, List<String> imagePaths) async {
     try {
       print('Uploading gallery for product ID: $productId');
 
-      final formData = FormData.fromMap({
-        for (var i = 0; i < imagePaths.length; i++)
-          'images[$i]': await MultipartFile.fromFile(imagePaths[i]),
-      });
+      final formData = FormData();
+
+      for (var i = 0; i < imagePaths.length; i++) {
+        formData.files.add(
+          MapEntry(
+            'gallery[]',
+            await MultipartFile.fromFile(
+              imagePaths[i],
+              filename: 'image_$i.jpg',
+            ),
+          ),
+        );
+      }
+
+      print('Uploading files with FormData: ${formData.files}');
 
       final response = await _dio.post(
         '/products/$productId/gallery',
@@ -137,6 +172,60 @@ class MerchantProvider {
     } catch (e) {
       print('Error uploading gallery: $e');
       throw Exception('Failed to upload gallery: $e');
+    }
+  }
+
+  Future<Response> updateProductGallery(
+      String token, int productId, int galleryId, String imagePath) async {
+    try {
+      print('Updating gallery image $galleryId for product ID: $productId');
+
+      final formData = FormData();
+      formData.files.add(
+        MapEntry(
+          'gallery',
+          await MultipartFile.fromFile(
+            imagePath,
+            filename: 'updated_image.jpg',
+          ),
+        ),
+      );
+
+      final response = await _dio.put(
+        '/products/$productId/gallery/$galleryId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
+        data: formData,
+      );
+      print('Gallery update response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error updating gallery image: $e');
+      throw Exception('Failed to update gallery image: $e');
+    }
+  }
+
+  Future<Response> deleteProductGallery(
+      String token, int productId, int galleryId) async {
+    try {
+      print('Deleting gallery image $galleryId from product ID: $productId');
+      final response = await _dio.delete(
+        '/products/$productId/gallery/$galleryId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      print('Gallery delete response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error deleting gallery image: $e');
+      throw Exception('Failed to delete gallery image: $e');
     }
   }
 
@@ -159,27 +248,62 @@ class MerchantProvider {
     }
   }
 
+  Future<Response> deleteProduct(String token, int productId) async {
+    try {
+      print('Deleting product ID: $productId');
+      final response = await _dio.delete(
+        '/products/$productId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      print('Delete product response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error deleting product: $e');
+      throw Exception('Failed to delete product: $e');
+    }
+  }
+
   void _handleError(DioException error) {
     String message;
     print('Error status code: ${error.response?.statusCode}');
     print('Error response data: ${error.response?.data}');
 
-    switch (error.response?.statusCode) {
-      case 401:
-        message = 'Unauthorized access. Please log in again.';
-        break;
-      case 403:
-        message = 'You don\'t have permission to perform this action.';
-        break;
-      case 404:
-        message = 'Merchant not found.';
-        break;
-      case 422:
-        final errors = error.response?.data['errors'];
-        message = errors?.toString() ?? 'Validation error occurred';
-        break;
-      default:
-        message = error.response?.data?['message'] ?? 'An error occurred';
+    if (error.response?.data != null && error.response?.data['meta'] != null) {
+      message = error.response?.data['meta']['message'] ?? 'An error occurred';
+    } else {
+      switch (error.response?.statusCode) {
+        case 401:
+          message = 'Unauthorized access. Please log in again.';
+          break;
+        case 403:
+          message = 'You don\'t have permission to perform this action.';
+          break;
+        case 404:
+          message = 'Resource not found.';
+          break;
+        case 422:
+          if (error.response?.data != null && error.response?.data['data'] != null) {
+            final errors = error.response?.data['data'];
+            if (errors is Map) {
+              // Get the first error message from the validation errors
+              message = errors.values.first.first.toString();
+            } else {
+              message = 'Validation error occurred';
+            }
+          } else {
+            message = 'Validation error occurred';
+          }
+          break;
+        case 500:
+          message = 'Failed to process request';
+          break;
+        default:
+          message = error.response?.data?['message'] ?? 'An error occurred';
+      }
     }
     throw Exception(message);
   }

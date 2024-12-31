@@ -1,5 +1,5 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/data/models/category_model.dart';
+import 'package:antarkanma/app/data/models/product_category_model.dart';  // Updated import
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/app/data/providers/product_provider.dart';
@@ -24,7 +24,7 @@ class HomePageController extends GetxController {
   final TextEditingController searchController = TextEditingController();
 
   // Getters
-  List<CategoryModel> get categories => _categoryService.categories;
+  List<ProductCategory> get categories => _categoryService.categories;  // Updated type
   bool get isCategoriesLoading => _categoryService.isLoading.value;
   List<ProductModel> get filteredProducts =>
       searchQuery.isEmpty ? products : searchResults;
@@ -114,7 +114,7 @@ class HomePageController extends GetxController {
       isLoading(true);
       await Future.wait([
         loadProducts(),
-        _categoryService.loadCategories(),
+        _categoryService.getCategories(),  // Updated method name
         loadPopularProducts(),
       ]);
       selectedCategory.value = "Semua";
@@ -197,7 +197,7 @@ class HomePageController extends GetxController {
 
       await Future.wait([
         productService.refreshProducts(),
-        _categoryService.loadCategories(),
+        _categoryService.getCategories(),  // Updated method name
         loadPopularProducts(),
       ]);
 
@@ -218,7 +218,7 @@ class HomePageController extends GetxController {
       _handleError('Gagal memperbarui data', e);
       try {
         await loadProducts();
-        await _categoryService.loadCategories();
+        await _categoryService.getCategories();  // Updated method name
         await loadPopularProducts();
       } catch (localError) {
         _handleError('Gagal memuat data lokal', localError);

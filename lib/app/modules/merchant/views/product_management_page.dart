@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_product_controller.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_product_detail_page.dart';
+import 'package:antarkanma/app/widgets/search_input_field.dart';
 import 'product_form_page.dart';
 
 class ProductManagementPage extends GetView<MerchantProductController> {
@@ -31,28 +32,15 @@ class ProductManagementPage extends GetView<MerchantProductController> {
             color: backgroundColor1,
             child: Column(
               children: [
-                SizedBox(
-                  height: 40,
-                  child: TextField(
-                    onChanged: (value) => controller.searchProducts(value),
-                    style: TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Cari produk...',
-                      hintStyle: TextStyle(fontSize: 14),
-                      prefixIcon: Icon(Icons.search, color: logoColor, size: 20),
-                      contentPadding: EdgeInsets.zero,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: logoColor),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                    ),
-                  ),
+                // Search Bar
+                SearchInputField(
+                  controller: controller.searchController,
+                  hintText: 'Cari produk...',
+                  onChanged: controller.searchProducts,
+                  onClear: () {
+                    controller.searchController.clear();
+                    controller.searchProducts('');
+                  },
                 ),
                 SizedBox(height: 12),
                 Row(
@@ -60,8 +48,8 @@ class ProductManagementPage extends GetView<MerchantProductController> {
                     Expanded(
                       child: SizedBox(
                         height: 40,
-                        child: DropdownButtonFormField<String>(
-                          value: 'Semua',
+                        child: Obx(() => DropdownButtonFormField<String>(
+                          value: controller.selectedCategory.value,
                           isDense: true,
                           isExpanded: true,
                           style: TextStyle(
@@ -77,7 +65,7 @@ class ProductManagementPage extends GetView<MerchantProductController> {
                             filled: true,
                             fillColor: Colors.grey.shade50,
                           ),
-                          items: ['Semua', 'Kategori 1', 'Kategori 2']
+                          items: ['Semua', ...controller.categories]
                               .map((cat) => DropdownMenuItem(
                                     value: cat,
                                     child: Text(cat, style: TextStyle(fontSize: 14)),
@@ -88,15 +76,15 @@ class ProductManagementPage extends GetView<MerchantProductController> {
                               controller.filterByCategory(value);
                             }
                           },
-                        ),
+                        )),
                       ),
                     ),
                     SizedBox(width: 12),
                     Expanded(
                       child: SizedBox(
                         height: 40,
-                        child: DropdownButtonFormField<String>(
-                          value: 'Baru',
+                        child: Obx(() => DropdownButtonFormField<String>(
+                          value: controller.sortBy.value,
                           isDense: true,
                           isExpanded: true,
                           style: TextStyle(
@@ -112,18 +100,64 @@ class ProductManagementPage extends GetView<MerchantProductController> {
                             filled: true,
                             fillColor: Colors.grey.shade50,
                           ),
-                          items: ['Baru', 'A-Z', 'Z-A', '↑', '↓']
-                              .map((sort) => DropdownMenuItem(
-                                    value: sort,
-                                    child: Text(sort, style: TextStyle(fontSize: 14)),
-                                  ))
-                              .toList(),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'Baru',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.access_time, size: 16, color: logoColor),
+                                  SizedBox(width: 8),
+                                  Text('Terbaru', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'A-Z',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.sort_by_alpha, size: 16, color: logoColor),
+                                  SizedBox(width: 8),
+                                  Text('A-Z', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Z-A',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.sort_by_alpha, size: 16, color: logoColor),
+                                  SizedBox(width: 8),
+                                  Text('Z-A', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'price_asc',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.arrow_upward, size: 16, color: logoColor),
+                                  SizedBox(width: 8),
+                                  Text('Harga ↑', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'price_desc',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.arrow_downward, size: 16, color: logoColor),
+                                  SizedBox(width: 8),
+                                  Text('Harga ↓', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                          ],
                           onChanged: (value) {
                             if (value != null) {
                               controller.sortProducts(value);
                             }
                           },
-                        ),
+                        )),
                       ),
                     ),
                   ],
@@ -134,9 +168,19 @@ class ProductManagementPage extends GetView<MerchantProductController> {
                     dense: true,
                     visualDensity: VisualDensity.compact,
                     contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'Produk Aktif',
-                      style: TextStyle(fontSize: 14),
+                    title: Row(
+                      children: [
+                        Icon(
+                          Icons.visibility,
+                          size: 16,
+                          color: logoColor,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Produk Aktif',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ],
                     ),
                     trailing: Obx(() => Switch(
                           value: controller.showActiveOnly.value,
@@ -156,9 +200,28 @@ class ProductManagementPage extends GetView<MerchantProductController> {
 
               if (controller.errorMessage.value.isNotEmpty) {
                 return Center(
-                  child: Text(
-                    controller.errorMessage.value,
-                    style: TextStyle(color: Colors.red),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        controller.errorMessage.value,
+                        style: TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => controller.fetchProducts(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: logoColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('Coba Lagi'),
+                      ),
+                    ],
                   ),
                 );
               }
@@ -191,6 +254,7 @@ class ProductManagementPage extends GetView<MerchantProductController> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToProductForm(),
         backgroundColor: logoColor,
+        elevation: 4,
         child: Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -214,6 +278,19 @@ class ProductManagementPage extends GetView<MerchantProductController> {
           Text(
             'Tambahkan produk pertama Anda',
             style: secondaryTextStyle.copyWith(fontSize: 14),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _navigateToProductForm(),
+            icon: Icon(Icons.add),
+            label: Text('Tambah Produk'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: logoColor,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),

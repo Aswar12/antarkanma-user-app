@@ -12,6 +12,8 @@ class MerchantController extends GetxController {
   var merchant = Rx<MerchantModel?>(null);
   var hasError = false.obs;
   var errorMessage = ''.obs;
+  var lastFetchTime = DateTime.now().obs;
+  final cacheValidityDuration = const Duration(minutes: 5);
 
   @override
   void onInit() {
@@ -34,7 +36,17 @@ class MerchantController extends GetxController {
     }
   }
 
-  Future<void> fetchMerchantData() async {
+  bool _shouldRefreshData() {
+    if (merchant.value == null) return true;
+    return DateTime.now().difference(lastFetchTime.value) > cacheValidityDuration;
+  }
+
+  Future<void> fetchMerchantData({bool forceRefresh = false}) async {
+    // Return cached data if available and still valid
+    if (!forceRefresh && !_shouldRefreshData()) {
+      return;
+    }
+
     if (isLoading.value) return;
 
     try {
@@ -46,6 +58,7 @@ class MerchantController extends GetxController {
       
       if (data != null) {
         merchant.value = data;
+        lastFetchTime.value = DateTime.now();
         print("Merchant data fetched successfully: ${data.name}");
       } else {
         hasError.value = true;
@@ -62,13 +75,17 @@ class MerchantController extends GetxController {
 
   void changePage(int index) {
     currentIndex.value = index;
+    // Only fetch data when switching to products tab and data needs refresh
+    if (index == 2 && _shouldRefreshData()) {
+      fetchMerchantData();
+    }
   }
 
   // Getter for merchant name with loading state handling
   String get merchantName => merchant.value?.name ?? '';
 
   // Method to refresh data after updates
-  void refreshData() {
-    fetchMerchantData();
+  Future<void> refreshData() async {
+    await fetchMerchantData(forceRefresh: true);
   }
 }

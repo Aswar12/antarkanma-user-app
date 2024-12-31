@@ -1,113 +1,141 @@
-import 'dart:convert';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import '../data/models/category_model.dart';
-import '../../config.dart';
+import '../data/models/product_category_model.dart';
+import '../data/providers/product_category_provider.dart';
 import 'auth_service.dart';
+import 'package:get_storage/get_storage.dart';
 
 class CategoryService extends GetxService {
-  final RxList<CategoryModel> categories = <CategoryModel>[].obs;
+  final RxList<ProductCategory> categories = <ProductCategory>[].obs;
   final RxBool isLoading = false.obs;
   final AuthService _authService = Get.find<AuthService>();
+  final ProductCategoryProvider _provider = ProductCategoryProvider();
+  final _storage = GetStorage();
+  static const String _categoriesKey = 'categories';
 
-  // Load categories from API
-  Future<void> loadCategories() async {
+  // Get categories from local storage or API
+  Future<List<ProductCategory>> getCategories() async {
     try {
       isLoading.value = true;
-      final token = _authService.getToken();
-
-      if (token == null) {
-        print('No token available');
-        return;
+      
+      // Try to load from local storage first
+      final storedCategories = _storage.read(_categoriesKey);
+      if (storedCategories != null) {
+        try {
+          final List<ProductCategory> loadedCategories = (storedCategories as List)
+              .map((json) => ProductCategory.fromJson(json))
+              .toList();
+          categories.assignAll(loadedCategories);
+          print('Categories loaded from local storage: ${loadedCategories.length}');
+          return loadedCategories;
+        } catch (e) {
+          print('Error parsing stored categories: $e');
+          await _storage.remove(_categoriesKey);
+        }
       }
 
-      final response = await http.get(
-        Uri.parse('${Config.baseUrl}/product-categories'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      // If not in local storage or parsing failed, load from API
+      final token = _authService.getToken();
+      if (token == null) {
+        print('No token available, will try again later');
+        return [];
+      }
 
+      print('Fetching categories from API...');
+      final response = await _provider.getCategories(token);
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Data: ${response.data}');
+      
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final List<dynamic> data = responseData['data'] ?? [];
+        final List<dynamic> data = response.data['data'] ?? [];
+        print('Raw category data: $data');
+        
+        final List<ProductCategory> loadedCategories = [];
+        for (var json in data) {
+          try {
+            final category = ProductCategory.fromJson(json);
+            loadedCategories.add(category);
+          } catch (e) {
+            print('Error parsing category: $e');
+            print('Problematic JSON: $json');
+            continue;
+          }
+        }
 
-        final List<CategoryModel> loadedCategories = data
-            .map((json) {
-              try {
-                return CategoryModel.fromJson(json);
-              } catch (e) {
-                print('Error parsing category: $e');
-                print('Problematic JSON: $json');
-                return null;
-              }
-            })
-            .whereType<CategoryModel>() // Filter out null values
-            .toList();
-
-        // Update the categories list
-        categories.assignAll(loadedCategories);
+        print('Successfully parsed categories: ${loadedCategories.length}');
+        if (loadedCategories.isNotEmpty) {
+          categories.assignAll(loadedCategories);
+          await _storage.write(_categoriesKey, 
+            loadedCategories.map((cat) => cat.toJson()).toList()
+          );
+          print('Categories saved to local storage: ${loadedCategories.length}');
+          return loadedCategories;
+        }
       } else {
         print('Failed to load categories. Status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-
+        print('Response data: ${response.data}');
+        
         if (response.statusCode == 401) {
           _authService.handleAuthError('401');
         }
-
-        throw Exception('Failed to load categories: ${response.statusCode}');
       }
-    } catch (e) {
-      print('Error fetching categories: $e');
+      return [];
+    } catch (e, stackTrace) {
+      print('Error in getCategories: $e');
+      print('Stack trace: $stackTrace');
+      // Try to use cached data if available
+      final storedCategories = _storage.read(_categoriesKey);
+      if (storedCategories != null) {
+        try {
+          final List<ProductCategory> loadedCategories = (storedCategories as List)
+              .map((json) => ProductCategory.fromJson(json))
+              .toList();
+          categories.assignAll(loadedCategories);
+          print('Using cached categories after error: ${loadedCategories.length}');
+          return loadedCategories;
+        } catch (e) {
+          print('Error parsing cached categories: $e');
+        }
+      }
+      return [];
     } finally {
       isLoading.value = false;
+      print('Final categories count: ${categories.length}');
     }
   }
 
   // Clear categories from local storage
   Future<void> clearLocalStorage() async {
+    await _storage.remove(_categoriesKey);
     categories.clear();
   }
 
   // Get a specific category by ID
-  Future<CategoryModel?> getCategoryById(int id) async {
+  Future<ProductCategory?> getCategoryById(int id) async {
+    // Check local categories first
+    final localCategory = categories.firstWhereOrNull((cat) => cat.id == id);
+    if (localCategory != null) {
+      return localCategory;
+    }
+
     try {
       final token = _authService.getToken();
-
       if (token == null) {
         print('No token available');
         return null;
       }
 
-      final response = await http.get(
-        Uri.parse('${Config.baseUrl}/product-category/$id'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
+      final response = await _provider.getCategory(token, id);
+      print('Get category by ID response: ${response.data}');
+      
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final data = responseData['data'];
+        final data = response.data['data'];
         if (data != null) {
-          return CategoryModel.fromJson(data);
+          return ProductCategory.fromJson(data);
         }
-        return null;
-      } else {
-        print('Failed to load category. Status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-
-        if (response.statusCode == 401) {
-          _authService.handleAuthError('401');
-        }
-
-        throw Exception('Failed to load category');
       }
     } catch (e) {
       print('Error fetching category: $e');
-      return null;
     }
+    return null;
   }
 }

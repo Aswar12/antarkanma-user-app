@@ -1,8 +1,8 @@
-import 'package:antarkanma/app/data/models/category_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
-import 'package:antarkanma/app/data/models/product_gallery_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
+import 'package:antarkanma/app/data/models/product_gallery_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
+import 'package:antarkanma/app/data/models/product_category_model.dart'; // Updated import
 import 'package:intl/intl.dart';
 
 class ProductModel {
@@ -15,7 +15,7 @@ class ProductModel {
   final String? status;
   final List<ProductReviewModel>? reviews;
   final MerchantModel? merchant;
-  final CategoryModel? category;
+  final ProductCategory? category; // Updated type
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? averageRatingRaw;
@@ -32,7 +32,7 @@ class ProductModel {
     this.reviews = const [],
     this.status,
     this.merchant,
-    this.category,
+    this.category, // Updated type
     this.createdAt,
     this.updatedAt,
     this.averageRatingRaw,
@@ -126,7 +126,7 @@ class ProductModel {
       'reviews': reviews?.map((review) => review.toJson()).toList(),
       'variants': variants.map((variant) => variant.toJson()).toList(),
       'merchant': merchant?.toJson(),
-      'category': category?.toJson(),
+      'category': category?.toJson(), // Updated type
       'galleries': galleries.map((gallery) => gallery.toJson()).toList(),
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -147,7 +147,7 @@ class ProductModel {
     List<VariantModel>? variants,
     List<ProductReviewModel>? reviews,
     MerchantModel? merchant,
-    CategoryModel? category,
+    ProductCategory? category, // Updated type
     DateTime? createdAt,
     DateTime? updatedAt,
     String? averageRatingRaw,
@@ -164,7 +164,7 @@ class ProductModel {
       variants: variants ?? this.variants,
       reviews: reviews ?? this.reviews,
       merchant: merchant ?? this.merchant,
-      category: category ?? this.category,
+      category: category ?? this.category, // Updated type
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       averageRatingRaw: averageRatingRaw ?? this.averageRatingRaw,
@@ -228,7 +228,7 @@ class ProductModel {
             ? MerchantModel.fromJson(json['merchant'])
             : null,
         category: json['category'] != null
-            ? CategoryModel.fromJson(json['category'])
+            ? ProductCategory.fromJson(json['category']) // Updated type
             : null,
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'].toString())
@@ -237,7 +237,7 @@ class ProductModel {
             ? DateTime.tryParse(json['updated_at'].toString())
             : null,
         averageRatingRaw: json['average_rating']?.toString(),
-        totalReviewsRaw: json['total_reviews'] as int?,
+        totalReviewsRaw: json['total_reviews'] as int,
         ratingInfo: ratingInfo,
       );
     } catch (e) {
@@ -251,15 +251,15 @@ class ProductModel {
     }
   }
 
-// Menambahkan getter untuk status aktif
+  // Menambahkan getter untuk status aktif
   bool get isActive => status?.toLowerCase() == 'active';
 
-// Menambahkan getter untuk variant names yang unik
+  // Menambahkan getter untuk variant names yang unik
   List<String> get uniqueVariantNames {
     return variants.map((v) => v.name).toSet().toList();
   }
 
-// Menambahkan getter untuk variant values berdasarkan name
+  // Menambahkan getter untuk variant values berdasarkan name
   Map<String, List<String>> get variantValuesByName {
     final map = <String, List<String>>{};
     for (var variant in variants) {

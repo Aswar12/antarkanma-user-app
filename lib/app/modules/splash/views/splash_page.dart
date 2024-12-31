@@ -4,6 +4,7 @@ import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/category_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -24,13 +25,19 @@ class _SplashPageState extends State<SplashPage> {
       // Initialize services
       final authService = Get.find<AuthService>();
       final productService = Get.find<ProductService>();
+      final categoryService = Get.find<CategoryService>();
 
       // Load data in parallel
       await Future.wait([
         // Check auth status
 
-        // Load products (will check local storage first)
-        productService.fetchProducts(),
+        // Load categories (will check local storage first)
+        categoryService.getCategories(),
+
+        // Load products only if user is logged in and is a regular user
+        if (authService.isLoggedIn.value && authService.isUser)
+          if (productService.getAllProductsFromStorage().isEmpty)
+            productService.fetchProducts(),
 
         // Minimum splash duration
         Future.delayed(const Duration(seconds: 3)),

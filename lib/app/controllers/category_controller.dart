@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:antarkanma/app/data/models/category_model.dart';
+import 'package:antarkanma/app/data/models/product_category_model.dart';  // Updated import
 import 'package:antarkanma/app/data/providers/category_provider.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
@@ -10,33 +10,33 @@ class CategoryController extends GetxController {
   final StorageService _storage = StorageService.instance;
 
   static const String CATEGORIES_STORAGE_KEY = 'categories';
-  final RxList<CategoryModel> categories = <CategoryModel>[].obs;
+  final RxList<ProductCategory> categories = <ProductCategory>[].obs;  // Updated type
   final RxBool isLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadCategories();
+    getCategories();  // Updated method name
   }
 
-  Future<void> loadCategories() async {
+  Future<List<ProductCategory>> getCategories() async {
     // Try to load from local storage first
     final storedCategories = _storage.getList(CATEGORIES_STORAGE_KEY);
     if (storedCategories != null) {
       categories.value =
-          storedCategories.map((json) => CategoryModel.fromJson(json)).toList();
+          storedCategories.map((json) => ProductCategory.fromJson(json)).toList();
     }
 
     try {
       isLoading.value = true;
       final token = _authService.getToken();
-      if (token == null) return;
+      if (token == null) return [];
 
       final response = await _provider.getCategories(token);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
-        final List<CategoryModel> newCategories =
-            data.map((json) => CategoryModel.fromJson(json)).toList();
+        final List<ProductCategory> newCategories =
+            data.map((json) => ProductCategory.fromJson(json)).toList();
 
         categories.value = newCategories;
 
@@ -49,9 +49,10 @@ class CategoryController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+    return categories; // Ensure we return the categories
   }
 
   Future<void> refreshCategories() async {
-    await loadCategories();
+    await getCategories();
   }
 }

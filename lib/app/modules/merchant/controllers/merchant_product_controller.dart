@@ -1,35 +1,75 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/services/merchant_service.dart';
 
 class MerchantProductController extends GetxController {
+  final MerchantService merchantService;
+  
+  var isLoading = false.obs;
+  var errorMessage = ''.obs;
   var products = <ProductModel>[].obs;
   var filteredProducts = <ProductModel>[].obs;
-  var isLoading = true.obs;
-  var errorMessage = ''.obs;
+  var showActiveOnly = false.obs;
   var searchQuery = ''.obs;
   var selectedCategory = 'Semua'.obs;
-  var selectedSort = 'Baru'.obs;
-  var showActiveOnly = false.obs;
+  var sortBy = 'Baru'.obs;
+  var categories = <String>[].obs;
 
-  final MerchantService merchantService;
+  final searchController = TextEditingController();
 
   MerchantProductController({required this.merchantService});
 
   @override
   void onInit() {
-    fetchProducts();
     super.onInit();
+    fetchProducts();
   }
 
-  void fetchProducts() async {
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
+  }
+
+  Future<void> fetchProducts() async {
     try {
       isLoading(true);
-      var fetchedProducts = await merchantService.getMerchantProducts();
+      errorMessage('');
+      final fetchedProducts = await merchantService.getMerchantProducts();
       products.assignAll(fetchedProducts);
+      
+      // Extract unique categories
+      final uniqueCategories = fetchedProducts
+          .where((p) => p.category != null)
+          .map((p) => p.category!.name)
+          .toSet()
+          .toList();
+      categories.assignAll(uniqueCategories);
+      
       _applyFilters();
     } catch (e) {
-      errorMessage.value = 'Failed to load products: $e';
+      errorMessage('Gagal memuat produk: $e');
+    } finally {
+      isLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteProduct(int productId) async {
+    try {
+      isLoading(true);
+      final result = await merchantService.deleteProduct(productId);
+      if (result['success']) {
+        // Remove the product from the lists
+        products.removeWhere((product) => product.id == productId);
+        filteredProducts.removeWhere((product) => product.id == productId);
+      }
+      return result;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error deleting product: $e'
+      };
     } finally {
       isLoading(false);
     }
@@ -46,7 +86,7 @@ class MerchantProductController extends GetxController {
   }
 
   void sortProducts(String sortType) {
-    selectedSort.value = sortType;
+    sortBy.value = sortType;
     _applyFilters();
   }
 
@@ -70,45 +110,32 @@ class MerchantProductController extends GetxController {
           product.category?.name == selectedCategory.value).toList();
     }
 
-    // Apply active only filter
+    // Apply active filter
     if (showActiveOnly.value) {
       filtered = filtered.where((product) => product.isActive).toList();
     }
 
     // Apply sorting
-    filtered.sort((a, b) {
-      switch (selectedSort.value) {
-        case 'A-Z':
-          return a.name.compareTo(b.name);
-        case 'Z-A':
-          return b.name.compareTo(a.name);
-        case '↑':
-          return b.price.compareTo(a.price);
-        case '↓':
-          return a.price.compareTo(b.price);
-        default:
-          return 0;
-      }
-    });
+    switch (sortBy.value) {
+      case 'A-Z':
+        filtered.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'Z-A':
+        filtered.sort((a, b) => b.name.compareTo(a.name));
+        break;
+      case 'price_asc':
+        filtered.sort((a, b) => (a.price ?? 0).compareTo(b.price ?? 0));
+        break;
+      case 'price_desc':
+        filtered.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
+        break;
+      case 'Baru':
+      default:
+        filtered.sort((a, b) => 
+          (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
+        break;
+    }
 
     filteredProducts.assignAll(filtered);
-  }
-
-  void addProduct(ProductModel product) {
-    products.add(product);
-    _applyFilters();
-  }
-
-  void updateProduct(ProductModel product) {
-    var index = products.indexWhere((p) => p.id == product.id);
-    if (index != -1) {
-      products[index] = product;
-      _applyFilters();
-    }
-  }
-
-  void deleteProduct(int productId) {
-    products.removeWhere((p) => p.id == productId);
-    _applyFilters();
   }
 }

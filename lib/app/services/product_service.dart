@@ -21,6 +21,34 @@ class ProductService extends GetxService {
     fetchProducts();
   }
 
+  // Add a new product to local storage and memory
+  Future<void> addProductToLocal(Map<String, dynamic> productData) async {
+    try {
+      // Create ProductModel from the data
+      final newProduct = ProductModel.fromJson(productData);
+      
+      // Add to memory
+      products.add(newProduct);
+      
+      // Get current stored products
+      final storedProducts = _storage.read(_productsKey) ?? [];
+      final List<Map<String, dynamic>> productList = List<Map<String, dynamic>>.from(storedProducts);
+      
+      // Add new product to the list
+      productList.add(newProduct.toJson());
+      
+      // Save back to storage
+      await _storage.write(_productsKey, productList);
+      
+      // Update last refresh time
+      await _storage.write(_lastRefreshKey, DateTime.now().toIso8601String());
+      
+      print('Product added to local storage: ${newProduct.name}');
+    } catch (e) {
+      print('Error adding product to local storage: $e');
+    }
+  }
+
   Future<void> fetchProducts() async {
     try {
       isLoading.value = true;
@@ -200,7 +228,6 @@ class ProductService extends GetxService {
     products.clear();
   }
 
-  // Add the getProductsByCategory method
   Future<List<ProductModel>> getProductsByCategory(int categoryId) async {
     try {
       final response = await _productProvider.getProductsByCategory(categoryId);

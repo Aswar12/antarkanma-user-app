@@ -21,7 +21,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (categoryService.categories.isEmpty) {
-        categoryService.loadCategories();
+        categoryService.getCategories(); // Updated method name
       }
     });
   }
