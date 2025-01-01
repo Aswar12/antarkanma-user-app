@@ -4,7 +4,6 @@ import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/data/providers/transaction_provider.dart';
-import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -28,35 +27,47 @@ class CartController extends GetxController {
       if (cartData != null) {
         final Map<String, dynamic> decodedData =
             Map<String, dynamic>.from(cartData);
-        merchantItems.value = decodedData.map((key, value) {
-          return MapEntry(
-            int.parse(key),
-            (value as List)
-                .map((item) => CartItemModel.fromJson(item))
-                .toList(),
-          );
+        
+        // Clear existing items
+        merchantItems.clear();
+        
+        // Process each merchant's items
+        decodedData.forEach((key, value) {
+          try {
+            final merchantId = int.parse(key);
+            final items = (value as List).map((item) {
+              final cartItem = CartItemModel.fromJson(item);
+              return cartItem;
+            }).toList();
+            
+            if (items.isNotEmpty) {
+              merchantItems[merchantId] = items;
+            }
+          } catch (e) {
+            print('Error processing merchant $key: $e');
+            // Skip invalid merchant data
+          }
         });
       }
     } catch (e) {
       print('Error loading cart: $e');
-      showCustomSnackbar(
-        title: 'Error',
+      CustomSnackbarX.showError(
         message: 'Gagal memuat data keranjang',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
       );
+      // Clear cart in case of error
+      merchantItems.clear();
     }
   }
 
   void _saveCartToStorage() {
     try {
-      final cartData = merchantItems.map((key, value) {
-        return MapEntry(
-          key.toString(),
-          value.map((item) => item.toJson()).toList(),
-        );
+      final validItems = merchantItems.map((key, value) {
+        return MapEntry(key.toString(), value.map((item) => item.toJson()).toList());
       });
-      storage.write(CART_STORAGE_KEY, cartData);
+      
+      if (validItems.isNotEmpty) {
+        storage.write(CART_STORAGE_KEY, validItems);
+      }
     } catch (e) {
       print('Error saving cart: $e');
     }
@@ -70,38 +81,34 @@ class CartController extends GetxController {
   }) {
     try {
       if (!merchant.isActive) {
-        showCustomSnackbar(
+        CustomSnackbarX.showError(
           title: 'Merchant Tidak Aktif',
           message: 'Merchant ini sedang tidak aktif',
-          backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
+          position: SnackPosition.BOTTOM,
         );
         return;
       }
 
       final merchantId = merchant.id;
-      if (product.id == null) {
-        showCustomSnackbar(
-          title: 'ID Produk Tidak Valid',
-          message: 'Produk harus memiliki ID yang valid',
-          backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
+      if (merchantId == null) {
+        CustomSnackbarX.showError(
+          title: 'Error',
+          message: 'Merchant harus memiliki id yang valid',
+          position: SnackPosition.BOTTOM,
         );
         return;
-      } else if (merchantId == null) {
-        throw Exception('ID Merchant tidak valid');
       }
 
       if (!isQuantityValid(quantity)) {
-        showCustomSnackbar(
+        CustomSnackbarX.showError(
           title: 'Jumlah Tidak Valid',
           message: 'Jumlah harus antara 1 dan $MAX_QUANTITY',
-          backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
+          position: SnackPosition.BOTTOM,
         );
         return;
       }
 
+      // Initialize merchant's cart if it doesn't exist
       if (!merchantItems.containsKey(merchantId)) {
         merchantItems[merchantId] = [];
       }
@@ -115,11 +122,10 @@ class CartController extends GetxController {
         final newQuantity = existingItem.quantity + quantity;
 
         if (!isQuantityValid(newQuantity)) {
-          showCustomSnackbar(
+          CustomSnackbarX.showError(
             title: 'Melebihi Batas',
             message: 'Total jumlah tidak boleh melebihi $MAX_QUANTITY',
-            backgroundColor: Colors.red,
-            snackPosition: SnackPosition.BOTTOM,
+            position: SnackPosition.BOTTOM,
           );
           return;
         }
@@ -142,19 +148,17 @@ class CartController extends GetxController {
       _saveCartToStorage();
       update();
 
-      showCustomSnackbar(
+      CustomSnackbarX.showSuccess(
         title: 'Berhasil',
         message: 'Produk berhasil ditambahkan ke keranjang',
-        backgroundColor: logoColorSecondary,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     } catch (e) {
       print('Error adding to cart: $e');
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Error',
         message: 'Gagal menambahkan produk ke keranjang',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     }
   }
@@ -171,11 +175,10 @@ class CartController extends GetxController {
       }
     } catch (e) {
       print('Error removing from cart: $e');
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Error',
         message: 'Gagal menghapus produk dari keranjang',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     }
   }
@@ -187,11 +190,10 @@ class CartController extends GetxController {
       update();
     } catch (e) {
       print('Error clearing cart: $e');
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Error',
         message: 'Gagal mengosongkan keranjang',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     }
   }
@@ -221,11 +223,10 @@ class CartController extends GetxController {
       }
     } catch (e) {
       print('Error updating quantity: $e');
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Error',
         message: 'Gagal mengupdate jumlah produk',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     }
   }
@@ -238,11 +239,10 @@ class CartController extends GetxController {
       if (items != null && isQuantityValid(items[index].quantity + 1)) {
         updateQuantity(merchantId, index, items[index].quantity + 1);
       } else {
-        showCustomSnackbar(
+        CustomSnackbarX.showWarning(
           title: 'Batas Maksimum',
           message: 'Jumlah maksimum telah tercapai',
-          backgroundColor: Colors.orange,
-          snackPosition: SnackPosition.BOTTOM,
+          position: SnackPosition.BOTTOM,
         );
       }
     }
@@ -256,17 +256,15 @@ class CartController extends GetxController {
       if (items != null && items[index].quantity > 1) {
         updateQuantity(merchantId, index, items[index].quantity - 1);
       } else {
-        showCustomSnackbar(
+        CustomSnackbarX.showWarning(
           title: 'Batas Minimum',
           message: 'Jumlah minimum telah tercapai',
-          backgroundColor: Colors.orange,
-          snackPosition: SnackPosition.BOTTOM,
+          position: SnackPosition.BOTTOM,
         );
       }
     }
   }
 
-  // Methods for handling item selection
   void toggleItemSelection(int merchantId, int index) {
     if (merchantItems.containsKey(merchantId) &&
         index >= 0 &&
@@ -336,11 +334,10 @@ class CartController extends GetxController {
 
   bool validateCart() {
     if (selectedItems.isEmpty) {
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Tidak Ada Item Dipilih',
         message: 'Silakan pilih produk yang ingin dicheckout',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
       return false;
     }
@@ -348,11 +345,10 @@ class CartController extends GetxController {
     bool allMerchantsActive = merchantItems.keys.every((merchantId) {
       final merchant = merchantItems[merchantId]!.first.merchant;
       if (!merchant.isActive) {
-        showCustomSnackbar(
+        CustomSnackbarX.showError(
           title: 'Merchant Tidak Aktif',
           message: 'Merchant ${merchant.name} sedang tidak aktif',
-          backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
+          position: SnackPosition.BOTTOM,
         );
         return false;
       }
@@ -383,12 +379,14 @@ class CartController extends GetxController {
 
     List<Map<String, dynamic>> items = [];
     selectedItems.forEach((item) {
-      items.add({
-        "product_id": item.product.id,
-        "merchant_id": item.merchant.id,
-        "quantity": item.quantity,
-        "price": item.totalPrice,
-      });
+      if (item.merchant.id != null) {
+        items.add({
+          "product_id": item.product.id,
+          "merchant_id": item.merchant.id,
+          "quantity": item.quantity,
+          "price": item.totalPrice,
+        });
+      }
     });
 
     Map<String, dynamic> transactionData = {
@@ -405,19 +403,17 @@ class CartController extends GetxController {
       final response =
           await transactionProvider.createTransaction(transactionData);
       print('Transaction created successfully: ${response.data}');
-      showCustomSnackbar(
+      CustomSnackbarX.showSuccess(
         title: 'Success',
         message: 'Transaction created successfully!',
-        backgroundColor: Colors.green,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     } catch (e) {
       print('Error creating transaction: $e');
-      showCustomSnackbar(
+      CustomSnackbarX.showError(
         title: 'Error',
         message: 'Failed to create transaction.',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+        position: SnackPosition.BOTTOM,
       );
     }
   }

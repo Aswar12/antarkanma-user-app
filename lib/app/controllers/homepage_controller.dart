@@ -1,30 +1,49 @@
+import 'dart:async';
 import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/data/models/product_category_model.dart';  // Updated import
-import 'package:antarkanma/app/data/models/product_review_model.dart';
+import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
-import 'package:antarkanma/app/data/providers/product_provider.dart';
+import 'package:antarkanma/app/services/product_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:antarkanma/app/services/product_service.dart';
+
+class Debouncer {
+  final int milliseconds;
+  Timer? _timer;
+
+  Debouncer({required this.milliseconds});
+
+  run(VoidCallback action) {
+    _timer?.cancel();
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
+  }
+}
 
 class HomePageController extends GetxController {
   final ProductService productService = Get.find<ProductService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
-  final ProductProvider _productProvider = ProductProvider();
 
   // Observable state variables
   final RxList<ProductModel> products = <ProductModel>[].obs;
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
   final RxList<ProductModel> searchResults = <ProductModel>[].obs;
   final RxBool isLoading = true.obs;
+  final RxBool isLoadingMore = false.obs;
+  final RxBool hasMoreData = true.obs;
   final RxBool isRefreshing = false.obs;
   final RxString selectedCategory = "Semua".obs;
   final RxInt currentIndex = 0.obs;
   final RxString searchQuery = ''.obs;
   final TextEditingController searchController = TextEditingController();
 
+  // Pagination variables
+  int _currentPage = 1;
+  static const int _pageSize = 10;
+  static const int _preloadThreshold = 8;
+  bool _isPreloading = false;
+  bool _isInitialLoad = true;
+
   // Getters
-  List<ProductCategory> get categories => _categoryService.categories;  // Updated type
+  List<ProductCategory> get categories => _categoryService.categories;
   bool get isCategoriesLoading => _categoryService.isLoading.value;
   List<ProductModel> get filteredProducts =>
       searchQuery.isEmpty ? products : searchResults;
@@ -34,13 +53,31 @@ class HomePageController extends GetxController {
     super.onInit();
     loadInitialData();
     _setupSearchListener();
+    
+    // Listen to products list changes to trigger preloading
+    ever(products, (_) {
+      if (products.length >= _preloadThreshold && !_isInitialLoad) {
+        checkAndPreloadNextPage();
+      }
+    });
+  }
+
+  void checkAndPreloadNextPage() {
+    if (!_isPreloading && hasMoreData.value && searchQuery.isEmpty) {
+      preloadNextPage();
+    }
   }
 
   void _setupSearchListener() {
+    var debouncer = Debouncer(milliseconds: 500);
     searchController.addListener(() {
       searchQuery.value = searchController.text;
       if (searchQuery.isNotEmpty) {
-        performSearch();
+        debouncer.run(() {
+          _currentPage = 1;
+          hasMoreData.value = true;
+          performSearch();
+        });
       } else {
         searchResults.clear();
       }
@@ -48,23 +85,17 @@ class HomePageController extends GetxController {
   }
 
   Future<void> performSearch() async {
-    // Show local results first without loading state
-    List<ProductModel> localResults = productService
-        .getAllProductsFromStorage()
-        .where((product) =>
-            product.name
-                .toLowerCase()
-                .contains(searchQuery.value.toLowerCase()) ||
-            (product.merchant?.name ?? '')
-                .toLowerCase()
-                .contains(searchQuery.value.toLowerCase()))
-        .toList();
-    searchResults.assignAll(localResults);
+    if (searchQuery.isEmpty) return;
 
-    // Then fetch from API in background without showing loading indicator
     try {
-      final response = await _productProvider.getAllProducts(
+      if (_currentPage == 1) {
+        searchResults.clear();
+      }
+
+      final response = await productService.getAllProducts(
         query: searchQuery.value,
+        page: _currentPage,
+        pageSize: _pageSize,
       );
 
       if (response.statusCode == 200) {
@@ -72,34 +103,107 @@ class HomePageController extends GetxController {
         final List<dynamic> productList =
             data is Map ? data['data'] as List : data as List;
 
-        final List<ProductModel> results = [];
-        for (var json in productList) {
-          final product = ProductModel.fromJson(json as Map<String, dynamic>);
-          if (product.id != null && product.ratingInfo == null) {
-            final reviewData =
-                await productService.getProductWithReviews(product.id!);
-            final updatedProduct = product.copyWith(
-              averageRatingRaw:
-                  reviewData['rating_info']['average_rating'].toString(),
-              totalReviewsRaw:
-                  reviewData['rating_info']['total_reviews'] as int,
-              ratingInfo: reviewData['rating_info'] as Map<String, dynamic>,
-              reviews:
-                  (reviewData['reviews'] as List).cast<ProductReviewModel>(),
-            );
-            results.add(updatedProduct);
-          } else {
-            results.add(product);
-          }
+        if (productList.isEmpty) {
+          hasMoreData.value = false;
+          return;
         }
-        // Update results if we got new data
-        if (results.isNotEmpty) {
+
+        final List<ProductModel> results = productList
+            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        if (_currentPage == 1) {
           searchResults.assignAll(results);
+        } else {
+          searchResults.addAll(results);
         }
+
+        _currentPage++;
       }
     } catch (e) {
-      // Silent error handling - keep showing local results
-      print('Search API error: $e');
+      _handleError('Search API error', e);
+    }
+  }
+
+  Future<void> preloadNextPage() async {
+    if (_isPreloading || !hasMoreData.value || searchQuery.isNotEmpty) return;
+
+    try {
+      _isPreloading = true;
+      
+      if (selectedCategory.value == "Semua") {
+        await productService.fetchProducts(
+          page: _currentPage + 1,
+          pageSize: _pageSize,
+        );
+      } else {
+        final category = _categoryService.categories
+            .firstWhere((cat) => cat.name == selectedCategory.value);
+            
+        await productService.getProductsByCategory(
+          category.id,
+          page: _currentPage + 1,
+          pageSize: _pageSize,
+        );
+      }
+    } catch (e) {
+      print('Error preloading next page: $e');
+    } finally {
+      _isPreloading = false;
+    }
+  }
+
+  Future<void> loadMoreProducts() async {
+    if (isLoadingMore.value || !hasMoreData.value || searchQuery.isNotEmpty) return;
+
+    try {
+      isLoadingMore.value = true;
+      
+      if (selectedCategory.value == "Semua") {
+        final response = await productService.fetchProducts(
+          page: _currentPage,
+          pageSize: _pageSize,
+        );
+        
+        if (response.statusCode == 200) {
+          final data = response.data['data'];
+          final List<dynamic> productList =
+              data is Map ? data['data'] as List : data as List;
+
+          if (productList.isEmpty) {
+            hasMoreData.value = false;
+            return;
+          }
+
+          final List<ProductModel> newProducts = productList
+              .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+
+          products.addAll(newProducts);
+          _currentPage++;
+        }
+      } else {
+        final category = _categoryService.categories
+            .firstWhere((cat) => cat.name == selectedCategory.value);
+            
+        final categoryProducts = await productService.getProductsByCategory(
+          category.id,
+          page: _currentPage,
+          pageSize: _pageSize,
+        );
+        
+        if (categoryProducts.isEmpty) {
+          hasMoreData.value = false;
+          return;
+        }
+        
+        products.addAll(categoryProducts);
+        _currentPage++;
+      }
+    } catch (e) {
+      _handleError('Failed to load more products', e);
+    } finally {
+      isLoadingMore.value = false;
     }
   }
 
@@ -112,12 +216,18 @@ class HomePageController extends GetxController {
   Future<void> loadInitialData() async {
     try {
       isLoading(true);
+      _currentPage = 1;
+      hasMoreData.value = true;
+      _isInitialLoad = true;
+      
       await Future.wait([
         loadProducts(),
-        _categoryService.getCategories(),  // Updated method name
+        _categoryService.getCategories(),
         loadPopularProducts(),
       ]);
+      
       selectedCategory.value = "Semua";
+      _isInitialLoad = false;
     } finally {
       isLoading(false);
     }
@@ -126,8 +236,26 @@ class HomePageController extends GetxController {
   Future<void> loadProducts() async {
     try {
       isLoading(true);
-      await productService.fetchProducts();
-      products.assignAll(productService.products);
+      _currentPage = 1;
+      hasMoreData.value = true;
+      
+      final response = await productService.fetchProducts(
+        page: _currentPage,
+        pageSize: _pageSize,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        final List<dynamic> productList =
+            data is Map ? data['data'] as List : data as List;
+
+        final List<ProductModel> newProducts = productList
+            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        products.assignAll(newProducts);
+        _currentPage++;
+      }
     } catch (e) {
       _handleError('Failed to load products', e);
     } finally {
@@ -137,12 +265,12 @@ class HomePageController extends GetxController {
 
   Future<void> loadPopularProducts() async {
     try {
-      final products = await productService.getPopularProducts(
+      final popularProds = await productService.getPopularProducts(
         limit: 12,
         minRating: 4.0,
         minReviews: 5,
       );
-      popularProducts.assignAll(products);
+      popularProducts.assignAll(popularProds);
     } catch (e) {
       _handleError('Failed to load popular products', e);
       final storedProducts = productService.getAllProductsFromStorage();
@@ -156,21 +284,31 @@ class HomePageController extends GetxController {
 
   void updateSelectedCategory(String categoryName) async {
     try {
+      if (categoryName == selectedCategory.value) return;
+      
       selectedCategory.value = categoryName;
+      _currentPage = 1;
+      hasMoreData.value = true;
+      products.clear();
+      _isInitialLoad = true;
 
       if (categoryName == "Semua") {
-        await productService.fetchProducts();
-        products.assignAll(productService.products);
+        await loadProducts();
       } else {
         final category = _categoryService.categories
             .firstWhere((cat) => cat.name == categoryName);
-        final categoryProducts =
-            await productService.getProductsByCategory(category.id);
+        final categoryProducts = await productService.getProductsByCategory(
+          category.id,
+          page: _currentPage,
+          pageSize: _pageSize,
+        );
         products.assignAll(categoryProducts);
+        _currentPage++;
       }
+      
+      _isInitialLoad = false;
     } catch (e) {
       _handleError('Failed to load products for category', e);
-      // Fallback to stored products if API fails
       final storedProducts = productService.getAllProductsFromStorage();
       if (categoryName == "Semua") {
         products.assignAll(storedProducts);
@@ -190,19 +328,23 @@ class HomePageController extends GetxController {
 
     try {
       isRefreshing(true);
+      await productService.clearLocalStorage();
+      _currentPage = 1;
+      hasMoreData.value = true;
       products.clear();
       popularProducts.clear();
       searchResults.clear();
       _categoryService.categories.clear();
+      _isInitialLoad = true;
 
       await Future.wait([
-        productService.refreshProducts(),
-        _categoryService.getCategories(),  // Updated method name
+        loadProducts(),
+        _categoryService.getCategories(),
         loadPopularProducts(),
       ]);
 
-      products.assignAll(productService.products);
       selectedCategory.value = "Semua";
+      _isInitialLoad = false;
 
       if (showMessage) {
         Get.snackbar(
@@ -218,26 +360,13 @@ class HomePageController extends GetxController {
       _handleError('Gagal memperbarui data', e);
       try {
         await loadProducts();
-        await _categoryService.getCategories();  // Updated method name
+        await _categoryService.getCategories();
         await loadPopularProducts();
       } catch (localError) {
         _handleError('Gagal memuat data lokal', localError);
       }
     } finally {
       isRefreshing(false);
-      isLoading(false);
-    }
-  }
-
-  Future<void> forceRefreshFromServer() async {
-    try {
-      isLoading(true);
-      await productService.clearLocalStorage();
-      await _categoryService.clearLocalStorage();
-      await refreshProducts(showMessage: true);
-    } catch (e) {
-      _handleError('Gagal memperbarui data dari server', e);
-    } finally {
       isLoading(false);
     }
   }

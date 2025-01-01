@@ -4,18 +4,18 @@ class MerchantModel {
   final String name;
   final String address;
   final String phoneNumber;
-  final String? status; // Menambahkan status merchant
-  final String? description; // New field for merchant description
-  final String? logo; // New field for merchant logo
-  final String? openingTime; // New field for opening time
-  final String? closingTime; // New field for closing time
-  final List<String>? operatingDays; // New field for operating days
+  final String? status;
+  final String? description;
+  final String? logo;
+  final String? openingTime;
+  final String? closingTime;
+  final List<String>? operatingDays;
   final DateTime createdAt; 
-  final int? orderCount; // New field for order count
-  final int? productsSold; // New field for products sold
-  final int? totalSales; // New field for total sales
-  final int? monthlyRevenue; // New field for monthly revenue
-  final int? productCount; // New field for product count
+  final int? orderCount;
+  final int? productsSold;
+  final int? totalSales;
+  final int? monthlyRevenue;
+  final int? productCount;
   final DateTime updatedAt;
 
   MerchantModel({
@@ -24,31 +24,30 @@ class MerchantModel {
     required this.name,
     required this.address,
     required this.phoneNumber,
-    this.status = 'ACTIVE', // Default status
-    this.description, // Accept description
-    this.logo, // Accept logo
+    this.status = 'ACTIVE',
+    this.description,
+    this.logo,
     required this.createdAt,
-    this.productCount, // Accept product count
+    this.productCount,
     required this.updatedAt,
-    this.openingTime, // Accept opening time
-    this.closingTime, // Accept closing time
-    this.operatingDays, // Accept operating days
-    this.orderCount, // Accept order count
-    this.productsSold, // Accept products sold
-    this.totalSales, // Accept total sales
-    this.monthlyRevenue, // Accept monthly revenue
+    this.openingTime,
+    this.closingTime,
+    this.operatingDays,
+    this.orderCount,
+    this.productsSold,
+    this.totalSales,
+    this.monthlyRevenue,
   });
 
-  // Constructor untuk data dari API
   factory MerchantModel.fromJson(Map<String, dynamic> json) {
     try {
-      // Helper function to safely parse integer
       int? parseInt(dynamic value) {
         if (value == null) return null;
-        if (value is int) return value;
+        if (value is int) return value == 0 ? null : value;  // Return null for ID 0
         if (value is String) {
           try {
-            return int.parse(value);
+            final parsed = int.parse(value);
+            return parsed == 0 ? null : parsed;  // Return null for ID 0
           } catch (e) {
             print('Error parsing $value to int: $e');
             return null;
@@ -57,7 +56,6 @@ class MerchantModel {
         return null;
       }
 
-      // Parse operating days from JSON
       List<String>? parseOperatingDays(dynamic value) {
         if (value == null) return null;
         if (value is List) {
@@ -70,7 +68,7 @@ class MerchantModel {
       }
 
       return MerchantModel(
-        id: parseInt(json['id']),
+        id: parseInt(json['id']),  // This will now return null for ID 0
         ownerId: parseInt(json['owner_id'].toString()) ?? 0,
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
@@ -94,8 +92,9 @@ class MerchantModel {
             : DateTime.now(),
       );
     } catch (e) {
-      // Return a minimal valid merchant in case of error
+      // Return a minimal valid merchant with null ID instead of 0
       return MerchantModel(
+        id: null,  // Changed from 0 to null
         ownerId: 0,
         name: '',
         address: '',
@@ -115,6 +114,7 @@ class MerchantModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'owner_id': ownerId,
       'name': name,
       'address': address,

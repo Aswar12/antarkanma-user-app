@@ -1,148 +1,192 @@
-// ignore_for_file: avoid_print
-
 import 'package:get/get.dart';
-import 'package:antarkanma/app/data/models/transaction_model.dart';
-import 'package:antarkanma/app/data/providers/transaction_provider.dart';
-import 'package:antarkanma/app/services/storage_service.dart';
+import '../data/providers/transaction_provider.dart';
+import '../data/models/transaction_model.dart';
+import '../widgets/custom_snackbar.dart';
 
 class TransactionService extends GetxService {
   final TransactionProvider _transactionProvider = TransactionProvider();
-  final StorageService _storageService = StorageService.instance;
 
-  Future<List<TransactionModel>> getTransactions({String? status}) async {
+  Future<TransactionModel?> createTransaction(TransactionModel transaction) async {
     try {
-      print('\n=== Transaction Service Debug ===');
-      print('Fetching transactions with status: $status');
-      print('Token: ${_storageService.getToken()}');
-
-      final response = await _transactionProvider.getTransactions(
-        status: status,
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response data: ${response.data}');
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['meta']?['status'] == 'success') {
-          // The data is nested in data.data due to pagination structure
-          final paginationData = responseData['data'];
-          if (paginationData != null && paginationData['data'] is List) {
-            final transactionsList = paginationData['data'] as List;
-            print('Found ${transactionsList.length} transactions');
-
-            return transactionsList
-                .map((json) => TransactionModel.fromJson(json))
-                .toList();
-          } else {
-            print('No transactions found in response');
-          }
-        } else {
-          print('Response meta status is not success');
-        }
-      } else {
-        print('Response status code is not 200');
-      }
-
-      return [];
-    } catch (e) {
-      print('Error getting transactions: $e');
-      if (e.toString().contains('401')) {
-        throw Exception('Sesi anda telah berakhir. Silakan login kembali.');
-      } else if (e.toString().contains('404')) {
-        throw Exception('Data pesanan tidak ditemukan.');
-      } else if (e.toString().contains('500')) {
-        throw Exception(
-            'Terjadi kesalahan pada server. Silakan coba lagi nanti.');
-      }
-      throw Exception('Gagal memuat pesanan: ${e.toString()}');
-    }
-  }
-
-  Future<TransactionModel?> createTransaction(
-      TransactionModel transaction) async {
-    try {
-      final transactionData = transaction.toCheckoutPayload();
-      print('Creating transaction with data: $transactionData');
-
-      final response =
-          await _transactionProvider.createTransaction(transactionData);
+      final response = await _transactionProvider.createTransaction(transaction.toJson());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = response.data;
-        if (responseData['meta']?['status'] == 'success') {
-          return TransactionModel.fromJson(responseData['data']);
+        if (response.data['meta']?['status'] == 'success') {
+          return TransactionModel.fromJson(response.data['data']);
+        } else {
+          final message = response.data['meta']?['message'] ?? 'Gagal membuat transaksi';
+          CustomSnackbarX.showError(
+            title: 'Error',
+            message: message,
+            position: SnackPosition.BOTTOM,
+          );
+          return null;
         }
       }
 
-      throw Exception(
-          response.data['meta']?['message'] ?? 'Failed to create transaction');
-    } catch (e) {
-      print('Error creating transaction: $e');
-      rethrow;
-    }
-  }
-
-  Future<TransactionModel?> getTransactionById(String transactionId) async {
-    try {
-      final response =
-          await _transactionProvider.getTransactionById(transactionId);
-
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-        if (responseData['meta']?['status'] == 'success') {
-          return TransactionModel.fromJson(responseData['data']);
+      if (response.statusCode == 422) {
+        final data = response.data;
+        if (data != null && data['data'] != null) {
+          final errors = data['data'] as Map<String, dynamic>;
+          final errorMessages = <String>[];
+          errors.forEach((key, value) {
+            if (value is List) {
+              errorMessages.addAll(value.map((e) => e.toString()));
+            } else {
+              errorMessages.add(value.toString());
+            }
+          });
+          CustomSnackbarX.showError(
+            title: 'Error',
+            message: errorMessages.join('\n'),
+            position: SnackPosition.BOTTOM,
+          );
         }
       }
       return null;
     } catch (e) {
-      print('Error getting transaction by ID: $e');
-      rethrow;
+      print('Error creating transaction: $e');
+      return null;
     }
   }
 
-  Future<bool> cancelTransaction(String transactionId) async {
+  Future<List<TransactionModel>> getTransactions({
+    String? status,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     try {
-      final response =
-          await _transactionProvider.cancelTransaction(transactionId);
+      final response = await _transactionProvider.getTransactions(
+        status: status,
+        page: page,
+        pageSize: pageSize,
+      );
+
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        final List<dynamic> transactionsData = response.data['data'];
+        return transactionsData
+            .map((json) => TransactionModel.fromJson(json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting transactions: $e');
+      return [];
+    }
+  }
+
+  Future<TransactionModel?> getTransactionById(String id) async {
+    try {
+      final response = await _transactionProvider.getTransactionById(id);
+
+      if (response.statusCode == 200) {
+        return TransactionModel.fromJson(response.data['data']);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting transaction: $e');
+      return null;
+    }
+  }
+
+  Future<bool> cancelTransaction(String id) async {
+    try {
+      final response = await _transactionProvider.cancelTransaction(id);
       return response.statusCode == 200;
     } catch (e) {
       print('Error canceling transaction: $e');
-      if (e.toString().contains('404')) {
-        throw Exception('Pesanan tidak ditemukan.');
-      } else if (e.toString().contains('403')) {
-        throw Exception(
-            'Anda tidak memiliki izin untuk membatalkan pesanan ini.');
-      }
-      throw Exception('Gagal membatalkan pesanan: ${e.toString()}');
+      return false;
     }
   }
 
-  Future<List<TransactionModel>> getTransactionsByMerchant(
-      String merchantId) async {
+  Future<Map<String, dynamic>?> getTransactionsByMerchant(
+    String merchantId, {
+    int? page = 1,
+    int? limit = 10,
+    String? status,
+  }) async {
     try {
-      final response =
-          await _transactionProvider.getTransactionsByMerchant(merchantId);
+      final response = await _transactionProvider.getTransactionsByMerchant(
+        merchantId,
+        page: page ?? 1,
+        limit: limit ?? 10,
+        status: status,
+      );
 
       if (response.statusCode == 200) {
-        final responseData = response.data;
-        if (responseData['meta']?['status'] == 'success') {
-          final data = responseData['data'];
-
-          if (data is List) {
-            return data.map((json) => TransactionModel.fromJson(json)).toList();
-          } else if (data is Map && data['data'] is List) {
-            return (data['data'] as List)
-                .map((json) => TransactionModel.fromJson(json))
-                .toList();
-          }
-        }
+        return response.data['data'];
       }
-      return [];
+      return null;
     } catch (e) {
       print('Error getting merchant transactions: $e');
-      return [];
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getTransactionSummaryByMerchant(
+    String merchantId,
+  ) async {
+    try {
+      final response = await _transactionProvider.getTransactionSummaryByMerchant(merchantId);
+      if (response.statusCode == 200) {
+        return response.data['data'];
+      }
+      return null;
+    } catch (e) {
+      print('Error getting transaction summary: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updateOrderStatus(
+    String merchantId,
+    String orderId, {
+    required String status,
+    String? notes,
+  }) async {
+    try {
+      final response = await _transactionProvider.updateOrderStatus(
+        merchantId,
+        orderId,
+        status: status,
+        notes: notes,
+      );
+
+      if (response.statusCode == 200) {
+        CustomSnackbarX.showSuccess(
+          title: 'Success',
+          message: 'Status pesanan berhasil diperbarui',
+          position: SnackPosition.BOTTOM,
+        );
+        return true;
+      } else if (response.statusCode == 422) {
+        final data = response.data;
+        if (data != null && data['data'] != null) {
+          final errors = data['data'] as Map<String, dynamic>;
+          final errorMessages = <String>[];
+          errors.forEach((key, value) {
+            if (value is List) {
+              errorMessages.addAll(value.map((e) => e.toString()));
+            } else {
+              errorMessages.add(value.toString());
+            }
+          });
+          CustomSnackbarX.showError(
+            title: 'Error',
+            message: errorMessages.join('\n'),
+            position: SnackPosition.BOTTOM,
+          );
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error updating order status: $e');
+      CustomSnackbarX.showError(
+        title: 'Error',
+        message: 'Gagal memperbarui status pesanan',
+        position: SnackPosition.BOTTOM,
+      );
+      return false;
     }
   }
 }

@@ -13,14 +13,9 @@ class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
 
   Future<void> _navigateToOrderPage() async {
-    // Initialize controller with order page index
     final controller = Get.put(UserMainController(), permanent: true);
     controller.currentIndex.value = 2;
-
-    // Add a small delay to ensure controller is initialized
     await Future.delayed(const Duration(milliseconds: 100));
-
-    // Navigate to UserMainPage with no transition animation
     await Get.offAll(
       () => const UserMainPage(),
       transition: Transition.noTransition,
@@ -89,6 +84,51 @@ class CheckoutSuccessPage extends StatelessWidget {
     );
   }
 
+  Widget _buildTransactionCard(TransactionModel transaction, UserLocationModel deliveryAddress) {
+    return Card(
+      color: backgroundColor1,
+      child: Padding(
+        padding: EdgeInsets.all(Dimenssions.width16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Order ID: ${transaction.orderId}',
+                  style: primaryTextStyle.copyWith(
+                    fontWeight: semiBold,
+                  ),
+                ),
+                Text(
+                  transaction.statusDisplay,
+                  style: primaryTextStyle.copyWith(
+                    color: transaction.status.toUpperCase() == 'PENDING'
+                        ? priceColor
+                        : logoColorSecondary,
+                    fontWeight: medium,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: Dimenssions.height10),
+            Text(
+              'Merchant: ${transaction.items.first.merchant.name}',
+              style: secondaryTextStyle,
+            ),
+            SizedBox(height: Dimenssions.height10),
+            _buildOrderDetail(
+              'Total Pembayaran',
+              transaction.formattedGrandTotal,
+              logoColorSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -103,12 +143,12 @@ class CheckoutSuccessPage extends StatelessWidget {
       }
 
       final args = Get.arguments as Map<String, dynamic>;
-      final TransactionModel? transaction = args['transaction'];
+      final List<TransactionModel> allTransactions = args['allTransactions'] ?? [];
       final List<OrderItemModel>? orderItems = args['orderItems'];
       final double? total = args['total'];
       final UserLocationModel? deliveryAddress = args['deliveryAddress'];
 
-      if (transaction == null ||
+      if (allTransactions.isEmpty ||
           orderItems == null ||
           total == null ||
           deliveryAddress == null) {
@@ -133,7 +173,6 @@ class CheckoutSuccessPage extends StatelessWidget {
               padding: EdgeInsets.all(Dimenssions.width20),
               child: Column(
                 children: [
-                  // Success Icon and Message
                   Icon(
                     Icons.check_circle_outline,
                     color: logoColorSecondary,
@@ -149,15 +188,15 @@ class CheckoutSuccessPage extends StatelessWidget {
                   ),
                   SizedBox(height: Dimenssions.height10),
                   Text(
-                    'Order ID: ${transaction.orderId}',
+                    '${allTransactions.length} Transaksi Dibuat',
                     style: secondaryTextStyle.copyWith(
                       fontSize: Dimenssions.font16,
                     ),
                   ),
                   SizedBox(height: Dimenssions.height30),
 
-                  // COD Instructions if applicable
-                  if (transaction.paymentMethod.toUpperCase() == 'MANUAL')
+                  // Payment Instructions (if COD)
+                  if (allTransactions.first.paymentMethod.toUpperCase() == 'MANUAL')
                     Card(
                       color: backgroundColor1,
                       child: Padding(
@@ -185,7 +224,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                             SizedBox(height: Dimenssions.height15),
                             _buildInstructionItem(
                               '1',
-                              'Siapkan uang tunai sebesar ${transaction.formattedGrandTotal}',
+                              'Siapkan uang tunai untuk setiap transaksi',
                             ),
                             _buildInstructionItem(
                               '2',
@@ -201,45 +240,14 @@ class CheckoutSuccessPage extends StatelessWidget {
                     ),
                   SizedBox(height: Dimenssions.height20),
 
-                  // Order Summary
-                  Card(
-                    color: backgroundColor1,
-                    child: Padding(
-                      padding: EdgeInsets.all(Dimenssions.width16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Ringkasan Pesanan',
-                            style: primaryTextStyle.copyWith(
-                              fontSize: Dimenssions.font18,
-                              fontWeight: semiBold,
-                            ),
-                          ),
-                          SizedBox(height: Dimenssions.height15),
-                          _buildOrderDetail(
-                            'Status Pesanan',
-                            transaction.statusDisplay,
-                            transaction.status.toUpperCase() == 'PENDING'
-                                ? priceColor
-                                : logoColorSecondary,
-                          ),
-                          _buildOrderDetail(
-                            'Metode Pembayaran',
-                            transaction.paymentMethod == 'MANUAL'
-                                ? 'COD (Bayar di Tempat)'
-                                : transaction.paymentMethod,
-                            null,
-                          ),
-                          _buildOrderDetail(
-                            'Total Pembayaran',
-                            transaction.formattedGrandTotal,
-                            logoColorSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Transactions List
+                  ...allTransactions.map((transaction) => 
+                    Padding(
+                      padding: EdgeInsets.only(bottom: Dimenssions.height10),
+                      child: _buildTransactionCard(transaction, deliveryAddress),
+                    )
+                  ).toList(),
+                  
                   SizedBox(height: Dimenssions.height20),
 
                   // Delivery Address

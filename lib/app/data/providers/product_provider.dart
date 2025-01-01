@@ -1,5 +1,5 @@
-import 'package:antarkanma/config.dart';
 import 'package:dio/dio.dart';
+import 'package:antarkanma/config.dart';
 
 class ProductProvider {
   final Dio _dio = Dio();
@@ -40,21 +40,25 @@ class ProductProvider {
     );
   }
 
-  // Get all products with search and filter capabilities
   Future<Response> getAllProducts({
     String? query,
     double? priceFrom,
     double? priceTo,
     int? categoryId,
     String? token,
+    int page = 1,
+    int pageSize = 10,
   }) async {
     try {
-      Map<String, dynamic> queryParams = {};
+      Map<String, dynamic> queryParams = {
+        'page': page,
+        'page_size': pageSize,
+      };
+      
       if (query != null && query.isNotEmpty) queryParams['name'] = query;
       if (priceFrom != null) queryParams['price_from'] = priceFrom;
       if (priceTo != null) queryParams['price_to'] = priceTo;
       if (categoryId != null) queryParams['categories'] = categoryId;
-      queryParams['limit'] = 9999; // Request all products
 
       return await _dio.get(
         '/products',
@@ -66,7 +70,6 @@ class ProductProvider {
     }
   }
 
-  // Get product by ID
   Future<Response> getProductById(int id, {String? token}) async {
     try {
       return await _dio.get(
@@ -78,15 +81,19 @@ class ProductProvider {
     }
   }
 
-  // Get products by category
-  Future<Response> getProductsByCategory(int categoryId,
-      {String? token}) async {
+  Future<Response> getProductsByCategory(
+    int categoryId, {
+    String? token,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     try {
       return await _dio.get(
         '/products',
         queryParameters: {
           'categories': categoryId,
-          'limit': 9999, // Request all products
+          'page': page,
+          'page_size': pageSize,
         },
         options: token != null ? _getAuthOptions(token) : null,
       );
@@ -95,16 +102,21 @@ class ProductProvider {
     }
   }
 
-  // Get popular products
   Future<Response> getPopularProducts({
     int? limit,
     int? categoryId,
     double? minRating,
     int? minReviews,
     String? token,
+    int page = 1,
+    int pageSize = 10,
   }) async {
     try {
-      Map<String, dynamic> queryParams = {};
+      Map<String, dynamic> queryParams = {
+        'page': page,
+        'page_size': pageSize,
+      };
+      
       if (limit != null) queryParams['limit'] = limit;
       if (categoryId != null) queryParams['category_id'] = categoryId;
       if (minRating != null) queryParams['min_rating'] = minRating;
@@ -120,7 +132,6 @@ class ProductProvider {
     }
   }
 
-  // Get product reviews
   Future<Response> getProductReviews(int productId,
       {String? token, int? rating}) async {
     try {
@@ -139,7 +150,6 @@ class ProductProvider {
     }
   }
 
-  // Submit a product review
   Future<Response> submitProductReview(
       Map<String, dynamic> reviewData, String token) async {
     try {
@@ -153,7 +163,6 @@ class ProductProvider {
     }
   }
 
-  // Update a product review
   Future<Response> updateProductReview(
       int reviewId, Map<String, dynamic> reviewData, String token) async {
     try {
@@ -167,7 +176,6 @@ class ProductProvider {
     }
   }
 
-  // Delete a product review
   Future<Response> deleteProductReview(int reviewId, String token) async {
     try {
       return await _dio.delete(

@@ -118,7 +118,7 @@ class _CartPageState extends State<CartPage> {
             child: ElevatedButton(
               onPressed: () {
                 Get.find<UserMainController>().currentIndex.value = 0;
-                Get.offAllNamed('/main');
+                Get.offAllNamed('/usermainpage');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: logoColorSecondary,
@@ -492,8 +492,10 @@ class _CartPageState extends State<CartPage> {
                   onPressed: controller.selectedItemCount > 0
                       ? () {
                           Map<int, List<CartItemModel>> groupedItems = {};
+
+                          // Group selected items by merchant ID
                           for (var item in controller.selectedItems) {
-                            final merchantId = item.merchant.id!;
+                            final merchantId = item.merchant.id ?? 0;
                             if (!groupedItems.containsKey(merchantId)) {
                               groupedItems[merchantId] = [];
                             }

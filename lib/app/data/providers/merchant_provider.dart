@@ -71,6 +71,34 @@ class MerchantProvider {
     }
   }
 
+  Future<Response> getMerchantProducts(
+    String token,
+    int merchantId, {
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    try {
+      print('Fetching products for merchant ID: $merchantId (page: $page, pageSize: $pageSize)');
+      final response = await _dio.get(
+        '/merchants/$merchantId/products',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
+      );
+      print('Products API Response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error fetching merchant products: $e');
+      throw Exception('Failed to load merchant products: $e');
+    }
+  }
+
   Future<Response> updateMerchant(
       String token, int merchantId, Map<String, dynamic> data) async {
     try {
@@ -226,25 +254,6 @@ class MerchantProvider {
     } catch (e) {
       print('Error deleting gallery image: $e');
       throw Exception('Failed to delete gallery image: $e');
-    }
-  }
-
-  Future<Response> getMerchantProducts(String token, int merchantId) async {
-    try {
-      print('Fetching products for merchant ID: $merchantId');
-      final response = await _dio.get(
-        '/merchants/$merchantId/products',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-      print('Products API Response: ${response.data}');
-      return response;
-    } catch (e) {
-      print('Error fetching merchant products: $e');
-      throw Exception('Failed to load merchant products: $e');
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:antarkanma/config.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 
 class TransactionProvider {
   final dio.Dio _dio = dio.Dio();
@@ -20,7 +21,7 @@ class TransactionProvider {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => status! < 500,
+      validateStatus: (status) => true,  // Accept all status codes to handle them manually
     );
   }
 
@@ -30,7 +31,6 @@ class TransactionProvider {
         onRequest: (options, handler) async {
           final token = _storageService.getToken();
 
-          // Tambahkan token hanya jika tersedia
           if (token != null) {
             options.headers.addAll({
               'Accept': 'application/json',
@@ -44,6 +44,10 @@ class TransactionProvider {
         onError: (dio.DioException error, handler) async {
           print('\n=== API Error Interceptor ===');
           print('Status code: ${error.response?.statusCode}');
+          print('Error data: ${error.response?.data}');
+          print('Error message: ${error.message}');
+          print('Error type: ${error.type}');
+          print('Error stacktrace: ${error.stackTrace}');
 
           if (error.response?.statusCode == 401) {
             try {
@@ -60,8 +64,6 @@ class TransactionProvider {
     );
   }
 
-  // Ganti _handleForceLogout dengan metode yang lebih sederhana
-
   void _handleError(dio.DioException error) {
     String message;
     switch (error.response?.statusCode) {
@@ -75,8 +77,24 @@ class TransactionProvider {
         }
         break;
       case 422:
-        final errors = error.response?.data['errors'];
-        message = errors is Map ? errors.values.join(', ') : errors.toString();
+        final data = error.response?.data;
+        if (data != null && data['meta'] != null && data['meta']['message'] != null) {
+          message = data['meta']['message'];
+        } else if (data != null && data['data'] != null) {
+          // Handle validation errors
+          final errors = data['data'] as Map<String, dynamic>;
+          final errorMessages = <String>[];
+          errors.forEach((key, value) {
+            if (value is List) {
+              errorMessages.addAll(value.map((e) => e.toString()));
+            } else {
+              errorMessages.add(value.toString());
+            }
+          });
+          message = errorMessages.join('\n');
+        } else {
+          message = 'Validasi gagal';
+        }
         break;
       case 403:
         message = 'Anda tidak memiliki akses ke halaman ini.';
@@ -85,45 +103,79 @@ class TransactionProvider {
         message = 'Data tidak ditemukan.';
         break;
       case 500:
-        message = 'Terjadi kesalahan pada server. Silakan coba lagi nanti.';
+        final data = error.response?.data;
+        if (data != null && data['message'] != null) {
+          message = data['message'];
+        } else {
+          message = 'Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.';
+        }
         break;
       default:
-        message = error.response?.data['message'] ??
-            error.message ??
-            'Terjadi kesalahan yang tidak diketahui';
+        if (error.type == dio.DioExceptionType.connectionTimeout) {
+          message = 'Koneksi timeout. Silakan periksa koneksi internet Anda.';
+        } else if (error.type == dio.DioExceptionType.receiveTimeout) {
+          message = 'Server tidak merespons. Silakan coba lagi.';
+        } else {
+          message = error.response?.data?['message'] ??
+              error.message ??
+              'Terjadi kesalahan yang tidak diketahui';
+        }
     }
 
+    CustomSnackbarX.showError(
+      title: 'Error',
+      message: message,
+      position: SnackPosition.BOTTOM,
+    );
     throw Exception(message);
   }
 
-  // Metode-metode transaksi
-  Future<dio.Response> createTransaction(
-      Map<String, dynamic> transactionData) async {
+  Future<dio.Response> createTransaction(Map<String, dynamic> transactionData) async {
     try {
-      print(
-          'Using token: ${_storageService.getToken()}'); // Log the token being used
-      print('Transaction Data: $transactionData'); // Log the transaction data
+      print('Using token: ${_storageService.getToken()}');
+      print('Transaction Data: $transactionData');
       final response = await _dio.post('/transactions', data: transactionData);
-      print('Response: ${response.data}'); // Log the response for debugging
-      return response; // Return the response to avoid null return error
+      print('Response: ${response.data}');
+
+      if (response.statusCode == 500) {
+        _handleError(dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+        ));
+      }
+
+      if (response.statusCode == 422) {
+        _handleError(dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+        ));
+      }
+
+      return response;
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
     }
   }
 
-  Future<dio.Response> getTransactions({String? status}) async {
+  Future<dio.Response> getTransactions({
+    String? status,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     try {
-      final queryParameters = <String, dynamic>{};
+      final queryParameters = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+      };
 
       if (status != null && status.isNotEmpty) {
-        // Split status string into array if it contains multiple statuses
         final statuses = status.split(',');
         if (statuses.length > 1) {
-          // If multiple statuses, pass them as array parameter
           queryParameters['status[]'] = statuses;
         } else {
-          // If single status, pass as simple parameter
           queryParameters['status'] = status;
         }
       }
@@ -157,16 +209,6 @@ class TransactionProvider {
     }
   }
 
-  Future<dio.Response> updateTransaction(
-      String transactionId, Map<String, dynamic> updateData) async {
-    try {
-      return await _dio.put('/transactions/$transactionId', data: updateData);
-    } on dio.DioException catch (e) {
-      _handleError(e);
-      rethrow;
-    }
-  }
-
   Future<dio.Response> cancelTransaction(String transactionId) async {
     try {
       return await _dio.post('/transactions/$transactionId/cancel');
@@ -176,9 +218,52 @@ class TransactionProvider {
     }
   }
 
-  Future<dio.Response> getTransactionsByMerchant(String merchantId) async {
+  Future<dio.Response> getTransactionsByMerchant(
+    String merchantId, {
+    int page = 1,
+    int limit = 10,
+    String? status,
+  }) async {
     try {
-      return await _dio.get('/merchants/$merchantId/transactions');
+      final queryParams = {
+        'page': page,
+        'limit': limit,
+        if (status != null) 'status': status,
+      };
+
+      return await _dio.get(
+        '/merchants/$merchantId/transactions',
+        queryParameters: queryParams,
+      );
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
+    }
+  }
+
+  Future<dio.Response> getTransactionSummaryByMerchant(String merchantId) async {
+    try {
+      return await _dio.get('/merchants/$merchantId/transaction-summary');
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
+    }
+  }
+
+  Future<dio.Response> updateOrderStatus(
+    String merchantId,
+    String orderId, {
+    required String status,
+    String? notes,
+  }) async {
+    try {
+      return await _dio.put(
+        '/merchants/$merchantId/orders/$orderId/status',
+        data: {
+          'status': status,
+          if (notes != null) 'notes': notes,
+        },
+      );
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;

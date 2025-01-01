@@ -1,18 +1,16 @@
-// ignore_for_file: use_full_hex_values_for_flutter_colors, unused_element, deprecated_member_use
-
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
-import 'package:antarkanma/app/widgets/cached_image_view.dart';
+import 'package:antarkanma/app/widgets/product_carousel_card.dart';
+import 'package:antarkanma/app/widgets/product_grid_card.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -79,6 +77,14 @@ class _HomePageState extends State<HomePage> {
         _isCategorySticky = _scrollController.offset > carouselHeight;
       });
     }
+
+    // Check if we need to load more products
+    if (!controller.isLoadingMore.value && 
+        !controller.isRefreshing.value &&
+        _scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      controller.loadMoreProducts();
+    }
   }
 
   Widget _buildSearchBar() {
@@ -103,122 +109,6 @@ class _HomePageState extends State<HomePage> {
     return const CategoryWidget();
   }
 
-  Widget _buildCarouselItem(int index) {
-    if (index < 0 || index >= controller.popularProducts.length) {
-      return Container();
-    }
-    var product = controller.popularProducts[index];
-    return GestureDetector(
-      onTap: () {
-        Get.toNamed(Routes.productDetail, arguments: product);
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: Dimenssions.width5),
-        decoration: BoxDecoration(
-          color: backgroundColor1,
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (product.galleries.isNotEmpty &&
-                  product.imageUrls[0].isNotEmpty)
-                CachedImageView(
-                  imageUrl: product.imageUrls[0],
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                )
-              else
-                Image.asset(
-                  'assets/image_shoes.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.5),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: Dimenssions.height15,
-                left: Dimenssions.width15,
-                right: Dimenssions.width15,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: primaryTextStyle.copyWith(
-                        color: backgroundColor1,
-                        fontSize: Dimenssions.font16,
-                        fontWeight: semiBold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: Dimenssions.height5),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          NumberFormat.currency(
-                            locale: 'id',
-                            symbol: 'Rp ',
-                            decimalDigits: 0,
-                          ).format(product.price),
-                          style: primaryTextStyle.copyWith(
-                            color: backgroundColor1,
-                            fontSize: Dimenssions.font14,
-                            fontWeight: medium,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            _buildStarRating(product.ratingInfo != null
-                                ? (product.ratingInfo!['average_rating'] as num)
-                                    .toDouble()
-                                : product.averageRating),
-                            SizedBox(width: Dimenssions.width5),
-                            Text(
-                              '(${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews})',
-                              style: primaryTextStyle.copyWith(
-                                color: backgroundColor1,
-                                fontSize: Dimenssions.font14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget popularProductsTitle() {
     return Container(
       key: _popularTitleKey,
@@ -238,7 +128,6 @@ class _HomePageState extends State<HomePage> {
               fontWeight: semiBold,
             ),
           ),
-          // Removed "Lihat Semua" and refresh button
         ],
       ),
     );
@@ -265,7 +154,11 @@ class _HomePageState extends State<HomePage> {
             padEnds: true,
           ),
           itemBuilder: (context, index, realIndex) {
-            return _buildCarouselItem(index);
+            final product = controller.popularProducts[index];
+            return ProductCarouselCard(
+              product: product,
+              onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
+            );
           },
         ),
         SizedBox(height: Dimenssions.height10),
@@ -332,167 +225,45 @@ class _HomePageState extends State<HomePage> {
   Widget listProducts() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.65,
-          mainAxisSpacing: Dimenssions.height10,
-          crossAxisSpacing: Dimenssions.width10,
-        ),
-        itemCount: controller.filteredProducts.length,
-        itemBuilder: (context, index) {
-          final product = controller.filteredProducts[index];
-          return GestureDetector(
-            onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
-            child: Container(
-              decoration: BoxDecoration(
-                color: backgroundColor2,
-                borderRadius: BorderRadius.circular(Dimenssions.radius15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(Dimenssions.radius15),
-                        topRight: Radius.circular(Dimenssions.radius15),
-                      ),
-                      child: product.galleries.isNotEmpty &&
-                              product.imageUrls[0].isNotEmpty
-                          ? CachedImageView(
-                              imageUrl: product.imageUrls[0],
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            )
-                          : Image.asset(
-                              'assets/image_shoes.png',
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimenssions.width8,
-                        vertical: Dimenssions.height8,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product.name,
-                            style: primaryTextStyle.copyWith(
-                              fontSize: Dimenssions.font14,
-                              fontWeight: semiBold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: Dimenssions.height5),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.store,
-                                color: logoColorSecondary,
-                                size: Dimenssions.height15,
-                              ),
-                              SizedBox(width: Dimenssions.width5),
-                              Expanded(
-                                child: Text(
-                                  product.merchant?.name ?? 'Unknown',
-                                  style: secondaryTextStyle.copyWith(
-                                    fontSize: Dimenssions.font12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          Row(
-                            children: [
-                              _buildStarRating(product.ratingInfo != null
-                                  ? (product.ratingInfo!['average_rating']
-                                          as num)
-                                      .toDouble()
-                                  : product.averageRating),
-                              SizedBox(width: Dimenssions.width5),
-                              Text(
-                                '(${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews})',
-                                style: secondaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: Dimenssions.height5),
-                          Text(
-                            NumberFormat.currency(
-                              locale: 'id',
-                              symbol: 'Rp ',
-                              decimalDigits: 0,
-                            ).format(product.price),
-                            style: priceTextStyle.copyWith(
-                              fontSize: Dimenssions.font14,
-                              fontWeight: medium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+      child: Column(
+        children: [
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.65,
+              mainAxisSpacing: Dimenssions.height10,
+              crossAxisSpacing: Dimenssions.width10,
+            ),
+            itemCount: controller.filteredProducts.length,
+            itemBuilder: (context, index) {
+              final product = controller.filteredProducts[index];
+              // Check if we're at the 8th product to trigger preloading
+              if (index == 7) {
+                controller.checkAndPreloadNextPage();
+              }
+              return ProductGridCard(
+                product: product,
+                onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
+              );
+            },
+          ),
+          if (controller.isLoadingMore.value)
+            Padding(
+              padding: EdgeInsets.all(Dimenssions.height10),
+              child: CircularProgressIndicator(
+                color: logoColorSecondary,
               ),
             ),
-          );
-        },
+        ],
       ),
-    );
-  }
-
-  Widget _buildStarRating(double? rating) {
-    final double actualRating = rating ?? 0.0;
-    int fullStars = actualRating.floor();
-    bool hasHalfStar = (actualRating - fullStars) >= 0.5;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        if (index < fullStars) {
-          return Icon(Icons.star,
-              color: Colors.amber, size: Dimenssions.height18);
-        } else if (index == fullStars && hasHalfStar) {
-          return Icon(Icons.star_half,
-              color: Colors.amber, size: Dimenssions.height18);
-        } else {
-          return Icon(Icons.star_border,
-              color: Colors.amber, size: Dimenssions.height18);
-        }
-      }),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Only show loading for initial data load, not during search
       if (controller.isLoading.value && controller.searchQuery.isEmpty) {
         return Scaffold(
           body: Center(
@@ -520,21 +291,7 @@ class _HomePageState extends State<HomePage> {
                   toolbarHeight: kToolbarHeight,
                   title: Container(
                     margin: EdgeInsets.symmetric(vertical: Dimenssions.height2),
-                    child: SearchInputField(
-                      controller: controller.searchController,
-                      hintText: 'Apa Ku AntarkanKi ?',
-                      focusNode: _searchFocusNode,
-                      onClear: () {
-                        controller.searchController.clear();
-                        FocusScope.of(context).unfocus();
-                      },
-                      onChanged: (value) async {
-                        if (value.isNotEmpty) {
-                          await controller.performSearch();
-                          _scrollToHidePopularProducts();
-                        }
-                      },
-                    ),
+                    child: _buildSearchBar(),
                   ),
                   actions: [
                     Container(
@@ -572,6 +329,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
+         
               ];
             },
             body: CustomScrollView(

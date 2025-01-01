@@ -8,8 +8,8 @@ import 'package:antarkanma/app/modules/courier/views/courier_main_page.dart';
 import 'package:antarkanma/app/modules/courier/views/courier_profile_page.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_profile_controller.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_main_page.dart';
+import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/order_management_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/product_management_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/product_form_page.dart';
 import 'package:antarkanma/app/modules/merchant/merchant_binding.dart';
@@ -180,7 +180,7 @@ class AppPages {
         ),
         GetPage(
           name: '/orders',
-          page: () => const OrderManagementPage(),
+          page: () => const MerchantOrderPage(),
           binding: MerchantBinding(),
         ),
         GetPage(
