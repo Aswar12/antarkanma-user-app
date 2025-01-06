@@ -11,19 +11,40 @@ import 'package:antarkanma/app/services/auth_service.dart';
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
+    print('Initializing dependencies...');
+    
     // Services - Order matters due to dependencies
-    Get.put(AuthService(), permanent: true); // AuthService must be first
+    print('Initializing AuthService...');
+    Get.put(AuthService(), permanent: true);
+    
+    print('Initializing CategoryService...');
     Get.put(CategoryService(), permanent: true);
-    Get.put(ProductService(),
-        permanent: true); // ProductService depends on AuthService
+    
+    print('Initializing ProductService...');
+    final productService = ProductService();
+    Get.put(productService, permanent: true);
+    
+    print('Initializing TransactionService...');
     Get.put(TransactionService(), permanent: true);
 
     // Controllers
+    print('Initializing AuthController...');
     Get.put(AuthController(), permanent: true);
+    
+    print('Initializing UserController...');
     Get.lazyPut(() => UserController());
+    
+    print('Initializing UserMainController...');
     Get.put(UserMainController(), permanent: true);
-    Get.put(HomePageController(),
-        permanent:
-            true); // HomePageController depends on ProductService and CategoryService
+    
+    print('Initializing HomePageController...');
+    final homeController = HomePageController();
+    Get.put(homeController, permanent: true);
+    
+    // Force immediate initialization of popular products
+    print('Loading initial data...');
+    homeController.loadInitialData();
+    
+    print('Dependencies initialization complete');
   }
 }

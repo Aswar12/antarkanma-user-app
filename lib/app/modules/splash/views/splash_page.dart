@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
@@ -25,28 +26,11 @@ class NeonSpinner extends CustomPainter {
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
-    // Add neon glow effect
     paint.maskFilter = const MaskFilter.blur(BlurStyle.outer, 8);
-
-    // Draw spinning arc
     final rect = Rect.fromCircle(center: center, radius: radius);
-    canvas.drawArc(
-      rect,
-      angle,
-      2 * pi / 3,
-      false,
-      paint,
-    );
-
-    // Add inner glow
+    canvas.drawArc(rect, angle, 2 * pi / 3, false, paint);
     paint.maskFilter = const MaskFilter.blur(BlurStyle.inner, 4);
-    canvas.drawArc(
-      rect,
-      angle + pi / 6,
-      2 * pi / 3,
-      false,
-      paint,
-    );
+    canvas.drawArc(rect, angle + pi / 6, 2 * pi / 3, false, paint);
   }
 
   @override
@@ -77,7 +61,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   void _setupAnimations() {
     _controller = AnimationController(
-      duration: const Duration(seconds: 3), // Slower animation
+      duration: const Duration(seconds: 3),
       vsync: this,
     );
 
@@ -117,7 +101,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     try {
       final authService = Get.find<AuthService>();
 
-      // Initial delay for showing the splash screen
       await Future.delayed(const Duration(seconds: 1));
 
       _loadingText.value = 'Memeriksa status login...';
@@ -127,11 +110,9 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         return;
       }
 
-      // Load role-specific data
       await _loadRoleSpecificData(authService);
 
       _isLoading.value = false;
-      // Longer delay before navigation for smoother transition
       await Future.delayed(const Duration(seconds: 1));
       _navigateBasedOnRole(authService);
     } catch (e) {
@@ -150,15 +131,29 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   Future<void> _loadRoleSpecificData(AuthService authService) async {
     if (authService.isUser) {
-      _loadingText.value = 'Memuat data produk...';
+      _loadingText.value = 'Memuat data kategori...';
       final categoryService = Get.find<CategoryService>();
-      final productService = Get.find<ProductService>();
+      await categoryService.getCategories();
 
-      await Future.wait([
-        categoryService.getCategories(),
-        if (productService.getAllProductsFromStorage().isEmpty)
-          productService.fetchProducts(),
-      ]);
+      _loadingText.value = 'Memuat data produk populer...';
+      // Initialize HomePageController if not already initialized
+      if (!Get.isRegistered<HomePageController>()) {
+        final homeController = HomePageController();
+        Get.put(homeController, permanent: true);
+      }
+      final homeController = Get.find<HomePageController>();
+      
+      // Load popular products
+      await homeController.loadPopularProducts();
+      
+      // Verify popular products were loaded
+      if (homeController.popularProducts.isEmpty) {
+        print('Warning: No popular products loaded');
+        _loadingText.value = 'Mencoba memuat ulang data produk...';
+        await homeController.refreshProducts(showMessage: false);
+      }
+      
+      print('Loaded ${homeController.popularProducts.length} popular products');
     } 
     else if (authService.isMerchant) {
       _loadingText.value = 'Memuat data merchant...';
@@ -209,11 +204,9 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Animated Logo with Neon Spinner
             Stack(
               alignment: Alignment.center,
               children: [
-                // Neon Spinner
                 AnimatedBuilder(
                   animation: _spinnerAnimation,
                   builder: (context, child) {
@@ -229,7 +222,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                     );
                   },
                 ),
-                // Logo
                 AnimatedBuilder(
                   animation: _controller,
                   builder: (context, child) {
@@ -254,7 +246,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               ],
             ),
             const SizedBox(height: 40),
-            // Loading Text with Neon Effect
             Obx(() => _isLoading.value
                 ? Column(
                     children: [

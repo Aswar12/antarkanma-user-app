@@ -1,5 +1,3 @@
-// lib/app/data/models/product_gallery_model.dart
-
 class ProductGalleryModel {
   final int? id;
   final int productId;
@@ -18,21 +16,48 @@ class ProductGalleryModel {
   });
 
   factory ProductGalleryModel.fromJson(Map<String, dynamic> json) {
-    return ProductGalleryModel(
-      id: json['id'] as int?,
-      productId: json['product_id'] as int,
-      // Langsung menggunakan URL dari response karena sudah lengkap dari backend
-      url: json['url'] as String,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-      deletedAt: json['deleted_at'] != null
-          ? DateTime.parse(json['deleted_at'])
-          : null,
-    );
+    try {
+      // Parse product ID with validation
+      int parseProductId(dynamic value) {
+        if (value == null) return 0;
+        if (value is int) return value;
+        if (value is String) {
+          return int.tryParse(value) ?? 0;
+        }
+        return 0;
+      }
+
+      // Parse URL with validation
+      String parseUrl(dynamic value) {
+        if (value == null) return '';
+        if (value is String) return value;
+        return value.toString();
+      }
+
+      // Parse datetime with validation
+      DateTime? parseDateTime(dynamic value) {
+        if (value == null) return null;
+        if (value is String) {
+          return DateTime.tryParse(value);
+        }
+        return null;
+      }
+
+      return ProductGalleryModel(
+        id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+        productId: parseProductId(json['product_id']),
+        url: parseUrl(json['url']),
+        createdAt: parseDateTime(json['created_at']),
+        updatedAt: parseDateTime(json['updated_at']),
+        deletedAt: parseDateTime(json['deleted_at']),
+      );
+    } catch (e) {
+      // Return a gallery model with default values if parsing fails
+      return ProductGalleryModel(
+        productId: 0,
+        url: '',
+      );
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -75,5 +100,10 @@ class ProductGalleryModel {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
     );
+  }
+
+  @override
+  String toString() {
+    return 'ProductGalleryModel(id: $id, productId: $productId, url: $url)';
   }
 }

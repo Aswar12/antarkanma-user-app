@@ -20,9 +20,15 @@ class CachedImageView extends StatelessWidget {
     this.borderRadius,
   }) : super(key: key);
 
+  bool _isValidUrl(String url) {
+    return url.isNotEmpty && 
+           (url.startsWith('http://') || url.startsWith('https://')) &&
+           Uri.tryParse(url)?.hasAbsolutePath == true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (imageUrl.isEmpty) {
+    if (!_isValidUrl(imageUrl)) {
       return _buildPlaceholder();
     }
 
@@ -33,8 +39,16 @@ class CachedImageView extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        maxWidthDiskCache: 1000,
+        maxHeightDiskCache: 1000,
+        memCacheWidth: 800,
+        memCacheHeight: 800,
         placeholder: (context, url) => _buildLoadingState(),
-        errorWidget: (context, url, error) => _buildPlaceholder(),
+        errorWidget: (context, url, error) {
+          debugPrint('Error loading image: $url');
+          debugPrint('Error details: $error');
+          return _buildPlaceholder();
+        },
         fadeInDuration: const Duration(milliseconds: 300),
       ),
     );
@@ -61,18 +75,33 @@ class CachedImageView extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor3.withOpacity(0.1),
         borderRadius: borderRadius,
-        image: placeholder != null
+        image: placeholder != null && placeholder!.isNotEmpty
             ? DecorationImage(
                 image: AssetImage(placeholder!),
                 fit: fit,
               )
             : null,
       ),
-      child: placeholder == null
-          ? Icon(
-              Icons.image_not_supported,
-              color: secondaryTextColor,
-              size: 24,
+      child: placeholder == null || placeholder!.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.image_not_supported,
+                    color: secondaryTextColor,
+                    size: 24,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'No Image',
+                    style: TextStyle(
+                      color: secondaryTextColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             )
           : null,
     );

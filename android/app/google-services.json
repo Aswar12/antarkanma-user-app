@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "786441533391",
+    "project_id": "antarkanma-98fde",
+    "storage_bucket": "antarkanma-98fde.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:786441533391:android:5ea436cc19c9e7820704ba",
+        "android_client_info": {
+          "package_name": "com.example.antarkanma"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYc17gAQl4tJmkk5nQcH0aw9UCtZ4ylnc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

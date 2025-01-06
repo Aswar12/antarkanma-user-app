@@ -16,10 +16,14 @@ class OrderItemModel {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
-      quantity: json['quantity'],
-      price: (json['price'] as num).toDouble(),
-      product: ProductInfo.fromJson(json['product']),
-      merchant: MerchantInfo.fromJson(json['merchant']),
+      quantity: json['quantity'] is String 
+          ? int.tryParse(json['quantity']) ?? 0 
+          : json['quantity'] ?? 0,
+      price: json['price'] is String
+          ? double.tryParse(json['price']) ?? 0.0
+          : (json['price'] as num?)?.toDouble() ?? 0.0,
+      product: ProductInfo.fromJson(json['product'] ?? {}),
+      merchant: MerchantInfo.fromJson(json['merchant'] ?? {}),
     );
   }
 
@@ -108,11 +112,15 @@ class ProductInfo {
 
   factory ProductInfo.fromJson(Map<String, dynamic> json) {
     return ProductInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: ((json['price'] ?? 0) as num).toDouble(),
-      galleries: (json['galleries'] as List?)?.cast<String>() ?? [],
+      id: json['id'] is String 
+          ? int.tryParse(json['id']) ?? 0 
+          : json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      price: json['price'] is String
+          ? double.tryParse(json['price']) ?? 0.0
+          : (json['price'] as num?)?.toDouble() ?? 0.0,
+      galleries: (json['galleries'] as List?)?.map((e) => e.toString()).toList() ?? [],
       category: CategoryInfo.fromJson(json['category'] ?? {}),
     );
   }
@@ -142,8 +150,10 @@ class CategoryInfo {
 
   factory CategoryInfo.fromJson(Map<String, dynamic> json) {
     return CategoryInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      id: json['id'] is String 
+          ? int.tryParse(json['id']) ?? 0 
+          : json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
     );
   }
 
@@ -170,10 +180,12 @@ class MerchantInfo {
 
   factory MerchantInfo.fromJson(Map<String, dynamic> json) {
     return MerchantInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      address: json['address'] ?? '',
-      phoneNumber: json['phone_number'] ?? '',
+      id: json['id'] is String 
+          ? int.tryParse(json['id']) ?? 0 
+          : json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      phoneNumber: json['phone_number']?.toString() ?? '',
     );
   }
 

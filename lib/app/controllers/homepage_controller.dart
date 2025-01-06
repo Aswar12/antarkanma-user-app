@@ -3,6 +3,7 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -23,9 +24,9 @@ class HomePageController extends GetxController {
   final CategoryService _categoryService = Get.find<CategoryService>();
 
   // Observable state variables
-  final RxList<ProductModel> products = <ProductModel>[].obs;
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
   final RxList<ProductModel> searchResults = <ProductModel>[].obs;
+  final RxList<ProductModel> allProducts = <ProductModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool isLoadingMore = false.obs;
   final RxBool hasMoreData = true.obs;
@@ -36,36 +37,25 @@ class HomePageController extends GetxController {
   final TextEditingController searchController = TextEditingController();
 
   // Pagination variables
-  int _currentPage = 1;
+  String? _currentCursor;
+  String? _searchCursor;
   static const int _pageSize = 10;
-  static const int _preloadThreshold = 8;
-  bool _isPreloading = false;
   bool _isInitialLoad = true;
+  bool _isLoadingPopular = false;
+  Completer<void>? _popularProductsCompleter;
 
   // Getters
   List<ProductCategory> get categories => _categoryService.categories;
   bool get isCategoriesLoading => _categoryService.isLoading.value;
   List<ProductModel> get filteredProducts =>
-      searchQuery.isEmpty ? products : searchResults;
+      searchQuery.isEmpty ? allProducts : searchResults;
 
   @override
   void onInit() {
     super.onInit();
+    debugPrint('HomePageController: onInit');
     loadInitialData();
     _setupSearchListener();
-    
-    // Listen to products list changes to trigger preloading
-    ever(products, (_) {
-      if (products.length >= _preloadThreshold && !_isInitialLoad) {
-        checkAndPreloadNextPage();
-      }
-    });
-  }
-
-  void checkAndPreloadNextPage() {
-    if (!_isPreloading && hasMoreData.value && searchQuery.isEmpty) {
-      preloadNextPage();
-    }
   }
 
   void _setupSearchListener() {
@@ -74,7 +64,7 @@ class HomePageController extends GetxController {
       searchQuery.value = searchController.text;
       if (searchQuery.isNotEmpty) {
         debouncer.run(() {
-          _currentPage = 1;
+          _searchCursor = null;
           hasMoreData.value = true;
           performSearch();
         });
@@ -88,123 +78,93 @@ class HomePageController extends GetxController {
     if (searchQuery.isEmpty) return;
 
     try {
-      if (_currentPage == 1) {
+      if (_searchCursor == null) {
         searchResults.clear();
       }
 
-      final response = await productService.getAllProducts(
+      final apiResponse = await productService.getAllProducts(
         query: searchQuery.value,
-        page: _currentPage,
+        cursor: _searchCursor,
         pageSize: _pageSize,
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data['data'];
-        final List<dynamic> productList =
-            data is Map ? data['data'] as List : data as List;
+      if (apiResponse.data.isNotEmpty) {
+        final List<ProductModel> results = apiResponse.data;
+        debugPrint('Search results: ${results.length} products found');
 
-        if (productList.isEmpty) {
-          hasMoreData.value = false;
-          return;
-        }
-
-        final List<ProductModel> results = productList
-            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        if (_currentPage == 1) {
+        if (_searchCursor == null) {
           searchResults.assignAll(results);
         } else {
           searchResults.addAll(results);
         }
 
-        _currentPage++;
-      }
-    } catch (e) {
-      _handleError('Search API error', e);
-    }
-  }
-
-  Future<void> preloadNextPage() async {
-    if (_isPreloading || !hasMoreData.value || searchQuery.isNotEmpty) return;
-
-    try {
-      _isPreloading = true;
-      
-      if (selectedCategory.value == "Semua") {
-        await productService.fetchProducts(
-          page: _currentPage + 1,
-          pageSize: _pageSize,
-        );
+        _searchCursor = apiResponse.nextCursor;
+        hasMoreData.value = apiResponse.hasMore;
+        debugPrint('Next search cursor: $_searchCursor');
       } else {
-        final category = _categoryService.categories
-            .firstWhere((cat) => cat.name == selectedCategory.value);
-            
-        await productService.getProductsByCategory(
-          category.id,
-          page: _currentPage + 1,
-          pageSize: _pageSize,
-        );
+        hasMoreData.value = false;
       }
     } catch (e) {
-      print('Error preloading next page: $e');
-    } finally {
-      _isPreloading = false;
+      debugPrint('Error performing search: $e');
     }
   }
 
   Future<void> loadMoreProducts() async {
-    if (isLoadingMore.value || !hasMoreData.value || searchQuery.isNotEmpty) return;
+    if (isLoadingMore.value || !hasMoreData.value) {
+      debugPrint('Skip loading more: isLoadingMore=${isLoadingMore.value}, hasMoreData=${hasMoreData.value}');
+      return;
+    }
 
     try {
+      debugPrint('Loading more products...');
       isLoadingMore.value = true;
       
-      if (selectedCategory.value == "Semua") {
-        final response = await productService.fetchProducts(
-          page: _currentPage,
+      if (searchQuery.isEmpty) {
+        debugPrint('Loading more all products with cursor: $_currentCursor');
+        final response = await productService.getAllProducts(
+          cursor: _currentCursor,
           pageSize: _pageSize,
         );
         
-        if (response.statusCode == 200) {
-          final data = response.data['data'];
-          final List<dynamic> productList =
-              data is Map ? data['data'] as List : data as List;
-
-          if (productList.isEmpty) {
-            hasMoreData.value = false;
-            return;
-          }
-
-          final List<ProductModel> newProducts = productList
-              .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
-              .toList();
-
-          products.addAll(newProducts);
-          _currentPage++;
+        if (response.data.isNotEmpty) {
+          debugPrint('Loaded ${response.data.length} more products');
+          allProducts.addAll(response.data);
+          _currentCursor = response.nextCursor;
+          hasMoreData.value = response.hasMore;
+          debugPrint('Next cursor: $_currentCursor, hasMore: ${hasMoreData.value}');
+        } else {
+          debugPrint('No more products to load');
+          hasMoreData.value = false;
         }
       } else {
-        final category = _categoryService.categories
-            .firstWhere((cat) => cat.name == selectedCategory.value);
-            
-        final categoryProducts = await productService.getProductsByCategory(
-          category.id,
-          page: _currentPage,
-          pageSize: _pageSize,
-        );
-        
-        if (categoryProducts.isEmpty) {
-          hasMoreData.value = false;
-          return;
-        }
-        
-        products.addAll(categoryProducts);
-        _currentPage++;
+        debugPrint('Loading more search results with cursor: $_searchCursor');
+        await performSearch();
       }
     } catch (e) {
-      _handleError('Failed to load more products', e);
+      debugPrint('Error loading more products: $e');
     } finally {
       isLoadingMore.value = false;
     }
+  }
+
+  void checkAndPreloadNextPage() {
+    if (!isLoadingMore.value && hasMoreData.value) {
+      debugPrint('Preloading next page...');
+      loadMoreProducts();
+    }
+  }
+
+  void updateSelectedCategory(String categoryName) async {
+    if (categoryName == selectedCategory.value) return;
+    
+    selectedCategory.value = categoryName;
+    searchController.clear();
+    searchQuery.value = '';
+    searchResults.clear();
+    _currentCursor = null;
+    _searchCursor = null;
+    hasMoreData.value = true;
+    await loadAllProducts();
   }
 
   @override
@@ -215,111 +175,85 @@ class HomePageController extends GetxController {
 
   Future<void> loadInitialData() async {
     try {
+      debugPrint('Loading initial data...');
       isLoading(true);
-      _currentPage = 1;
-      hasMoreData.value = true;
       _isInitialLoad = true;
       
       await Future.wait([
-        loadProducts(),
         _categoryService.getCategories(),
         loadPopularProducts(),
+        loadAllProducts(),
       ]);
       
       selectedCategory.value = "Semua";
       _isInitialLoad = false;
+      debugPrint('Initial data loaded successfully');
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
     } finally {
       isLoading(false);
     }
   }
 
-  Future<void> loadProducts() async {
+  Future<void> loadAllProducts() async {
     try {
-      isLoading(true);
-      _currentPage = 1;
-      hasMoreData.value = true;
-      
-      final response = await productService.fetchProducts(
-        page: _currentPage,
+      debugPrint('Loading all products...');
+      final response = await productService.getAllProducts(
         pageSize: _pageSize,
       );
-
-      if (response.statusCode == 200) {
-        final data = response.data['data'];
-        final List<dynamic> productList =
-            data is Map ? data['data'] as List : data as List;
-
-        final List<ProductModel> newProducts = productList
-            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        products.assignAll(newProducts);
-        _currentPage++;
+      
+      if (response.data.isNotEmpty) {
+        debugPrint('Loaded ${response.data.length} products');
+        allProducts.assignAll(response.data);
+        _currentCursor = response.nextCursor;
+        hasMoreData.value = response.hasMore;
+        debugPrint('Initial cursor: $_currentCursor, hasMore: ${hasMoreData.value}');
+      } else {
+        debugPrint('No products returned from service');
+        hasMoreData.value = false;
       }
     } catch (e) {
-      _handleError('Failed to load products', e);
-    } finally {
-      isLoading(false);
+      debugPrint('Error loading all products: $e');
     }
   }
 
   Future<void> loadPopularProducts() async {
-    try {
-      final popularProds = await productService.getPopularProducts(
-        limit: 12,
-        minRating: 4.0,
-        minReviews: 5,
-      );
-      popularProducts.assignAll(popularProds);
-    } catch (e) {
-      _handleError('Failed to load popular products', e);
-      final storedProducts = productService.getAllProductsFromStorage();
-      if (storedProducts.isNotEmpty) {
-        final highRatedProducts =
-            storedProducts.where((p) => (p.averageRating) >= 4.0).toList();
-        popularProducts.assignAll(highRatedProducts);
-      }
+    if (_isLoadingPopular && _popularProductsCompleter != null) {
+      debugPrint('Already loading popular products, returning existing completer');
+      return _popularProductsCompleter!.future;
     }
-  }
 
-  void updateSelectedCategory(String categoryName) async {
+    _isLoadingPopular = true;
+    _popularProductsCompleter = Completer<void>();
+
     try {
-      if (categoryName == selectedCategory.value) return;
+      debugPrint('Loading popular products...');
+      final response = await productService.getAllProducts(
+        pageSize: 10,
+      );
       
-      selectedCategory.value = categoryName;
-      _currentPage = 1;
-      hasMoreData.value = true;
-      products.clear();
-      _isInitialLoad = true;
-
-      if (categoryName == "Semua") {
-        await loadProducts();
+      if (response.data.isNotEmpty) {
+        debugPrint('Loaded ${response.data.length} popular products');
+        popularProducts.assignAll(response.data);
+        debugPrint('Popular products assigned to state');
+        
+        if (response.data.isNotEmpty) {
+          final firstProduct = response.data.first;
+          debugPrint('First product: ${firstProduct.name}');
+          debugPrint('First product images: ${firstProduct.imageUrls}');
+          debugPrint('First product price: ${firstProduct.price}');
+        }
       } else {
-        final category = _categoryService.categories
-            .firstWhere((cat) => cat.name == categoryName);
-        final categoryProducts = await productService.getProductsByCategory(
-          category.id,
-          page: _currentPage,
-          pageSize: _pageSize,
-        );
-        products.assignAll(categoryProducts);
-        _currentPage++;
+        debugPrint('No popular products returned from service');
       }
-      
-      _isInitialLoad = false;
-    } catch (e) {
-      _handleError('Failed to load products for category', e);
-      final storedProducts = productService.getAllProductsFromStorage();
-      if (categoryName == "Semua") {
-        products.assignAll(storedProducts);
-      } else {
-        final category = _categoryService.categories
-            .firstWhere((cat) => cat.name == categoryName);
-        final filteredProducts = storedProducts
-            .where((product) => product.category?.id == category.id)
-            .toList();
-        products.assignAll(filteredProducts);
-      }
+      _popularProductsCompleter?.complete();
+    } catch (e, stackTrace) {
+      debugPrint('Error loading popular products: $e');
+      debugPrint('Stack trace: $stackTrace');
+      _popularProductsCompleter?.completeError(e);
+    } finally {
+      _isLoadingPopular = false;
+      _popularProductsCompleter = null;
     }
   }
 
@@ -327,20 +261,25 @@ class HomePageController extends GetxController {
     if (isRefreshing.value) return;
 
     try {
+      debugPrint('Refreshing products...');
       isRefreshing(true);
+      
+      // Clear all cached data
       await productService.clearLocalStorage();
-      _currentPage = 1;
+      _currentCursor = null;
+      _searchCursor = null;
       hasMoreData.value = true;
-      products.clear();
       popularProducts.clear();
       searchResults.clear();
+      allProducts.clear();
       _categoryService.categories.clear();
       _isInitialLoad = true;
 
+      // Load fresh data
       await Future.wait([
-        loadProducts(),
-        _categoryService.getCategories(),
         loadPopularProducts(),
+        loadAllProducts(),
+        _categoryService.getCategories(),
       ]);
 
       selectedCategory.value = "Semua";
@@ -357,31 +296,19 @@ class HomePageController extends GetxController {
         );
       }
     } catch (e) {
-      _handleError('Gagal memperbarui data', e);
-      try {
-        await loadProducts();
-        await _categoryService.getCategories();
-        await loadPopularProducts();
-      } catch (localError) {
-        _handleError('Gagal memuat data lokal', localError);
-      }
+      debugPrint('Error refreshing products: $e');
+      Get.snackbar(
+        'Error',
+        'Gagal memperbarui data',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
     } finally {
       isRefreshing(false);
       isLoading(false);
     }
-  }
-
-  void _handleError(String message, dynamic error) {
-    print('Error: $message - $error');
-    Get.snackbar(
-      'Error',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-      icon: const Icon(Icons.error, color: Colors.white),
-    );
   }
 
   void updateCurrentIndex(int index) {
@@ -392,5 +319,5 @@ class HomePageController extends GetxController {
     }
   }
 
-  bool get hasValidData => products.isNotEmpty && !isLoading.value;
+  bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 }

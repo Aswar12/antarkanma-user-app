@@ -1,0 +1,42 @@
+{
+  "id": 22,
+  "name": "Table Lamp",
+  "description": "Modern LED table lamp",
+  "price": 327458.00,
+  "status": "ACTIVE",
+  "category_id": 5,
+  "merchant_id": 3,
+  "created_at": "2025-01-03T03:18:02.000000Z",
+  "average_rating": 4.0000,
+  "total_reviews": 6,
+  "rating_info": {
+    "average_rating": 4,
+    "total_reviews": 6
+  },
+  "merchant": {
+    "id": 3,
+    "name": "PJ Tarihoran",
+    "owner_id": 29
+  },
+  "category": {
+    "id": 5,
+    "name": "Home & Living"
+  },
+  "galleries": [
+    {
+      "id": 64,
+      "product_id": 22,
+      "url": "http://192.168.33.93:8000/storage/product-galleries/pexels-esrakorkmaz-30000682.jpg"
+    },
+    {
+      "id": 65,
+      "product_id": 22,
+      "url": "http://192.168.33.93:8000/storage/product-galleries/pexels-karolina-grabowska-4041391.jpg"
+    },
+    {
+      "id": 66,
+      "product_id": 22,
+      "url": "http://192.168.33.93:8000/storage/product-galleries/pexels-sunsetoned-5913179.jpg"
+    }
+  ]
+}

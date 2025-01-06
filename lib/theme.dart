@@ -100,7 +100,8 @@ class Dimenssions {
   static double screenWidth =
       MediaQueryData.fromView(WidgetsBinding.instance.window).size.width;
 
-  static double pageView = screenHeight / 2.64;
+  // Updated pageView dimensions for better carousel display
+  static double pageView = screenHeight / 2.2; // Increased from 2.64
   static double pageViewContainer = screenHeight / 3.84;
   static double pageTextContainer = screenHeight / 7.03;
 

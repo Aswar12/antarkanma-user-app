@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:antarkanma/config.dart';
+import 'package:flutter/foundation.dart';
 
 class ProductProvider {
   final Dio _dio = Dio();
@@ -30,6 +31,7 @@ class ProductProvider {
           return handler.next(options);
         },
         onResponse: (response, handler) {
+          debugPrint('Raw API Response: ${response.data}');
           return handler.next(response);
         },
         onError: (DioException error, handler) {
@@ -46,37 +48,45 @@ class ProductProvider {
     double? priceTo,
     int? categoryId,
     String? token,
-    int page = 1,
+    String? cursor,
     int pageSize = 10,
   }) async {
     try {
       Map<String, dynamic> queryParams = {
-        'page': page,
         'page_size': pageSize,
       };
       
+      if (cursor != null) queryParams['cursor'] = cursor;
       if (query != null && query.isNotEmpty) queryParams['name'] = query;
       if (priceFrom != null) queryParams['price_from'] = priceFrom;
       if (priceTo != null) queryParams['price_to'] = priceTo;
       if (categoryId != null) queryParams['categories'] = categoryId;
 
-      return await _dio.get(
+      final response = await _dio.get(
         '/products',
         queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
       );
+
+      debugPrint('API Response Status: ${response.statusCode}');
+      debugPrint('API Response Data: ${response.data}');
+
+      return response;
     } catch (e) {
+      debugPrint('Error fetching products: $e');
       throw Exception('Failed to fetch products: $e');
     }
   }
 
   Future<Response> getProductById(int id, {String? token}) async {
     try {
-      return await _dio.get(
+      final response = await _dio.get(
         '/products/$id',
         options: token != null ? _getAuthOptions(token) : null,
       );
+      return response;
     } catch (e) {
+      debugPrint('Error fetching product: $e');
       throw Exception('Failed to fetch product: $e');
     }
   }
@@ -84,51 +94,25 @@ class ProductProvider {
   Future<Response> getProductsByCategory(
     int categoryId, {
     String? token,
-    int page = 1,
-    int pageSize = 10,
-  }) async {
-    try {
-      return await _dio.get(
-        '/products',
-        queryParameters: {
-          'categories': categoryId,
-          'page': page,
-          'page_size': pageSize,
-        },
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-    } catch (e) {
-      throw Exception('Failed to fetch products by category: $e');
-    }
-  }
-
-  Future<Response> getPopularProducts({
-    int? limit,
-    int? categoryId,
-    double? minRating,
-    int? minReviews,
-    String? token,
-    int page = 1,
+    String? cursor,
     int pageSize = 10,
   }) async {
     try {
       Map<String, dynamic> queryParams = {
-        'page': page,
+        'categories': categoryId,
         'page_size': pageSize,
       };
-      
-      if (limit != null) queryParams['limit'] = limit;
-      if (categoryId != null) queryParams['category_id'] = categoryId;
-      if (minRating != null) queryParams['min_rating'] = minRating;
-      if (minReviews != null) queryParams['min_reviews'] = minReviews;
+      if (cursor != null) queryParams['cursor'] = cursor;
 
-      return await _dio.get(
-        '/products/popular',
+      final response = await _dio.get(
+        '/products',
         queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
       );
+      return response;
     } catch (e) {
-      throw Exception('Failed to fetch popular products: $e');
+      debugPrint('Error fetching products by category: $e');
+      throw Exception('Failed to fetch products by category: $e');
     }
   }
 
@@ -140,12 +124,14 @@ class ProductProvider {
         queryParams['rating'] = rating;
       }
 
-      return await _dio.get(
+      final response = await _dio.get(
         '/products/$productId/reviews',
         queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
       );
+      return response;
     } catch (e) {
+      debugPrint('Error fetching product reviews: $e');
       throw Exception('Failed to fetch product reviews: $e');
     }
   }
@@ -153,12 +139,14 @@ class ProductProvider {
   Future<Response> submitProductReview(
       Map<String, dynamic> reviewData, String token) async {
     try {
-      return await _dio.post(
+      final response = await _dio.post(
         '/product-reviews',
         data: reviewData,
         options: _getAuthOptions(token),
       );
+      return response;
     } catch (e) {
+      debugPrint('Error submitting product review: $e');
       throw Exception('Failed to submit review: $e');
     }
   }
@@ -166,45 +154,55 @@ class ProductProvider {
   Future<Response> updateProductReview(
       int reviewId, Map<String, dynamic> reviewData, String token) async {
     try {
-      return await _dio.put(
+      final response = await _dio.put(
         '/product-reviews/$reviewId',
         data: reviewData,
         options: _getAuthOptions(token),
       );
+      return response;
     } catch (e) {
+      debugPrint('Error updating product review: $e');
       throw Exception('Failed to update review: $e');
     }
   }
 
   Future<Response> deleteProductReview(int reviewId, String token) async {
     try {
-      return await _dio.delete(
+      final response = await _dio.delete(
         '/product-reviews/$reviewId',
         options: _getAuthOptions(token),
       );
+      return response;
     } catch (e) {
+      debugPrint('Error deleting product review: $e');
       throw Exception('Failed to delete review: $e');
     }
   }
 
   void _handleError(DioException error) {
     String message;
-    switch (error.response?.statusCode) {
-      case 401:
-        message = 'Unauthorized access. Please log in again.';
-        break;
-      case 403:
-        message = 'You don\'t have permission to perform this action.';
-        break;
-      case 404:
-        message = 'Product not found.';
-        break;
-      case 422:
-        final errors = error.response?.data['errors'];
-        message = errors.toString();
-        break;
-      default:
-        message = error.response?.data['message'] ?? 'An error occurred';
+    debugPrint('API Error Response: ${error.response?.data}');
+    
+    if (error.response?.data is Map && error.response?.data['meta'] != null) {
+      message = error.response?.data['meta']['message'] ?? 'An error occurred';
+    } else {
+      switch (error.response?.statusCode) {
+        case 401:
+          message = 'Unauthorized access. Please log in again.';
+          break;
+        case 403:
+          message = 'You don\'t have permission to perform this action.';
+          break;
+        case 404:
+          message = 'Product not found.';
+          break;
+        case 422:
+          final errors = error.response?.data['errors'];
+          message = errors != null ? errors.toString() : 'Validation error occurred';
+          break;
+        default:
+          message = error.response?.data?['message'] ?? 'An error occurred';
+      }
     }
     throw Exception(message);
   }

@@ -19,32 +19,48 @@ import 'package:antarkanma/app/controllers/user_controller.dart';
 class UserBinding extends Bindings {
   @override
   void dependencies() {
+    print('Initializing UserBinding dependencies...');
+    
     // Main Controllers
     Get.lazyPut<UserController>(() => UserController());
     Get.lazyPut<UserMainController>(() => UserMainController());
 
     // Cart Controller (permanent instance)
     if (!Get.isRegistered<CartController>()) {
+      print('Initializing CartController...');
       Get.put(CartController(), permanent: true);
     }
 
     // Services
     if (!Get.isRegistered<CategoryService>()) {
+      print('Initializing CategoryService...');
       Get.put(CategoryService(), permanent: true);
     }
 
     // Providers and Repositories
+    print('Initializing ProductProvider...');
     Get.lazyPut(() => ProductProvider(), fenix: true);
+    print('Initializing ReviewRepository...');
     Get.lazyPut(() => ReviewRepository(provider: Get.find()), fenix: true);
 
-    // Home and Product Controllers
-    Get.lazyPut<HomePageController>(() => HomePageController(), fenix: true);
+    // Home Controller - Now initialized immediately and permanently
+    if (!Get.isRegistered<HomePageController>()) {
+      print('Initializing HomePageController...');
+      final homeController = HomePageController();
+      Get.put(homeController, permanent: true);
+      // Force immediate loading of initial data
+      homeController.loadInitialData();
+    }
+
+    // Product Detail Controller
+    print('Initializing ProductDetailController...');
     Get.lazyPut<ProductDetailController>(
       () => ProductDetailController(reviewRepository: Get.find()),
       fenix: true,
     );
 
     // Location Related Dependencies
+    print('Initializing Location Services...');
     Get.lazyPut<UserLocationService>(
       () => UserLocationService(),
       fenix: true,
@@ -58,6 +74,7 @@ class UserBinding extends Bindings {
     );
 
     // Transaction and Order Related Dependencies
+    print('Initializing Transaction Services...');
     Get.lazyPut(() => TransactionService(), fenix: true);
     Get.lazyPut(() => OrderController(), fenix: true);
 
@@ -70,10 +87,12 @@ class UserBinding extends Bindings {
 
     // Additional Feature Controllers
     _initializeFeatureControllers();
+    
+    print('UserBinding dependencies initialization complete');
   }
 
   void _initializeFeatureControllers() {
-    // Feature Controllers
+    print('Initializing Feature Controllers...');
     Get.lazyPut(() => EditProfileController(), fenix: true);
   }
 }
