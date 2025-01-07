@@ -490,8 +490,6 @@ class AuthService extends GetxService {
     }
   }
 
-  
-
   String? getToken() => _storageService.getToken();
   UserModel? getUser() => currentUser.value;
   String get userName => currentUser.value?.name ?? '';

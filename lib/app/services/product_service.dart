@@ -18,7 +18,6 @@ class ProductService extends GetxService {
   static const String _categoryMetadataKey = 'category_metadata';
   
   static const int maxStoredPages = 50;
-  static const Duration cacheExpiration = Duration(minutes: 30);
   static const Duration requestThrottle = Duration(milliseconds: 500);
   
   final RxList<ProductModel> products = <ProductModel>[].obs;
@@ -32,27 +31,6 @@ class ProductService extends GetxService {
   void onInit() {
     super.onInit();
     debugPrint('ProductService: Initializing...');
-    _initializeStorage();
-  }
-
-  void _initializeStorage() {
-    _cleanExpiredCache();
-  }
-
-  Future<void> _cleanExpiredCache() async {
-    try {
-      final now = DateTime.now();
-      final Map<String, dynamic> allPages = _storage.read(_productsKey) ?? {};
-      
-      allPages.removeWhere((key, _) {
-        final lastAccess = _lastCacheTime[key];
-        return lastAccess != null && now.difference(lastAccess) > cacheExpiration;
-      });
-      
-      await _storage.write(_productsKey, allPages);
-    } catch (e) {
-      debugPrint('Error cleaning cache: $e');
-    }
   }
 
   Future<PaginatedResponse<ProductModel>> getAllProducts({

@@ -133,9 +133,11 @@ class ProductGridCard extends StatelessWidget {
                         ),
                       ),
                     const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    // Price and Rating Row
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Price
                         Text(
                           NumberFormat.currency(
                             locale: 'id',
@@ -147,6 +149,8 @@ class ProductGridCard extends StatelessWidget {
                             fontWeight: semiBold,
                           ),
                         ),
+                        SizedBox(height: Dimenssions.height4),
+                        // Rating
                         StarRating(
                           rating: product.ratingInfo != null
                               ? (product.ratingInfo!['average_rating'] as num)
@@ -154,7 +158,6 @@ class ProductGridCard extends StatelessWidget {
                               : product.averageRating,
                           size: Dimenssions.iconSize16,
                         ),
-                        SizedBox(width: Dimenssions.width4),
                       ],
                     ),
                   ],

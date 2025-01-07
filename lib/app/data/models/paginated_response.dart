@@ -5,12 +5,18 @@ class PaginatedResponse<T> {
   final String? nextCursor;
   final bool hasMore;
   final Map<String, dynamic>? meta;
+  final int currentPage;
+  final int lastPage;
+  final int total;
 
   PaginatedResponse({
     required this.data,
     this.nextCursor,
     this.hasMore = true,
     this.meta,
+    this.currentPage = 1,
+    this.lastPage = 1,
+    this.total = 0,
   });
 
   factory PaginatedResponse.fromJson(
@@ -24,6 +30,7 @@ class PaginatedResponse<T> {
       // Handle API response structure
       Map<String, dynamic>? metaData = json['meta'] as Map<String, dynamic>?;
       List<dynamic> dataList = [];
+      Map<String, dynamic>? paginationData;
 
       if (json.containsKey('data')) {
         var rawData = json['data'];
@@ -31,6 +38,7 @@ class PaginatedResponse<T> {
           // Handle nested data structure
           debugPrint('Found nested data structure');
           dataList = rawData['data'] as List;
+          paginationData = rawData;
         } else if (rawData is List) {
           // Handle flat data structure
           debugPrint('Found flat data structure');
@@ -57,14 +65,21 @@ class PaginatedResponse<T> {
 
       debugPrint('Successfully parsed ${parsedData.length} items');
 
-      // Get pagination info from the nested data structure
-      final paginationData = json['data'] is Map ? json['data'] as Map<String, dynamic> : null;
+      // Get pagination info
       String? nextCursor;
       bool hasMore = false;
+      int currentPage = 1;
+      int lastPage = 1;
+      int total = 0;
 
       if (paginationData != null) {
         nextCursor = paginationData['next_page_url']?.toString();
-        hasMore = nextCursor != null;
+        currentPage = paginationData['current_page'] as int? ?? 1;
+        lastPage = paginationData['last_page'] as int? ?? 1;
+        total = paginationData['total'] as int? ?? 0;
+        hasMore = currentPage < lastPage;
+        
+        debugPrint('Pagination info: currentPage=$currentPage, lastPage=$lastPage, total=$total, hasMore=$hasMore');
       }
 
       return PaginatedResponse(
@@ -72,6 +87,9 @@ class PaginatedResponse<T> {
         nextCursor: nextCursor,
         hasMore: hasMore,
         meta: metaData,
+        currentPage: currentPage,
+        lastPage: lastPage,
+        total: total,
       );
     } catch (e, stackTrace) {
       debugPrint('Error parsing paginated response: $e');
@@ -90,11 +108,14 @@ class PaginatedResponse<T> {
       'next_cursor': nextCursor,
       'has_more': hasMore,
       'meta': meta,
+      'current_page': currentPage,
+      'last_page': lastPage,
+      'total': total,
     };
   }
 
   @override
   String toString() {
-    return 'PaginatedResponse(items: ${data.length}, nextCursor: $nextCursor, hasMore: $hasMore)';
+    return 'PaginatedResponse(items: ${data.length}, currentPage: $currentPage, lastPage: $lastPage, total: $total, nextCursor: $nextCursor, hasMore: $hasMore)';
   }
 }

@@ -1,13 +1,10 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/widgets/order_card.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:antarkanma/app/widgets/order_card.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -16,7 +13,8 @@ class OrderPage extends StatefulWidget {
   State<OrderPage> createState() => _OrderPageState();
 }
 
-class _OrderPageState extends State<OrderPage> with SingleTickerProviderStateMixin {
+class _OrderPageState extends State<OrderPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late OrderController _orderController;
 
@@ -85,16 +83,18 @@ class _OrderPageState extends State<OrderPage> with SingleTickerProviderStateMix
       body: GetBuilder<OrderController>(
         builder: (controller) {
           return Obx(() {
-            if (!Get.find<AuthService>().isLoggedIn.value) {
-              return _buildLoginPrompt();
-            }
-
             if (controller.isLoading.value) {
-              return _buildLoadingState();
+              return Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
+                ),
+              );
             }
 
             if (controller.errorMessage.value.isNotEmpty) {
-              return _buildErrorState(controller.errorMessage.value);
+              return Center(
+                child: Text(controller.errorMessage.value),
+              );
             }
 
             return TabBarView(
@@ -110,51 +110,15 @@ class _OrderPageState extends State<OrderPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildLoginPrompt() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Silakan login terlebih dahulu',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font16,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height20),
-          TextButton(
-            onPressed: () => Get.toNamed(Routes.login),
-            child: Text(
-              'Login',
-              style: primaryTextStyle.copyWith(
-                color: logoColorSecondary,
-                fontSize: Dimenssions.font16,
-                fontWeight: medium,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
-      ),
-    );
-  }
-
   Widget _buildOrderList(List<TransactionModel> transactions) {
     if (transactions.isEmpty) {
-      return _buildEmptyState();
+      return Center(
+        child: Text('Tidak ada pesanan untuk ditampilkan.'),
+      );
     }
 
-    final controller = Get.find<OrderController>();
-
     return RefreshIndicator(
-      onRefresh: () => controller.refreshOrders(),
+      onRefresh: () => _orderController.refreshOrders(),
       color: logoColorSecondary,
       child: ListView.builder(
         padding: EdgeInsets.all(Dimenssions.height15),
@@ -166,95 +130,6 @@ class _OrderPageState extends State<OrderPage> with SingleTickerProviderStateMix
             onTap: _showOrderDetails,
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/icon_empty_cart.png',
-            width: Dimenssions.height80,
-          ),
-          SizedBox(height: Dimenssions.height20),
-          Text(
-            'Belum ada pesanan',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font20,
-              fontWeight: semiBold,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height10),
-          Text(
-            'Yuk mulai belanja',
-            style: secondaryTextStyle.copyWith(
-              fontSize: Dimenssions.font14,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height20),
-          Container(
-            height: Dimenssions.height45,
-            padding: EdgeInsets.symmetric(
-              horizontal: Dimenssions.width30,
-            ),
-            child: TextButton(
-              onPressed: () => Get.toNamed('/usermain/home'),
-              style: TextButton.styleFrom(
-                backgroundColor: logoColorSecondary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Dimenssions.radius15),
-                ),
-              ),
-              child: Text(
-                'Mulai Belanja',
-                style: primaryTextStyle.copyWith(
-                  color: backgroundColor1,
-                  fontSize: Dimenssions.font16,
-                  fontWeight: medium,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: Dimenssions.height45,
-            color: alertColor,
-          ),
-          SizedBox(height: Dimenssions.height20),
-          Text(
-            message,
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font16,
-              color: alertColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: Dimenssions.height20),
-          TextButton(
-            onPressed: () => Get.find<OrderController>().refreshOrders(),
-            child: Text(
-              'Coba Lagi',
-              style: primaryTextStyle.copyWith(
-                color: logoColorSecondary,
-                fontSize: Dimenssions.font16,
-                fontWeight: medium,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
