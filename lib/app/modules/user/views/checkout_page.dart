@@ -19,42 +19,55 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor8,
-      appBar: AppBar(
-        toolbarHeight: Dimenssions.height50,
+    return WillPopScope(
+      onWillPop: () async {
+        if (controller.isProcessingCheckout.value) {
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
         backgroundColor: backgroundColor8,
-        iconTheme: IconThemeData(color: logoColorSecondary),
-        title: Text('Checkout', style: primaryTextStyle),
-      ),
-      body: GetX<CheckoutController>(
-        builder: (controller) {
-          if (controller.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        appBar: AppBar(
+          toolbarHeight: Dimenssions.height50,
+          backgroundColor: backgroundColor8,
+          iconTheme: IconThemeData(color: logoColorSecondary),
+          title: Text('Checkout', style: primaryTextStyle),
+          leading: controller.isProcessingCheckout.value
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Get.back(),
+                ),
+        ),
+        body: GetX<CheckoutController>(
+          builder: (controller) {
+            if (controller.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(Dimenssions.width10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDeliveryAddressSection(),
-                const SizedBox(height: 16),
-                _buildOrderItemsSection(),
-                const SizedBox(height: 16),
-                _buildPaymentSection(),
-                const SizedBox(height: 16),
-                _buildTotalSection(),
-              ],
-            ),
-          );
-        },
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(Dimenssions.width10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDeliveryAddressSection(),
+                  const SizedBox(height: 16),
+                  _buildOrderItemsSection(),
+                  const SizedBox(height: 16),
+                  _buildPaymentSection(),
+                  const SizedBox(height: 16),
+                  _buildTotalSection(),
+                ],
+              ),
+            );
+          },
+        ),
+        bottomNavigationBar: _buildCheckoutButton(),
       ),
-      bottomNavigationBar: _buildCheckoutButton(),
     );
   }
 
-// Dalam method _buildPaymentSection
   Widget _buildPaymentSection() {
     return Card(
       color: backgroundColor1,
@@ -84,19 +97,21 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   void _showPaymentMethodSelectionModal() {
+    if (controller.isProcessingCheckout.value) return;
+    
     showModalBottomSheet(
       context: Get.context!,
       isScrollControlled: true,
       constraints: BoxConstraints(
-        maxHeight: Get.height * 0.7, // Maksimal 70% tinggi layar
-        minHeight: Get.height * 0.4, // Minimal 40% tinggi layar
-        maxWidth: Get.width, // Lebar penuh
+        maxHeight: Get.height * 0.7,
+        minHeight: Get.height * 0.4,
+        maxWidth: Get.width,
       ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      backgroundColor: Colors.white, // Warna latar belakang
-      barrierColor: Colors.black54, // Warna overlay
+      backgroundColor: Colors.white,
+      barrierColor: Colors.black54,
       builder: (context) => const PaymentMethodSelectionPage(),
     ).then((selectedMethod) {
       if (selectedMethod != null) {
@@ -105,10 +120,9 @@ class CheckoutPage extends GetView<CheckoutController> {
     });
   }
 
-// Perbarui _buildNoPaymentMethodWidget
   Widget _buildNoPaymentMethodWidget() {
     return InkWell(
-      onTap: _showPaymentMethodSelectionModal,
+      onTap: controller.isProcessingCheckout.value ? null : _showPaymentMethodSelectionModal,
       child: Card(
         color: backgroundColor8,
         elevation: 2,
@@ -149,40 +163,37 @@ class CheckoutPage extends GetView<CheckoutController> {
     );
   }
 
-// Perbarui _buildPaymentMethodCard
-// Di dalam class CheckoutPage
   Widget _buildPaymentMethodCard(String method) {
     return Card(
       color: backgroundColor8,
       child: ListTile(
         leading: Icon(
-          _getPaymentMethodIcon(method), // Gunakan method yang baru ditambahkan
+          _getPaymentMethodIcon(method),
           color: logoColorSecondary,
         ),
         title: Text(method, style: primaryTextStyle),
         trailing: TextButton(
-          onPressed: _showPaymentMethodSelectionModal,
+          onPressed: controller.isProcessingCheckout.value ? null : _showPaymentMethodSelectionModal,
           child: Text('Ubah', style: primaryTextStyle),
         ),
       ),
     );
   }
 
-// Method baru untuk mengambil ikon metode pembayaran
   IconData _getPaymentMethodIcon(String method) {
     switch (method) {
       case 'COD':
-        return Icons.handshake_outlined; // Ikon untuk COD
+        return Icons.handshake_outlined;
       case 'Transfer Bank':
-        return Icons.account_balance; // Ikon untuk transfer bank
+        return Icons.account_balance;
       case 'DANA':
-        return Icons.account_balance_wallet; // Ikon untuk DANA
+        return Icons.account_balance_wallet;
       case 'OVO':
-        return Icons.wallet_giftcard; // Ikon untuk OVO
+        return Icons.wallet_giftcard;
       case 'GoPay':
-        return Icons.payment; // Ikon untuk GoPay
+        return Icons.payment;
       default:
-        return Icons.payment; // Ikon default
+        return Icons.payment;
     }
   }
 
@@ -216,7 +227,7 @@ class CheckoutPage extends GetView<CheckoutController> {
       children: [
         Text('Alamat Pengiriman', style: primaryTextStyle),
         TextButton(
-          onPressed: _showAddressSelectionModal,
+          onPressed: controller.isProcessingCheckout.value ? null : _showAddressSelectionModal,
           child: Text('Ubah', style: primaryTextStyle),
         ),
       ],
@@ -224,6 +235,8 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   void _showAddressSelectionModal() {
+    if (controller.isProcessingCheckout.value) return;
+    
     showModalBottomSheet(
       context: Get.context!,
       builder: (context) => AddressSelectionPage(),
@@ -290,7 +303,7 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   Widget _buildNoAddressWidget() {
     return InkWell(
-      onTap: () => Get.toNamed('/main/select-address'),
+      onTap: controller.isProcessingCheckout.value ? null : () => Get.toNamed('/main/select-address'),
       child: Card(
         color: backgroundColor8,
         elevation: 2,
@@ -559,8 +572,10 @@ class CheckoutPage extends GetView<CheckoutController> {
                 ),
                 Text(
                   NumberFormat.currency(
-                          locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
-                      .format(controller.total.value),
+                    locale: 'id_ID',
+                    symbol: 'Rp ',
+                    decimalDigits: 0,
+                  ).format(controller.total.value),
                   style: primaryTextStyle.copyWith(
                     fontSize: Dimenssions.font18,
                     fontWeight: FontWeight.bold,
@@ -570,89 +585,115 @@ class CheckoutPage extends GetView<CheckoutController> {
               ],
             ),
             const SizedBox(height: 16),
-            GetX<CheckoutController>(
-              builder: (controller) {
-                return Column(
-                  children: [
-                    Card(
-                      margin: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: controller.canCheckout
-                            ? () => controller.processCheckout()
-                            : () {
-                                // Tampilkan snackbar dengan alasan
-                                Get.snackbar(
-                                  'Checkout Tidak Tersedia',
-                                  controller.checkoutBlockReason ??
-                                      'Lengkapi data checkout',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: Colors.red.withOpacity(0.7),
-                                  colorText: Colors.white,
-                                );
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: logoColorSecondary,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey[300],
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          minimumSize: const Size(double.infinity, 54),
-                          padding: EdgeInsets.zero,
+            Obx(() {
+              final bool isProcessing = controller.isProcessingCheckout.value;
+              final bool canCheckout = controller.canCheckout;
+              
+              return Column(
+                children: [
+                  Card(
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: isProcessing
+                          ? null
+                          : canCheckout
+                              ? () => controller.processCheckout()
+                              : () {
+                                  Get.snackbar(
+                                    'Checkout Tidak Tersedia',
+                                    controller.checkoutBlockReason ??
+                                        'Lengkapi data checkout',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: Colors.red.withOpacity(0.7),
+                                    colorText: Colors.white,
+                                  );
+                                },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: logoColorSecondary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: controller.canCheckout
-                                ? LinearGradient(
-                                    colors: [
-                                      logoColorSecondary,
-                                      logoColorSecondary.withOpacity(0.8),
+                        minimumSize: const Size(double.infinity, 54),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: (!isProcessing && canCheckout)
+                              ? LinearGradient(
+                                  colors: [
+                                    logoColorSecondary,
+                                    logoColorSecondary.withOpacity(0.8),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                )
+                              : null,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: isProcessing
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Memproses...',
+                                        style: primaryTextStyle.copyWith(
+                                          fontSize: Dimenssions.font18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
                                   )
-                                : null,
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Center(
-                              child: Text(
-                                'Bayar Sekarang',
-                                style: primaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font18,
-                                  fontWeight: FontWeight.bold,
-                                  color: controller.canCheckout
-                                      ? Colors.white
-                                      : Colors.grey,
-                                ),
-                              ),
-                            ),
+                                : Text(
+                                    'Bayar Sekarang',
+                                    style: primaryTextStyle.copyWith(
+                                      fontSize: Dimenssions.font18,
+                                      fontWeight: FontWeight.bold,
+                                      color: canCheckout
+                                          ? Colors.white
+                                          : Colors.grey,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
                     ),
-                    if (!controller.canCheckout)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          controller.checkoutBlockReason ??
-                              'Lengkapi data checkout',
-                          style: primaryTextStyle.copyWith(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
+                  ),
+                  if (!canCheckout && !isProcessing)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        controller.checkoutBlockReason ?? 'Lengkapi data checkout',
+                        style: primaryTextStyle.copyWith(
+                          color: Colors.red,
+                          fontSize: 12,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                  ],
-                );
-              },
-            ),
+                    ),
+                ],
+              );
+            }),
           ],
         ),
       ),

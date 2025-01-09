@@ -1,14 +1,8 @@
 import 'dart:math';
-import 'package:antarkanma/app/controllers/homepage_controller.dart';
-import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/services/product_service.dart';
-import 'package:antarkanma/app/services/category_service.dart';
-import 'package:antarkanma/app/services/merchant_service.dart';
-import 'package:antarkanma/app/services/transaction_service.dart';
+import '../controllers/splash_controller.dart';
 
 class NeonSpinner extends CustomPainter {
   final double angle;
@@ -44,19 +38,18 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _spinnerAnimation;
-  final RxString _loadingText = 'Mempersiapkan aplikasi...'.obs;
-  final RxBool _isLoading = true.obs;
+  final splashController = Get.find<SplashController>();
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
-    _initializeApp();
   }
 
   void _setupAnimations() {
@@ -95,99 +88,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     ));
 
     _controller.repeat();
-  }
-
-  Future<void> _initializeApp() async {
-    try {
-      final authService = Get.find<AuthService>();
-
-      await Future.delayed(const Duration(seconds: 1));
-
-      _loadingText.value = 'Memeriksa status login...';
-      if (!authService.isLoggedIn.value) {
-        await Future.delayed(const Duration(seconds: 3));
-        Get.offAllNamed(Routes.login);
-        return;
-      }
-
-      await _loadRoleSpecificData(authService);
-
-      _isLoading.value = false;
-      await Future.delayed(const Duration(seconds: 1));
-      _navigateBasedOnRole(authService);
-    } catch (e) {
-      debugPrint('Error during initialization: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to initialize app. Please check your connection.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      await Future.delayed(const Duration(seconds: 3));
-      Get.offAllNamed(Routes.login);
-    }
-  }
-
-  Future<void> _loadRoleSpecificData(AuthService authService) async {
-    if (authService.isUser) {
-      _loadingText.value = 'Memuat data kategori...';
-      final categoryService = Get.find<CategoryService>();
-      await categoryService.getCategories();
-
-      _loadingText.value = 'Memuat data produk populer...';
-      // Initialize HomePageController if not already initialized
-      if (!Get.isRegistered<HomePageController>()) {
-        final homeController = HomePageController();
-        Get.put(homeController, permanent: true);
-      }
-      final homeController = Get.find<HomePageController>();
-      
-      // Load popular products
-      await homeController.loadPopularProducts();
-      
-      // Verify popular products were loaded
-      if (homeController.popularProducts.isEmpty) {
-        print('Warning: No popular products loaded');
-        _loadingText.value = 'Mencoba memuat ulang data produk...';
-        await homeController.refreshProducts(showMessage: false);
-      }
-      
-      print('Loaded ${homeController.popularProducts.length} popular products');
-    } 
-    else if (authService.isMerchant) {
-      _loadingText.value = 'Memuat data merchant...';
-      final merchantService = Get.find<MerchantService>();
-      final transactionService = Get.find<TransactionService>();
-
-      await Future.wait([
-        merchantService.getMerchant(),
-        merchantService.getMerchantProducts(),
-        transactionService.getTransactions(),
-      ]);
-    }
-    else if (authService.isCourier) {
-      _loadingText.value = 'Memuat data pengiriman...';
-      final transactionService = Get.find<TransactionService>();
-      
-      await transactionService.getTransactions(
-        status: 'pending,in_progress',
-        pageSize: 10,
-      );
-    }
-  }
-
-  void _navigateBasedOnRole(AuthService authService) {
-    if (authService.isUser) {
-      Get.offAllNamed(Routes.userMainPage);
-    } else if (authService.isMerchant) {
-      Get.offAllNamed(Routes.merchantMainPage);
-    } else if (authService.isCourier) {
-      Get.offAllNamed(Routes.courierMainPage);
-    } else {
-      authService.logout();
-      Get.offAllNamed(Routes.login);
-    }
   }
 
   @override
@@ -234,7 +134,8 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                           height: 180,
                           decoration: const BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage('assets/Logo_AntarkanmaNoBg.png'),
+                              image:
+                                  AssetImage('assets/Logo_AntarkanmaNoBg.png'),
                               fit: BoxFit.contain,
                             ),
                           ),
@@ -246,7 +147,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               ],
             ),
             const SizedBox(height: 40),
-            Obx(() => _isLoading.value
+            Obx(() => splashController.isLoading
                 ? Column(
                     children: [
                       const SizedBox(height: 20),
@@ -267,7 +168,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                           ],
                         ),
                         child: Obx(() => Text(
-                              _loadingText.value,
+                              splashController.loadingText,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

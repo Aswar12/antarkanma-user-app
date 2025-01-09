@@ -6,7 +6,7 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart'; // Importing MerchantController
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 import 'package:antarkanma/app/utils/validators.dart';
 
 class AuthController extends GetxController {
@@ -40,6 +40,7 @@ class AuthController extends GetxController {
 
   void toggleRememberMe() {
     rememberMe.value = !rememberMe.value;
+    _storageService.saveRememberMe(rememberMe.value);
   }
 
   Future<void> login() async {
@@ -59,7 +60,7 @@ class AuthController extends GetxController {
           isError: true,
         );
       } else {
-        String role = _authService.userRole;
+        String role = _authService.currentUser.value?.role ?? '';
         switch (role) {
           case 'USER':
             print('Navigating to USER main page');
@@ -127,8 +128,20 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     try {
+      // Store remember me state and credentials before logout
+      final wasRememberMeEnabled = _storageService.getRememberMe();
+      final savedCredentials = wasRememberMeEnabled ? _storageService.getSavedCredentials() : null;
+
       await _authService.logout();
-      await _storageService.clearAll();
+
+      // Clear auth data while preserving remember me if enabled
+      if (wasRememberMeEnabled && savedCredentials != null) {
+        // Clear auth data but keep remember me settings
+        await _storageService.clearAuth();
+      } else {
+        // Clear everything including remember me settings
+        await _storageService.clearAll();
+      }
 
       // Reset controllers
       identifierController.clear();
@@ -138,11 +151,13 @@ class AuthController extends GetxController {
       emailController.clear();
       phoneNumberController.clear();
 
-      // Reset observable values
-      rememberMe.value = false;
+      // Reset observable values except remember me if enabled
       isLoading.value = false;
       isPasswordHidden.value = true;
       isConfirmPasswordHidden.value = true;
+      if (!wasRememberMeEnabled) {
+        rememberMe.value = false;
+      }
 
       Get.offAllNamed(Routes.login);
       showCustomSnackbar(

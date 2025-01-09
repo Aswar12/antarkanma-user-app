@@ -3,6 +3,7 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -22,6 +23,7 @@ class Debouncer {
 class HomePageController extends GetxController {
   final ProductService productService = Get.find<ProductService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
+  final AuthService _authService = Get.find<AuthService>();
 
   // Observable state variables
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
@@ -55,12 +57,18 @@ class HomePageController extends GetxController {
   bool get isCategoriesLoading => _categoryService.isLoading.value;
   List<ProductModel> get filteredProducts =>
       searchQuery.isEmpty ? allProducts : searchResults;
+  bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 
   @override
   void onInit() {
     super.onInit();
     debugPrint('HomePageController: onInit');
-    loadInitialData();
+    // Only load data if user is logged in and is a regular user
+    if (_authService.isLoggedIn.value && _authService.currentUser.value?.role == 'USER') {
+      loadInitialData();
+    } else {
+      isLoading.value = false;
+    }
     _setupSearchListener();
   }
 
@@ -468,6 +476,4 @@ class HomePageController extends GetxController {
       });
     }
   }
-
-  bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 }

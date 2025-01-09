@@ -3,7 +3,7 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:antarkanma/app/data/providers/transaction_provider.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -67,6 +67,9 @@ class CartController extends GetxController {
       
       if (validItems.isNotEmpty) {
         storage.write(CART_STORAGE_KEY, validItems);
+      } else {
+        // If cart is empty, remove the storage key
+        storage.remove(CART_STORAGE_KEY);
       }
     } catch (e) {
       print('Error saving cart: $e');
@@ -369,53 +372,6 @@ class CartController extends GetxController {
       merchantItems[merchantId] = [item];
     }
     update();
-  }
-
-  Future<void> createTransaction(
-      int userLocationId, double shippingPrice, String paymentMethod) async {
-    if (!validateCart()) {
-      return;
-    }
-
-    List<Map<String, dynamic>> items = [];
-    selectedItems.forEach((item) {
-      if (item.merchant.id != null) {
-        items.add({
-          "product_id": item.product.id,
-          "merchant_id": item.merchant.id,
-          "quantity": item.quantity,
-          "price": item.totalPrice,
-        });
-      }
-    });
-
-    Map<String, dynamic> transactionData = {
-      "user_location_id": userLocationId,
-      "total_price": selectedItemsTotal + shippingPrice,
-      "shipping_price": shippingPrice,
-      "payment_method": paymentMethod,
-      "items": items,
-    };
-
-    print('Transaction Data: $transactionData');
-    final transactionProvider = TransactionProvider();
-    try {
-      final response =
-          await transactionProvider.createTransaction(transactionData);
-      print('Transaction created successfully: ${response.data}');
-      CustomSnackbarX.showSuccess(
-        title: 'Success',
-        message: 'Transaction created successfully!',
-        position: SnackPosition.BOTTOM,
-      );
-    } catch (e) {
-      print('Error creating transaction: $e');
-      CustomSnackbarX.showError(
-        title: 'Error',
-        message: 'Failed to create transaction.',
-        position: SnackPosition.BOTTOM,
-      );
-    }
   }
 
   @override

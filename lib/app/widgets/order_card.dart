@@ -19,7 +19,13 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = transaction.items;
+    // Get items from both direct items and nested order items
+    final items = transaction.items.isNotEmpty 
+        ? transaction.items 
+        : (transaction.order?.orderItems ?? []);
+    
+    print('OrderCard - Items count: ${items.length}'); // Debug print
+    
     final orderId = (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
     final status = transaction.status;
     final date = transaction.createdAt != null
@@ -128,6 +134,7 @@ class OrderCard extends StatelessWidget {
   }
 
   Widget _buildProductItem(dynamic item) {
+    print('Building product item: ${item.product.name}'); // Debug print
     return Container(
       margin: EdgeInsets.only(bottom: Dimenssions.height12),
       child: Row(

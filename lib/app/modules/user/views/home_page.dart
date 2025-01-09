@@ -12,97 +12,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends GetView<HomePageController> {
   const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  final AuthService _authService = Get.find<AuthService>();
-  late HomePageController controller;
-  final GlobalKey _carouselKey = GlobalKey();
-  final GlobalKey _popularTitleKey = GlobalKey();
-  bool _isCategorySticky = false;
-  final ScrollController _scrollController = ScrollController();
-  final FocusNode _searchFocusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    controller = Get.find<HomePageController>();
-    _scrollController.addListener(_onScroll);
-    _searchFocusNode.addListener(_onSearchFocusChange);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    _searchFocusNode.removeListener(_onSearchFocusChange);
-    _searchFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _onSearchFocusChange() {
-    if (_searchFocusNode.hasFocus) {
-      _scrollToHidePopularProducts();
-    }
-  }
-
-  void _scrollToHidePopularProducts() {
-    double carouselHeight =
-        _carouselKey.currentContext?.findRenderObject()?.paintBounds?.height ??
-            0;
-    double titleHeight =
-        _popularTitleKey.currentContext?.size?.height ?? Dimenssions.height45;
-    double spacingHeight = Dimenssions.height10;
-    double totalScrollHeight = carouselHeight + titleHeight + spacingHeight;
-
-    _scrollController.animateTo(
-      totalScrollHeight,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-    );
-  }
-
-  void _onScroll() {
-    final RenderBox? carouselBox =
-        _carouselKey.currentContext?.findRenderObject() as RenderBox?;
-    if (carouselBox != null) {
-      final carouselHeight = carouselBox.size.height;
-      setState(() {
-        _isCategorySticky = _scrollController.offset > carouselHeight;
-      });
-    }
-
-    // Schedule the load more check for after the current build phase
-    if (!controller.isLoadingMore.value &&
-        !controller.isRefreshing.value &&
-        _scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!controller.isLoadingMore.value && !controller.isRefreshing.value) {
-          controller.loadMoreProducts();
-        }
-      });
-    }
-  }
 
   Widget _buildSearchBar() {
     return SearchInputField(
       controller: controller.searchController,
       hintText: 'Apa Ku AntarkanKi ?',
-      focusNode: _searchFocusNode,
       onClear: () {
         controller.searchController.clear();
-        FocusScope.of(context).unfocus();
       },
       onChanged: (value) async {
         if (value.isNotEmpty) {
           await controller.performSearch();
-          _scrollToHidePopularProducts();
         }
       },
     );
@@ -114,7 +36,6 @@ class _HomePageState extends State<HomePage> {
 
   Widget popularProductsTitle() {
     return Container(
-      key: _popularTitleKey,
       margin: EdgeInsets.only(
         top: Dimenssions.height15,
         left: Dimenssions.width15,
@@ -176,7 +97,6 @@ class _HomePageState extends State<HomePage> {
       }
 
       return Column(
-        key: _carouselKey,
         children: [
           CarouselSlider.builder(
             itemCount: controller.popularProducts.length,
@@ -204,7 +124,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           SizedBox(height: Dimenssions.height10),
-          AnimatedSmoothIndicator(
+          Obx(() => AnimatedSmoothIndicator(
             activeIndex: controller.currentIndex.value,
             count: controller.popularProducts.length,
             effect: WormEffect(
@@ -214,7 +134,7 @@ class _HomePageState extends State<HomePage> {
               dotWidth: Dimenssions.height10,
               type: WormType.thin,
             ),
-          ),
+          )),
         ],
       );
     });
@@ -289,9 +209,7 @@ class _HomePageState extends State<HomePage> {
               (context, index) {
                 final product = controller.filteredProducts[index];
                 if (index == controller.filteredProducts.length - 3) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    controller.checkAndPreloadNextPage();
-                  });
+                  controller.checkAndPreloadNextPage();
                 }
                 return ProductGridCard(
                   product: product,
@@ -352,7 +270,6 @@ class _HomePageState extends State<HomePage> {
           onRefresh: controller.refreshProducts,
           color: logoColorSecondary,
           child: CustomScrollView(
-            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverAppBar(
@@ -373,7 +290,8 @@ class _HomePageState extends State<HomePage> {
                       bottom: Dimenssions.height2,
                     ),
                     child: Obx(() {
-                      final user = _authService.getUser();
+                      final authService = Get.find<AuthService>();
+                      final user = authService.getUser();
                       if (user == null) {
                         return Container(
                           width: Dimenssions.height40,

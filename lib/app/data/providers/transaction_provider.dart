@@ -5,6 +5,7 @@ import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:flutter/foundation.dart';
 
 class TransactionProvider {
   final dio.Dio _dio = dio.Dio();
@@ -39,22 +40,35 @@ class TransactionProvider {
             });
           }
 
+          debugPrint('\n=== API Request ===');
+          debugPrint('URL: ${options.baseUrl}${options.path}');
+          debugPrint('Method: ${options.method}');
+          debugPrint('Headers: ${options.headers}');
+          debugPrint('Data: ${options.data}');
+
           return handler.next(options);
         },
+        onResponse: (response, handler) async {
+          debugPrint('\n=== API Response ===');
+          debugPrint('Status code: ${response.statusCode}');
+          debugPrint('Data: ${response.data}');
+
+          return handler.next(response);
+        },
         onError: (dio.DioException error, handler) async {
-          print('\n=== API Error Interceptor ===');
-          print('Status code: ${error.response?.statusCode}');
-          print('Error data: ${error.response?.data}');
-          print('Error message: ${error.message}');
-          print('Error type: ${error.type}');
-          print('Error stacktrace: ${error.stackTrace}');
+          debugPrint('\n=== API Error Interceptor ===');
+          debugPrint('Status code: ${error.response?.statusCode}');
+          debugPrint('Error data: ${error.response?.data}');
+          debugPrint('Error message: ${error.message}');
+          debugPrint('Error type: ${error.type}');
+          debugPrint('Error stacktrace: ${error.stackTrace}');
 
           if (error.response?.statusCode == 401) {
             try {
               final authService = Get.find<AuthService>();
               authService.handleAuthError(error);
             } catch (e) {
-              print('Failed to handle auth error in interceptor: $e');
+              debugPrint('Failed to handle auth error in interceptor: $e');
             }
           }
 
@@ -73,7 +87,7 @@ class TransactionProvider {
           final authService = Get.find<AuthService>();
           authService.handleAuthError(error);
         } catch (e) {
-          print('Failed to handle auth error: $e');
+          debugPrint('Failed to handle auth error: $e');
         }
         break;
       case 422:
@@ -132,10 +146,16 @@ class TransactionProvider {
 
   Future<dio.Response> createTransaction(Map<String, dynamic> transactionData) async {
     try {
-      print('Using token: ${_storageService.getToken()}');
-      print('Transaction Data: $transactionData');
+      debugPrint('\n=== Creating Transaction ===');
+      debugPrint('Using token: ${_storageService.getToken()}');
+      debugPrint('Transaction Data: $transactionData');
+
+      // Create a single transaction with all items
       final response = await _dio.post('/transactions', data: transactionData);
-      print('Response: ${response.data}');
+
+      debugPrint('\n=== Transaction Response ===');
+      debugPrint('Status code: ${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
 
       if (response.statusCode == 500) {
         _handleError(dio.DioException(
@@ -146,6 +166,14 @@ class TransactionProvider {
       }
 
       if (response.statusCode == 422) {
+        _handleError(dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+        ));
+      }
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
         _handleError(dio.DioException(
           requestOptions: response.requestOptions,
           response: response,
@@ -169,6 +197,7 @@ class TransactionProvider {
       final queryParameters = <String, dynamic>{
         'page': page,
         'page_size': pageSize,
+        'include': 'items.product,items.merchant,user_location', // Include related data
       };
 
       if (status != null && status.isNotEmpty) {
@@ -180,18 +209,18 @@ class TransactionProvider {
         }
       }
 
-      print('\n=== Transaction Provider Debug ===');
-      print('Making GET request to: ${baseUrl}/transactions');
-      print('Query parameters: $queryParameters');
-      print('Headers: ${_dio.options.headers}');
+      debugPrint('\n=== Transaction Provider Debug ===');
+      debugPrint('Making GET request to: ${baseUrl}/transactions');
+      debugPrint('Query parameters: $queryParameters');
+      debugPrint('Headers: ${_dio.options.headers}');
 
       final response = await _dio.get(
         '/transactions',
         queryParameters: queryParameters,
       );
 
-      print('Response status code: ${response.statusCode}');
-      print('Response data: ${response.data}');
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
 
       return response;
     } on dio.DioException catch (e) {
@@ -202,7 +231,12 @@ class TransactionProvider {
 
   Future<dio.Response> getTransactionById(String transactionId) async {
     try {
-      return await _dio.get('/transactions/$transactionId');
+      return await _dio.get(
+        '/transactions/$transactionId',
+        queryParameters: {
+          'include': 'items.product,items.merchant,user_location', // Include related data
+        },
+      );
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
@@ -228,6 +262,7 @@ class TransactionProvider {
       final queryParams = {
         'page': page,
         'limit': limit,
+        'include': 'items.product,items.merchant,user_location', // Include related data
         if (status != null) 'status': status,
       };
 

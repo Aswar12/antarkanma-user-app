@@ -5,6 +5,7 @@ import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
+import 'package:intl/intl.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -117,17 +118,36 @@ class _OrderPageState extends State<OrderPage>
       );
     }
 
+    // Group transactions by their ID
+    Map<String, List<TransactionModel>> groupedTransactions = {};
+    for (var transaction in transactions) {
+      String transactionId = transaction.id.toString();
+      if (!groupedTransactions.containsKey(transactionId)) {
+        groupedTransactions[transactionId] = [];
+      }
+      groupedTransactions[transactionId]!.add(transaction);
+    }
+
     return RefreshIndicator(
       onRefresh: () => _orderController.refreshOrders(),
       color: logoColorSecondary,
       child: ListView.builder(
         padding: EdgeInsets.all(Dimenssions.height15),
-        itemCount: transactions.length,
+        itemCount: groupedTransactions.keys.length,
         itemBuilder: (context, index) {
-          final transaction = transactions[index];
-          return OrderCard(
-            transaction: transaction,
-            onTap: _showOrderDetails,
+          String transactionId = groupedTransactions.keys.elementAt(index);
+          List<TransactionModel> transactionList = groupedTransactions[transactionId]!;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...transactionList.map((transaction) {
+                return OrderCard(
+                  transaction: transaction,
+                  onTap: _showOrderDetails,
+                );
+              }).toList(),
+            ],
           );
         },
       ),
@@ -150,9 +170,232 @@ class _OrderPageState extends State<OrderPage>
           constraints: BoxConstraints(
             maxHeight: Dimenssions.screenHeight * 0.9,
           ),
-          child: OrderCard(
-            transaction: transaction,
-            onTap: (_) {}, // No action needed in details view
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: backgroundColor2,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(Dimenssions.radius15),
+                    topRight: Radius.circular(Dimenssions.radius15),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Detail Transaksi',
+                          style: primaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '#${transaction.id}',
+                          style: primaryTextStyle.copyWith(
+                            color: logoColorSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (transaction.createdAt != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!),
+                        style: secondaryTextStyle.copyWith(fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Product List
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: transaction.items.length,
+                        itemBuilder: (context, index) {
+                          final item = transaction.items[index];
+                          return Container(
+                            padding: const EdgeInsets.all(16.0),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Product Image
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    item.product.firstImageUrl,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Container(
+                                          width: 80,
+                                          height: 80,
+                                          color: Colors.grey[300],
+                                          child: Icon(
+                                            Icons.image_not_supported,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Product Details
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.product.name,
+                                        style: primaryTextStyle.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Toko: ${item.merchant.name}',
+                                        style: secondaryTextStyle.copyWith(
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '${item.quantity}x ${item.formattedPrice}',
+                                            style: primaryTextStyle,
+                                          ),
+                                          Text(
+                                            item.formattedTotalPrice,
+                                            style: priceTextStyle.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      // Shipping Address
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: backgroundColor2.withOpacity(0.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Alamat Pengiriman',
+                              style: primaryTextStyle.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (transaction.userLocation != null) ...[
+                              Text(
+                                transaction.userLocation!.address,
+                                style: primaryTextStyle,
+                              ),
+                              Text(
+                                '${transaction.userLocation!.city}, ${transaction.userLocation!.postalCode}',
+                                style: primaryTextStyle,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      // Payment Details
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Rincian Pembayaran',
+                              style: primaryTextStyle.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Subtotal', style: primaryTextStyle),
+                                Text(
+                                  transaction.formattedTotalPrice,
+                                  style: primaryTextStyle,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Ongkos Kirim', style: primaryTextStyle),
+                                Text(
+                                  transaction.formattedShippingPrice,
+                                  style: primaryTextStyle,
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Total',
+                                  style: primaryTextStyle.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  transaction.formattedGrandTotal,
+                                  style: priceTextStyle.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

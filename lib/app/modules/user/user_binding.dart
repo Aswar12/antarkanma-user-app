@@ -13,6 +13,8 @@ import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:antarkanma/app/services/user_location_service.dart';
+import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/user_controller.dart';
 
@@ -21,6 +23,22 @@ class UserBinding extends Bindings {
   void dependencies() {
     print('Initializing UserBinding dependencies...');
     
+    // Required Services for HomePageController
+    if (!Get.isRegistered<AuthService>()) {
+      print('Initializing AuthService...');
+      Get.put(AuthService(), permanent: true);
+    }
+    
+    if (!Get.isRegistered<CategoryService>()) {
+      print('Initializing CategoryService...');
+      Get.put(CategoryService(), permanent: true);
+    }
+    
+    if (!Get.isRegistered<ProductService>()) {
+      print('Initializing ProductService...');
+      Get.put(ProductService(), permanent: true);
+    }
+
     // Main Controllers
     Get.lazyPut<UserController>(() => UserController());
     Get.lazyPut<UserMainController>(() => UserMainController());
@@ -31,26 +49,15 @@ class UserBinding extends Bindings {
       Get.put(CartController(), permanent: true);
     }
 
-    // Services
-    if (!Get.isRegistered<CategoryService>()) {
-      print('Initializing CategoryService...');
-      Get.put(CategoryService(), permanent: true);
-    }
-
     // Providers and Repositories
     print('Initializing ProductProvider...');
     Get.lazyPut(() => ProductProvider(), fenix: true);
     print('Initializing ReviewRepository...');
     Get.lazyPut(() => ReviewRepository(provider: Get.find()), fenix: true);
 
-    // Home Controller - Now initialized immediately and permanently
-    if (!Get.isRegistered<HomePageController>()) {
-      print('Initializing HomePageController...');
-      final homeController = HomePageController();
-      Get.put(homeController, permanent: true);
-      // Force immediate loading of initial data
-      homeController.loadInitialData();
-    }
+    // Initialize HomePageController after its dependencies
+    print('Initializing HomePageController...');
+    Get.put(HomePageController(), permanent: true);
 
     // Product Detail Controller
     print('Initializing ProductDetailController...');

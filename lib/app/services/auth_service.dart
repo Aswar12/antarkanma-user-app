@@ -92,9 +92,10 @@ class AuthService extends GetxService {
         currentUser.value = UserModel.fromJson(userData);
         print("User logged in successfully: ${currentUser.value}"); // Debug log
         isLoggedIn.value = true;
-        _redirectBasedOnRole();
 
+        // Only redirect and show snackbar if not auto-login
         if (!isAutoLogin) {
+          _redirectBasedOnRole();
           showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
         }
         return true;
@@ -182,7 +183,7 @@ class AuthService extends GetxService {
     }
   }
 
-  Future<bool> updateProfilePhoto(File photo) async {
+Future<bool> updateProfilePhoto(File photo) async {
     try {
       final token = _storageService.getToken();
       if (token == null) {
@@ -503,7 +504,6 @@ class AuthService extends GetxService {
   String? get userProfilePhotoUrl => currentUser.value?.profilePhotoUrl;
   String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;
 
-  // Method untuk mengecek status remember me
   bool get isRememberMeEnabled => _storageService.getRememberMe();
 
   @override

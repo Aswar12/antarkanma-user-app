@@ -1,5 +1,4 @@
-// ignore_for_file: unused_element, avoid_print
-
+import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
@@ -13,6 +12,7 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'user_location_controller.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:flutter/material.dart';
 
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
@@ -25,13 +25,13 @@ class CheckoutController extends GetxController {
 
   // Observable properties
   final isLoading = false.obs;
+  final isProcessingCheckout = false.obs;
   final orderItems = <OrderItemModel>[].obs;
   final selectedLocation = Rx<UserLocationModel?>(null);
   final selectedPaymentMethod = Rx<String?>(null);
   final subtotal = 0.0.obs;
   final deliveryFee = 0.0.obs;
   final total = 0.0.obs;
-  final createdTransactions = <TransactionModel>[].obs;
 
   final List<String> paymentMethods = [
     'COD',
@@ -98,12 +98,22 @@ class CheckoutController extends GetxController {
   bool get canCheckout {
     return selectedLocation.value != null &&
         orderItems.isNotEmpty &&
-        selectedPaymentMethod.value != null;
+        selectedPaymentMethod.value != null &&
+        !isProcessingCheckout.value;
   }
 
   String? get checkoutBlockReason {
     if (selectedLocation.value == null) {
       return 'Pilih alamat pengiriman';
+    }
+    if (orderItems.isEmpty) {
+      return 'Keranjang belanja kosong';
+    }
+    if (selectedPaymentMethod.value == null) {
+      return 'Pilih metode pembayaran';
+    }
+    if (isProcessingCheckout.value) {
+      return 'Sedang memproses checkout...';
     }
     return null;
   }
@@ -115,7 +125,6 @@ class CheckoutController extends GetxController {
         final merchantItems =
             args['merchantItems'] as Map<int, List<CartItemModel>>;
 
-        // Group items by merchant to ensure proper association
         final List<OrderItemModel> allItems = [];
         merchantItems.forEach((merchantId, items) {
           for (var cartItem in items) {
@@ -156,91 +165,82 @@ class CheckoutController extends GetxController {
 
   double _calculateDeliveryFee() {
     if (orderItems.isEmpty) return 0.0;
-    return 10000.0;
+    // Calculate delivery fee per merchant
+    final merchantIds = orderItems.map((item) => item.merchant.id).toSet();
+    return merchantIds.length * 10000.0; // 10,000 per merchant
   }
 
   Future<void> processCheckout() async {
+    if (isProcessingCheckout.value) {
+      print('Checkout already in progress, ignoring duplicate request');
+      return;
+    }
+
+    isProcessingCheckout.value = true;
     isLoading.value = true;
-    createdTransactions.clear();
 
     try {
+      print('Order Items before checkout: $orderItems'); // Debug statement
+
       if (!_validateCheckoutData()) {
         isLoading.value = false;
+        isProcessingCheckout.value = false;
         return;
       }
 
-      final merchantGroups = _groupItemsByMerchant();
       final transactionService = Get.find<TransactionService>();
       
-      // Create transactions for each merchant
-      for (var entry in merchantGroups.entries) {
-        final merchantId = entry.key;
-        final merchantItems = entry.value;
-        
-        // Calculate merchant-specific totals
-        final merchantSubtotal = merchantItems.fold(
-          0.0,
-          (sum, item) => sum + (item.price * item.quantity),
-        );
-        final merchantDeliveryFee = _calculateDeliveryFee();
-        
-        // Create transaction for this merchant
-        final merchantTransaction = _createTransactionModelForMerchant(
-          merchantId,
-          merchantItems,
-          merchantSubtotal,
-          merchantDeliveryFee,
-        );
+      // Create a single transaction with all items
+      final Map<String, dynamic> transactionPayload = {
+        'user_location_id': selectedLocation.value!.id,
+        'total_price': subtotal.value,
+        'shipping_price': deliveryFee.value,
+        'payment_method': _mapPaymentMethod(selectedPaymentMethod.value!),
+        'items': orderItems.map((item) => {
+          'product_id': item.product.id,
+          'product': {
+            'id': item.product.id,
+            'name': item.product.name,
+            'description': item.product.description,
+            'price': item.product.price,
+            'galleries': item.product.galleries,
+            'category': item.product.category.toJson(),
+          },
+          'quantity': item.quantity,
+          'price': item.price,
+          'merchant': {
+            'id': item.merchant.id,
+            'name': item.merchant.name,
+            'address': item.merchant.address,
+            'phone_number': item.merchant.phoneNumber,
+          },
+        }).toList(),
+      };
 
-        // Create transaction in backend
-        final createdTransaction = await transactionService.createTransaction(merchantTransaction);
-        if (createdTransaction != null) {
-          createdTransactions.add(createdTransaction);
-        }
-      }
+      print('Sending transaction payload: $transactionPayload');
 
-      if (createdTransactions.isNotEmpty) {
+      // Create single transaction
+      final createdTransaction = await transactionService.createTransaction(transactionPayload);
+
+      if (createdTransaction != null) {
+        print('Transaction created successfully: ${createdTransaction.id}');
         _clearCart();
-        _navigateToSuccessPage(createdTransactions.first); // Navigate with first transaction
+        _navigateToSuccessPage(createdTransaction);
+        Get.find<OrderController>().setTransactionData(createdTransaction);
+      } else {
+        print('Failed to create transaction');
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Gagal membuat transaksi',
+          isError: true,
+        );
       }
     } catch (e) {
       _handleCheckoutError(e);
     } finally {
       isLoading.value = false;
+      isProcessingCheckout.value = false;
     }
-  }
-
-  TransactionModel _createTransactionModelForMerchant(
-    int merchantId,
-    List<OrderItemModel> merchantItems,
-    double subtotal,
-    double deliveryFee,
-  ) {
-    if (selectedLocation.value == null) {
-      throw Exception('Lokasi pengiriman belum dipilih');
-    }
-
-    if (selectedPaymentMethod.value == null) {
-      throw Exception('Metode pembayaran belum dipilih');
-    }
-
-    final authService = Get.find<AuthService>();
-    final userId = authService.userId;
-
-    if (userId == null) {
-      throw Exception('Pengguna tidak terautentikasi');
-    }
-
-    return TransactionModel(
-      userId: userId,
-      userLocationId: selectedLocation.value!.id ?? 0,
-      totalPrice: subtotal,
-      shippingPrice: deliveryFee,
-      paymentMethod: _mapPaymentMethod(selectedPaymentMethod.value!),
-      status: 'PENDING',
-      paymentStatus: 'PENDING',
-      items: merchantItems,
-    );
   }
 
   String _mapPaymentMethod(String method) {
@@ -294,14 +294,27 @@ class CheckoutController extends GetxController {
     return true;
   }
 
+  void _showValidationErrorSnackbar(List<String> errors) {
+    Get.snackbar(
+      'Validasi Gagal',
+      errors.join('\n'),
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.withOpacity(0.7),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
   void _navigateToSuccessPage(TransactionModel transaction) {
     Get.offNamed(Routes.checkoutSuccess, arguments: {
-      'transaction': transaction,
+      'allTransactions': [transaction],
       'orderItems': orderItems.toList(),
       'total': total.value,
       'deliveryAddress': selectedLocation.value!,
-      'allTransactions': createdTransactions, // Add all transactions to arguments
     });
+
+    // Set the transaction in OrderController
+    Get.find<OrderController>().setTransactionData(transaction);
   }
 
   void _handleCheckoutError(dynamic error) {
@@ -310,29 +323,6 @@ class CheckoutController extends GetxController {
     showCustomSnackbar(
       title: 'Error',
       message: 'Gagal memproses checkout: $errorMessage',
-      isError: true,
-    );
-  }
-
-  Map<int, List<OrderItemModel>> _groupItemsByMerchant() {
-    final Map<int, List<OrderItemModel>> merchantGroups = {};
-    for (var item in orderItems) {
-      final merchantId = item.merchant.id;
-      if (merchantId > 0) {
-        // Only group items with valid merchant IDs
-        if (!merchantGroups.containsKey(merchantId)) {
-          merchantGroups[merchantId] = [];
-        }
-        merchantGroups[merchantId]!.add(item);
-      }
-    }
-    return merchantGroups;
-  }
-
-  void _showValidationErrorSnackbar(List<String> errors) {
-    showCustomSnackbar(
-      title: 'Validasi Gagal',
-      message: errors.join('\n'),
       isError: true,
     );
   }

@@ -15,16 +15,72 @@ class OrderItemModel {
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    return OrderItemModel(
-      quantity: json['quantity'] is String 
-          ? int.tryParse(json['quantity']) ?? 0 
-          : json['quantity'] ?? 0,
-      price: json['price'] is String
-          ? double.tryParse(json['price']) ?? 0.0
-          : (json['price'] as num?)?.toDouble() ?? 0.0,
-      product: ProductInfo.fromJson(json['product'] ?? {}),
-      merchant: MerchantInfo.fromJson(json['merchant'] ?? {}),
-    );
+    print('Creating OrderItemModel from JSON: $json');
+    try {
+      final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
+      
+      // Handle response format (when receiving from API)
+      if (json['product'] != null) {
+        return OrderItemModel(
+          quantity: _parseQuantity(json['quantity']),
+          price: parsedPrice,
+          product: ProductInfo.fromJson(json['product']),
+          merchant: json['merchant'] != null 
+              ? MerchantInfo.fromJson(json['merchant'])
+              : MerchantInfo.fromJson(json['product']['merchant'] ?? {}),
+        );
+      }
+      
+      // Handle request format (when creating transaction)
+      return OrderItemModel(
+        quantity: _parseQuantity(json['quantity']),
+        price: parsedPrice,
+        product: ProductInfo(
+          id: _parseId(json['product_id']) ?? 0,
+          name: '',
+          description: '',
+          price: parsedPrice,
+          galleries: [],
+          category: CategoryInfo(id: 0, name: ''),
+          merchant: json['merchant'] != null 
+              ? MerchantInfo.fromJson(json['merchant'])
+              : null,
+        ),
+        merchant: MerchantInfo(
+          id: json['merchant']?['id'] ?? 0,
+          name: json['merchant']?['name'] ?? '',
+          address: json['merchant']?['address'] ?? '',
+          phoneNumber: json['merchant']?['phone'] ?? '',
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('Error parsing OrderItemModel: $e');
+      print('Stack trace: $stackTrace');
+      print('JSON data: $json');
+      rethrow;
+    }
+  }
+
+  static int _parseQuantity(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static double? _parsePrice(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  static int? _parseId(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   factory OrderItemModel.fromCartItem(CartItemModel cartItem, String orderId) {
@@ -41,6 +97,7 @@ class OrderItemModel {
           id: cartItem.product.category?.id ?? 0,
           name: cartItem.product.category?.name ?? '',
         ),
+        merchant: null,
       ),
       merchant: MerchantInfo(
         id: cartItem.merchant.id ?? 0,
@@ -53,15 +110,11 @@ class OrderItemModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'product_id': product.id,
+      'product': product.toJson(),
       'quantity': quantity,
       'price': price,
-      'product_id': product.id,
-      'merchant': {
-        'id': merchant.id,
-        'name': merchant.name,
-        'address': merchant.address,
-        'phone_number': merchant.phoneNumber,
-      },
+      'merchant': merchant.toJson(),
     };
   }
 
@@ -100,6 +153,7 @@ class ProductInfo {
   final double price;
   final List<String> galleries;
   final CategoryInfo category;
+  final MerchantInfo? merchant;
 
   ProductInfo({
     required this.id,
@@ -108,21 +162,60 @@ class ProductInfo {
     required this.price,
     required this.galleries,
     required this.category,
+    this.merchant,
   });
 
   factory ProductInfo.fromJson(Map<String, dynamic> json) {
-    return ProductInfo(
-      id: json['id'] is String 
-          ? int.tryParse(json['id']) ?? 0 
-          : json['id'] ?? 0,
-      name: json['name']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
-      price: json['price'] is String
-          ? double.tryParse(json['price']) ?? 0.0
-          : (json['price'] as num?)?.toDouble() ?? 0.0,
-      galleries: (json['galleries'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      category: CategoryInfo.fromJson(json['category'] ?? {}),
-    );
+    try {
+      final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
+      
+      // Parse galleries from the API response format
+      List<String> galleryUrls = [];
+      if (json['galleries'] != null) {
+        if (json['galleries'] is List) {
+          galleryUrls = (json['galleries'] as List).map((gallery) {
+            if (gallery is Map && gallery['url'] != null) {
+              return gallery['url'].toString();
+            } else if (gallery is String) {
+              return gallery;
+            }
+            return '';
+          }).where((url) => url.isNotEmpty).toList();
+        }
+      }
+      
+      return ProductInfo(
+        id: _parseId(json['id']) ?? 0,
+        name: json['name']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        price: parsedPrice,
+        galleries: galleryUrls,
+        category: CategoryInfo.fromJson(json['category'] ?? {}),
+        merchant: json['merchant'] != null 
+            ? MerchantInfo.fromJson(json['merchant'])
+            : null,
+      );
+    } catch (e, stackTrace) {
+      print('Error parsing ProductInfo: $e');
+      print('Stack trace: $stackTrace');
+      print('JSON data: $json');
+      rethrow;
+    }
+  }
+
+  static int? _parseId(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double? _parsePrice(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -133,6 +226,7 @@ class ProductInfo {
       'price': price,
       'galleries': galleries,
       'category': category.toJson(),
+      if (merchant != null) 'merchant': merchant!.toJson(),
     };
   }
 
@@ -149,12 +243,23 @@ class CategoryInfo {
   });
 
   factory CategoryInfo.fromJson(Map<String, dynamic> json) {
-    return CategoryInfo(
-      id: json['id'] is String 
-          ? int.tryParse(json['id']) ?? 0 
-          : json['id'] ?? 0,
-      name: json['name']?.toString() ?? '',
-    );
+    try {
+      return CategoryInfo(
+        id: _parseId(json['id']) ?? 0,
+        name: json['name']?.toString() ?? '',
+      );
+    } catch (e) {
+      print('Error parsing CategoryInfo: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
+  }
+
+  static int? _parseId(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -179,14 +284,25 @@ class MerchantInfo {
   });
 
   factory MerchantInfo.fromJson(Map<String, dynamic> json) {
-    return MerchantInfo(
-      id: json['id'] is String 
-          ? int.tryParse(json['id']) ?? 0 
-          : json['id'] ?? 0,
-      name: json['name']?.toString() ?? '',
-      address: json['address']?.toString() ?? '',
-      phoneNumber: json['phone_number']?.toString() ?? '',
-    );
+    try {
+      return MerchantInfo(
+        id: _parseId(json['id']) ?? 0,
+        name: json['name']?.toString() ?? '',
+        address: json['address']?.toString() ?? '',
+        phoneNumber: json['phone']?.toString() ?? json['phone_number']?.toString() ?? '',
+      );
+    } catch (e) {
+      print('Error parsing MerchantInfo: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
+  }
+
+  static int? _parseId(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {

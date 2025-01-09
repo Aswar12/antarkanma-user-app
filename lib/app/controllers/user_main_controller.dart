@@ -1,38 +1,18 @@
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:get/get.dart';
 
 class UserMainController extends GetxController {
   final RxInt currentIndex = 0.obs;
   final RxBool isSearching = false.obs;
-  late HomePageController homeController;
+  final AuthService _authService = Get.find<AuthService>();
 
   @override
   void onInit() {
     super.onInit();
     print('UserMainController: Initializing...');
-    _initializeHomeController();
-  }
-
-  void _initializeHomeController() {
-    // Get existing HomePageController or create new one
-    if (!Get.isRegistered<HomePageController>()) {
-      print('UserMainController: Creating new HomePageController');
-      homeController = HomePageController();
-      Get.put(homeController, permanent: true);
-    } else {
-      print('UserMainController: Using existing HomePageController');
-      homeController = Get.find<HomePageController>();
-    }
-
-    // Ensure popular products are loaded
-    if (homeController.popularProducts.isEmpty) {
-      print('UserMainController: Loading popular products...');
-      homeController.loadPopularProducts().then((_) {
-        print('UserMainController: Loaded ${homeController.popularProducts.length} popular products');
-      });
-    } else {
-      print('UserMainController: Popular products already loaded: ${homeController.popularProducts.length}');
-    }
+    // HomePageController is now initialized by UserBinding
+    // We just need to ensure it's loaded when returning to home page
   }
 
   void changePage(int index) {
@@ -40,9 +20,17 @@ class UserMainController extends GetxController {
     currentIndex.value = index;
     
     // If returning to home page (index 0), ensure data is loaded
-    if (index == 0 && homeController.popularProducts.isEmpty) {
-      print('UserMainController: Reloading home page data');
-      homeController.loadPopularProducts();
+    if (index == 0 && 
+        _authService.isLoggedIn.value && 
+        _authService.currentUser.value?.role == 'USER') {
+      print('UserMainController: Checking home page data');
+      final homeController = Get.find<HomePageController>();
+      if (homeController.popularProducts.isEmpty) {
+        print('UserMainController: Loading home page data');
+        homeController.loadInitialData().catchError((error) {
+          print('UserMainController: Error loading home page data: $error');
+        });
+      }
     }
   }
 

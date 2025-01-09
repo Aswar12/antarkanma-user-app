@@ -8,11 +8,13 @@ import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
+import 'package:flutter/foundation.dart';
 
 class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
 
   Future<void> _navigateToOrderPage() async {
+    debugPrint('Navigating to order page...');
     final controller = Get.put(UserMainController(), permanent: true);
     controller.currentIndex.value = 2;
     await Future.delayed(const Duration(milliseconds: 100));
@@ -21,15 +23,18 @@ class CheckoutSuccessPage extends StatelessWidget {
       transition: Transition.noTransition,
       duration: const Duration(milliseconds: 0),
     );
+    debugPrint('Navigation to order page complete');
   }
 
   void _navigateToHome() {
+    debugPrint('Navigating to home...');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Get.offAllNamed(Routes.userMainPage);
     });
   }
 
   void _showErrorAndNavigate(String message) {
+    debugPrint('Showing error and navigating: $message');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showCustomSnackbar(
         title: 'Error',
@@ -147,6 +152,53 @@ class CheckoutSuccessPage extends StatelessWidget {
               transaction.formattedGrandTotal,
               logoColorSecondary,
             ),
+            // Display product details
+            for (var item in transaction.items) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        item.product.firstImageUrl,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[300],
+                              child: Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.product.name,
+                            style: primaryTextStyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${item.quantity}x ${item.formattedPrice}',
+                            style: primaryTextStyle,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
