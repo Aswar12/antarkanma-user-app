@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
-import 'package:intl/intl.dart';
+import 'package:antarkanma/app/widgets/order_status_badge.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -155,250 +156,293 @@ class _OrderPageState extends State<OrderPage>
   }
 
   void _showOrderDetails(TransactionModel transaction) {
-    Get.dialog(
-      Dialog(
-        backgroundColor: backgroundColor1,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: Dimenssions.width10,
-          vertical: Dimenssions.height20,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-        ),
-        child: Container(
-          width: double.infinity,
-          constraints: BoxConstraints(
-            maxHeight: Dimenssions.screenHeight * 0.9,
+    Get.bottomSheet(
+      Container(
+        decoration: BoxDecoration(
+          color: backgroundColor1,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Dimenssions.radius20),
           ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: backgroundColor2,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(Dimenssions.radius15),
-                    topRight: Radius.circular(Dimenssions.radius15),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Detail Transaksi',
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '#${transaction.id}',
-                          style: primaryTextStyle.copyWith(
-                            color: logoColorSecondary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (transaction.createdAt != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!),
-                        style: secondaryTextStyle.copyWith(fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: EdgeInsets.symmetric(vertical: Dimenssions.height8),
+              width: Dimenssions.width40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: backgroundColor3.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(Dimenssions.radius4),
               ),
-
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
+            ),
+            // Header
+            Padding(
+              padding: EdgeInsets.all(Dimenssions.height15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Order #${transaction.id}',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font16,
+                              fontWeight: semiBold,
+                            ),
+                          ),
+                          SizedBox(height: Dimenssions.height4),
+                          if (transaction.createdAt != null)
+                            Text(
+                              DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!),
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font12,
+                              ),
+                            ),
+                        ],
+                      ),
+                      OrderStatusBadge(status: transaction.status),
+                    ],
+                  ),
+                  SizedBox(height: Dimenssions.height15),
+                  Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
+                ],
+              ),
+            ),
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: Dimenssions.height15),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Product List
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: transaction.items.length,
-                        itemBuilder: (context, index) {
-                          final item = transaction.items[index];
-                          return Container(
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.2),
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Product Image
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    item.product.firstImageUrl,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Container(
-                                          width: 80,
-                                          height: 80,
-                                          color: Colors.grey[300],
-                                          child: Icon(
-                                            Icons.image_not_supported,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Product Details
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.product.name,
-                                        style: primaryTextStyle.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Toko: ${item.merchant.name}',
-                                        style: secondaryTextStyle.copyWith(
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '${item.quantity}x ${item.formattedPrice}',
-                                            style: primaryTextStyle,
-                                          ),
-                                          Text(
-                                            item.formattedTotalPrice,
-                                            style: priceTextStyle.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                      Text(
+                        'Daftar Produk',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          fontWeight: semiBold,
+                        ),
                       ),
+                      SizedBox(height: Dimenssions.height8),
+                      ...transaction.items.map((item) => _buildDetailProductItem(item)),
+                      SizedBox(height: Dimenssions.height15),
+                      Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
+                      SizedBox(height: Dimenssions.height15),
 
                       // Shipping Address
-                      Container(
-                        padding: const EdgeInsets.all(16.0),
-                        decoration: BoxDecoration(
-                          color: backgroundColor2.withOpacity(0.5),
+                      if (transaction.userLocation != null) ...[
+                        Text(
+                          'Alamat Pengiriman',
+                          style: primaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font14,
+                            fontWeight: semiBold,
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Alamat Pengiriman',
-                              style: primaryTextStyle.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (transaction.userLocation != null) ...[
+                        SizedBox(height: Dimenssions.height8),
+                        Container(
+                          padding: EdgeInsets.all(Dimenssions.height12),
+                          decoration: BoxDecoration(
+                            color: backgroundColor3.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
                                 transaction.userLocation!.address,
-                                style: primaryTextStyle,
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                ),
                               ),
+                              SizedBox(height: Dimenssions.height4),
                               Text(
                                 '${transaction.userLocation!.city}, ${transaction.userLocation!.postalCode}',
-                                style: primaryTextStyle,
+                                style: secondaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                ),
                               ),
                             ],
-                          ],
+                          ),
                         ),
-                      ),
+                        SizedBox(height: Dimenssions.height15),
+                        Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
+                        SizedBox(height: Dimenssions.height15),
+                      ],
 
                       // Payment Details
+                      Text(
+                        'Rincian Pembayaran',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          fontWeight: semiBold,
+                        ),
+                      ),
+                      SizedBox(height: Dimenssions.height8),
                       Container(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(Dimenssions.height12),
+                        decoration: BoxDecoration(
+                          color: backgroundColor3.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                        ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Rincian Pembayaran',
-                              style: primaryTextStyle.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            _buildPaymentRow(
+                              'Subtotal Produk',
+                              transaction.formattedTotalPrice,
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Subtotal', style: primaryTextStyle),
-                                Text(
-                                  transaction.formattedTotalPrice,
-                                  style: primaryTextStyle,
-                                ),
-                              ],
+                            SizedBox(height: Dimenssions.height8),
+                            _buildPaymentRow(
+                              'Biaya Pengiriman',
+                              transaction.formattedShippingPrice,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Ongkos Kirim', style: primaryTextStyle),
-                                Text(
-                                  transaction.formattedShippingPrice,
-                                  style: primaryTextStyle,
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Total',
-                                  style: primaryTextStyle.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  transaction.formattedGrandTotal,
-                                  style: priceTextStyle.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            SizedBox(height: Dimenssions.height8),
+                            Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
+                            SizedBox(height: Dimenssions.height8),
+                            _buildPaymentRow(
+                              'Total Pembayaran',
+                              transaction.formattedGrandTotal,
+                              isTotal: true,
                             ),
                           ],
                         ),
                       ),
+                      SizedBox(height: Dimenssions.height20),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  Widget _buildDetailProductItem(dynamic item) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: Dimenssions.height8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: Dimenssions.height65,
+            height: Dimenssions.height65,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Dimenssions.radius8),
+              border: Border.all(
+                color: backgroundColor3.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Dimenssions.radius8),
+              child: Image.network(
+                item.product.firstImageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Container(
+                      color: backgroundColor3.withOpacity(0.1),
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: secondaryTextColor,
+                        size: Dimenssions.font20,
+                      ),
+                    ),
+              ),
+            ),
+          ),
+          SizedBox(width: Dimenssions.width12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.product.name,
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                    fontWeight: medium,
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.store_outlined,
+                      size: Dimenssions.font14,
+                      color: secondaryTextColor,
+                    ),
+                    SizedBox(width: Dimenssions.width4),
+                    Text(
+                      item.merchant.name,
+                      style: secondaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font12,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: Dimenssions.height8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${item.quantity}x ${item.formattedPrice}',
+                      style: secondaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font12,
+                      ),
+                    ),
+                    Text(
+                      item.formattedTotalPrice,
+                      style: priceTextStyle.copyWith(
+                        fontSize: Dimenssions.font14,
+                        fontWeight: semiBold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentRow(String label, String value, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: isTotal
+              ? primaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font14,
+                  fontWeight: semiBold,
+                )
+              : secondaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font12,
+                ),
+        ),
+        Text(
+          value,
+          style: isTotal
+              ? priceTextStyle.copyWith(
+                  fontSize: Dimenssions.font16,
+                  fontWeight: semiBold,
+                )
+              : priceTextStyle.copyWith(
+                  fontSize: Dimenssions.font14,
+                ),
+        ),
+      ],
     );
   }
 }
