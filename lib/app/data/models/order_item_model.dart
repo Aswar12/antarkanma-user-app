@@ -1,36 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
 
+class OrderItemStatus {
+  static const String pending = 'PENDING';
+  static const String canceled = 'CANCELED';
+  static const String accepted = 'ACCEPTED';
+  static const String processing = 'PROCESSING';
+  static const String readyForPickup = 'READY_FOR_PICKUP';
+  static const String completed = 'COMPLETED';
+  static const String partiallyCompleted = 'PARTIALLY_COMPLETED';
+}
+
 class OrderItemModel {
+  final int? id;
   final int quantity;
   final double price;
   final ProductInfo product;
   final MerchantInfo merchant;
+  final String status;
+  final String? cancelReason;
+  final DateTime? canceledAt;
+  final bool? canCancel;
 
   OrderItemModel({
+    this.id,
     required this.quantity,
     required this.price,
     required this.product,
     required this.merchant,
+    this.status = OrderItemStatus.pending,
+    this.cancelReason,
+    this.canceledAt,
+    this.canCancel,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     print('Creating OrderItemModel from JSON: $json');
     try {
       final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
-      
+
       // Handle response format (when receiving from API)
       if (json['product'] != null) {
         return OrderItemModel(
+          id: _parseId(json['id']),
           quantity: _parseQuantity(json['quantity']),
           price: parsedPrice,
           product: ProductInfo.fromJson(json['product']),
-          merchant: json['merchant'] != null 
+          merchant: json['merchant'] != null
               ? MerchantInfo.fromJson(json['merchant'])
               : MerchantInfo.fromJson(json['product']['merchant'] ?? {}),
+          status: json['status']?.toString() ?? OrderItemStatus.pending,
+          cancelReason: json['cancel_reason']?.toString(),
+          canceledAt: json['canceled_at'] != null ? DateTime.parse(json['canceled_at']) : null,
+          canCancel: json['can_cancel'] as bool?,
         );
       }
-      
+
       // Handle request format (when creating transaction)
       return OrderItemModel(
         quantity: _parseQuantity(json['quantity']),
@@ -42,7 +67,7 @@ class OrderItemModel {
           price: parsedPrice,
           galleries: [],
           category: CategoryInfo(id: 0, name: ''),
-          merchant: json['merchant'] != null 
+          merchant: json['merchant'] != null
               ? MerchantInfo.fromJson(json['merchant'])
               : null,
         ),
@@ -110,11 +135,16 @@ class OrderItemModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'product_id': product.id,
       'product': product.toJson(),
       'quantity': quantity,
       'price': price,
       'merchant': merchant.toJson(),
+      'status': status,
+      'cancel_reason': cancelReason,
+      'canceled_at': canceledAt?.toIso8601String(),
+      'can_cancel': canCancel,
     };
   }
 
@@ -122,6 +152,33 @@ class OrderItemModel {
   double get totalPrice => quantity * price;
   String get formattedTotalPrice => 'Rp ${totalPrice.toStringAsFixed(0)}';
   String get merchantName => merchant.name;
+
+  // Status helper methods
+  bool get isCanceled => status.toUpperCase() == OrderItemStatus.canceled;
+  bool get isPending => status.toUpperCase() == OrderItemStatus.pending;
+  bool get isAccepted => status.toUpperCase() == OrderItemStatus.accepted;
+  bool get isProcessing => status.toUpperCase() == OrderItemStatus.processing;
+  bool get isReadyForPickup => status.toUpperCase() == OrderItemStatus.readyForPickup;
+  bool get isCompleted => status.toUpperCase() == OrderItemStatus.completed;
+
+  String get statusDisplay {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return 'Menunggu Konfirmasi';
+      case 'ACCEPTED':
+        return 'Diterima';
+      case 'PROCESSING':
+        return 'Sedang Diproses';
+      case 'READY_FOR_PICKUP':
+        return 'Siap Diambil';
+      case 'COMPLETED':
+        return 'Selesai';
+      case 'CANCELED':
+        return 'Dibatalkan';
+      default:
+        return status;
+    }
+  }
 
   bool validate() {
     if (quantity <= 0) return false;
@@ -132,16 +189,26 @@ class OrderItemModel {
   }
 
   OrderItemModel copyWith({
+    int? id,
     int? quantity,
     double? price,
     ProductInfo? product,
     MerchantInfo? merchant,
+    String? status,
+    String? cancelReason,
+    DateTime? canceledAt,
+    bool? canCancel,
   }) {
     return OrderItemModel(
+      id: id ?? this.id,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
       product: product ?? this.product,
       merchant: merchant ?? this.merchant,
+      status: status ?? this.status,
+      cancelReason: cancelReason ?? this.cancelReason,
+      canceledAt: canceledAt ?? this.canceledAt,
+      canCancel: canCancel ?? this.canCancel,
     );
   }
 }
@@ -168,22 +235,25 @@ class ProductInfo {
   factory ProductInfo.fromJson(Map<String, dynamic> json) {
     try {
       final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
-      
+
       // Parse galleries from the API response format
       List<String> galleryUrls = [];
       if (json['galleries'] != null) {
         if (json['galleries'] is List) {
-          galleryUrls = (json['galleries'] as List).map((gallery) {
-            if (gallery is Map && gallery['url'] != null) {
-              return gallery['url'].toString();
-            } else if (gallery is String) {
-              return gallery;
-            }
-            return '';
-          }).where((url) => url.isNotEmpty).toList();
+          galleryUrls = (json['galleries'] as List)
+              .map((gallery) {
+                if (gallery is Map && gallery['url'] != null) {
+                  return gallery['url'].toString();
+                } else if (gallery is String) {
+                  return gallery;
+                }
+                return '';
+              })
+              .where((url) => url.isNotEmpty)
+              .toList();
         }
       }
-      
+
       return ProductInfo(
         id: _parseId(json['id']) ?? 0,
         name: json['name']?.toString() ?? '',
@@ -191,7 +261,7 @@ class ProductInfo {
         price: parsedPrice,
         galleries: galleryUrls,
         category: CategoryInfo.fromJson(json['category'] ?? {}),
-        merchant: json['merchant'] != null 
+        merchant: json['merchant'] != null
             ? MerchantInfo.fromJson(json['merchant'])
             : null,
       );
@@ -289,7 +359,8 @@ class MerchantInfo {
         id: _parseId(json['id']) ?? 0,
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
-        phoneNumber: json['phone']?.toString() ?? json['phone_number']?.toString() ?? '',
+        phoneNumber:
+            json['phone']?.toString() ?? json['phone_number']?.toString() ?? '',
       );
     } catch (e) {
       print('Error parsing MerchantInfo: $e');

@@ -30,28 +30,35 @@ class ProfileImage extends StatelessWidget {
       ),
       child: ClipOval(
         child: isUIAvatar
-            ? Center(
-                child: Text(
-                  _getInitials(),
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: size * 0.4,
-                  ),
-                ),
-              )
-            : CachedNetworkImage(
-                imageUrl: user.profilePhotoUrl ?? '',
+            ? Image.asset(
+                'assets/image_profile.png',
                 fit: BoxFit.cover,
-                placeholder: (context, url) =>
-                    const CircularProgressIndicator(),
-                errorWidget: (context, url, error) => Center(
+                errorBuilder: (context, error, stackTrace) => Center(
                   child: Text(
                     _getInitials(),
                     style: TextStyle(
                       color: primaryColor,
                       fontWeight: FontWeight.bold,
                       fontSize: size * 0.4,
+                    ),
+                  ),
+                ),
+              )
+            : CachedNetworkImage(
+                imageUrl: user.profilePhotoUrl ?? '',
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const CircularProgressIndicator(),
+                errorWidget: (context, url, error) => Image.asset(
+                  'assets/image_profile.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child: Text(
+                      _getInitials(),
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: size * 0.4,
+                      ),
                     ),
                   ),
                 ),

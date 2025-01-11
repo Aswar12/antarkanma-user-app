@@ -98,7 +98,7 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   void _showPaymentMethodSelectionModal() {
     if (controller.isProcessingCheckout.value) return;
-    
+
     showModalBottomSheet(
       context: Get.context!,
       isScrollControlled: true,
@@ -122,7 +122,9 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   Widget _buildNoPaymentMethodWidget() {
     return InkWell(
-      onTap: controller.isProcessingCheckout.value ? null : _showPaymentMethodSelectionModal,
+      onTap: controller.isProcessingCheckout.value
+          ? null
+          : _showPaymentMethodSelectionModal,
       child: Card(
         color: backgroundColor8,
         elevation: 2,
@@ -173,7 +175,9 @@ class CheckoutPage extends GetView<CheckoutController> {
         ),
         title: Text(method, style: primaryTextStyle),
         trailing: TextButton(
-          onPressed: controller.isProcessingCheckout.value ? null : _showPaymentMethodSelectionModal,
+          onPressed: controller.isProcessingCheckout.value
+              ? null
+              : _showPaymentMethodSelectionModal,
           child: Text('Ubah', style: primaryTextStyle),
         ),
       ),
@@ -227,7 +231,9 @@ class CheckoutPage extends GetView<CheckoutController> {
       children: [
         Text('Alamat Pengiriman', style: primaryTextStyle),
         TextButton(
-          onPressed: controller.isProcessingCheckout.value ? null : _showAddressSelectionModal,
+          onPressed: controller.isProcessingCheckout.value
+              ? null
+              : _showAddressSelectionModal,
           child: Text('Ubah', style: primaryTextStyle),
         ),
       ],
@@ -236,7 +242,7 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   void _showAddressSelectionModal() {
     if (controller.isProcessingCheckout.value) return;
-    
+
     showModalBottomSheet(
       context: Get.context!,
       builder: (context) => AddressSelectionPage(),
@@ -303,7 +309,9 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   Widget _buildNoAddressWidget() {
     return InkWell(
-      onTap: controller.isProcessingCheckout.value ? null : () => Get.toNamed('/main/select-address'),
+      onTap: controller.isProcessingCheckout.value
+          ? null
+          : () => Get.toNamed('/usermain/select-address'),
       child: Card(
         color: backgroundColor8,
         elevation: 2,
@@ -588,7 +596,7 @@ class CheckoutPage extends GetView<CheckoutController> {
             Obx(() {
               final bool isProcessing = controller.isProcessingCheckout.value;
               final bool canCheckout = controller.canCheckout;
-              
+
               return Column(
                 children: [
                   Card(
@@ -607,7 +615,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                                     controller.checkoutBlockReason ??
                                         'Lengkapi data checkout',
                                     snackPosition: SnackPosition.BOTTOM,
-                                    backgroundColor: Colors.red.withOpacity(0.7),
+                                    backgroundColor:
+                                        Colors.red.withOpacity(0.7),
                                     colorText: Colors.white,
                                   );
                                 },
@@ -665,7 +674,7 @@ class CheckoutPage extends GetView<CheckoutController> {
                                     ],
                                   )
                                 : Text(
-                                    'Bayar Sekarang',
+                                    'Pesan Sekarang',
                                     style: primaryTextStyle.copyWith(
                                       fontSize: Dimenssions.font18,
                                       fontWeight: FontWeight.bold,
@@ -683,7 +692,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        controller.checkoutBlockReason ?? 'Lengkapi data checkout',
+                        controller.checkoutBlockReason ??
+                            'Lengkapi data checkout',
                         style: primaryTextStyle.copyWith(
                           color: Colors.red,
                           fontSize: 12,

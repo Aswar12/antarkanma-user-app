@@ -22,7 +22,7 @@ class TransactionProvider {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,  // Accept all status codes to handle them manually
+      validateStatus: (status) => true,
     );
   }
 
@@ -95,7 +95,6 @@ class TransactionProvider {
         if (data != null && data['meta'] != null && data['meta']['message'] != null) {
           message = data['meta']['message'];
         } else if (data != null && data['data'] != null) {
-          // Handle validation errors
           final errors = data['data'] as Map<String, dynamic>;
           final errorMessages = <String>[];
           errors.forEach((key, value) {
@@ -115,6 +114,9 @@ class TransactionProvider {
         break;
       case 404:
         message = 'Data tidak ditemukan.';
+        break;
+      case 405:
+        message = error.response?.data?['message'] ?? 'Method not allowed';
         break;
       case 500:
         final data = error.response?.data;
@@ -147,11 +149,12 @@ class TransactionProvider {
   Future<dio.Response> createTransaction(Map<String, dynamic> transactionData) async {
     try {
       debugPrint('\n=== Creating Transaction ===');
-      debugPrint('Using token: ${_storageService.getToken()}');
       debugPrint('Transaction Data: $transactionData');
 
-      // Create a single transaction with all items
-      final response = await _dio.post('/transactions', data: transactionData);
+      final response = await _dio.post(
+        '/transactions',
+        data: transactionData,
+      );
 
       debugPrint('\n=== Transaction Response ===');
       debugPrint('Status code: ${response.statusCode}');
@@ -197,7 +200,7 @@ class TransactionProvider {
       final queryParameters = <String, dynamic>{
         'page': page,
         'page_size': pageSize,
-        'include': 'items.product,items.merchant,user_location', // Include related data
+        'include': 'items.product,items.merchant,user_location',
       };
 
       if (status != null && status.isNotEmpty) {
@@ -234,7 +237,7 @@ class TransactionProvider {
       return await _dio.get(
         '/transactions/$transactionId',
         queryParameters: {
-          'include': 'items.product,items.merchant,user_location', // Include related data
+          'include': 'items.product,items.merchant,user_location',
         },
       );
     } on dio.DioException catch (e) {
@@ -245,13 +248,42 @@ class TransactionProvider {
 
   Future<dio.Response> cancelTransaction(String transactionId) async {
     try {
-      return await _dio.post('/transactions/$transactionId/cancel');
+      debugPrint('\n=== Canceling Transaction ===');
+      debugPrint('Transaction ID: $transactionId');
+
+      final response = await _dio.put(
+        '/transactions/$transactionId/cancel',
+        data: {'reason': 'Dibatalkan oleh pengguna'},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Successfully canceled transaction');
+        return response;
+      }
+
+      if (response.statusCode == 422) {
+        final message = response.data?['meta']?['message'] ?? 'Transaksi tidak dapat dibatalkan';
+        throw dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+          error: message,
+        );
+      }
+
+      throw dio.DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: dio.DioExceptionType.badResponse,
+        error: 'Failed to cancel transaction',
+      );
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
     }
   }
 
+  // Updated merchant endpoints based on API documentation
   Future<dio.Response> getTransactionsByMerchant(
     String merchantId, {
     int page = 1,
@@ -261,13 +293,14 @@ class TransactionProvider {
     try {
       final queryParams = {
         'page': page,
-        'limit': limit,
-        'include': 'items.product,items.merchant,user_location', // Include related data
         if (status != null) 'status': status,
       };
 
+      debugPrint('\n=== Getting Merchant Orders ===');
+      debugPrint('Query parameters: $queryParams');
+
       return await _dio.get(
-        '/merchants/$merchantId/transactions',
+        '/merchant/orders',
         queryParameters: queryParams,
       );
     } on dio.DioException catch (e) {
@@ -278,7 +311,7 @@ class TransactionProvider {
 
   Future<dio.Response> getTransactionSummaryByMerchant(String merchantId) async {
     try {
-      return await _dio.get('/merchants/$merchantId/transaction-summary');
+      return await _dio.get('/merchant/orders/summary');
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
@@ -293,7 +326,7 @@ class TransactionProvider {
   }) async {
     try {
       return await _dio.put(
-        '/merchants/$merchantId/orders/$orderId/status',
+        '/orders/$orderId/status',
         data: {
           'status': status,
           if (notes != null) 'notes': notes,

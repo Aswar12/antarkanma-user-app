@@ -151,7 +151,7 @@ class AddressSelectionPage extends StatelessWidget {
             height: Dimenssions.height45,
             padding: EdgeInsets.symmetric(horizontal: Dimenssions.width30),
             child: TextButton(
-              onPressed: () => Get.toNamed('/main/add-address'),
+              onPressed: () => Get.toNamed('/usermain/add-address'),
               style: TextButton.styleFrom(
                 backgroundColor: logoColorSecondary,
                 shape: RoundedRectangleBorder(

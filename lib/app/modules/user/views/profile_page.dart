@@ -52,25 +52,21 @@ class ProfilePage extends GetView<AuthController> {
           SizedBox(
             width: double.infinity,
             height: Dimenssions.height250,
-            child: user?.profilePhotoUrl != null
-                ? Stack(
-                    children: [
-                      // Blurred Background Image
-                      Image.network(
-                        user!.profilePhotoUrl!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                      // Dark Overlay
-                      Container(
-                        color: Colors.black.withOpacity(0.5),
-                      ),
-                    ],
-                  )
-                : Container(
-                    color: backgroundColor2,
-                  ),
+            child: Stack(
+              children: [
+                // Background Image
+                Image.asset(
+                  'assets/image_profile.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+                // Dark Overlay
+                Container(
+                  color: Colors.black.withOpacity(0.5),
+                ),
+              ],
+            ),
           ),
           Align(
             alignment: Alignment.center,

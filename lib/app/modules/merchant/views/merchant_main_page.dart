@@ -4,6 +4,7 @@ import 'package:antarkanma/app/modules/merchant/views/merchant_home_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/product_management_page.dart';
 import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -39,6 +40,15 @@ class _MerchantMainPageState extends State<MerchantMainPage> {
     Widget body() {
       return GetX<MerchantController>(
         builder: (_) {
+          // Check if merchant data exists
+          if (!controller.isLoading.value && controller.merchant.value == null) {
+            // Redirect to login page
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Get.offAllNamed(Routes.login);
+            });
+            return const SizedBox(); // Return empty widget while redirecting
+          }
+
           return IndexedStack(
             index: controller.currentIndex.value,
             children: pages,
@@ -119,7 +129,7 @@ class _MerchantMainPageState extends State<MerchantMainPage> {
       },
       child: Obx(() => Scaffold(
         backgroundColor: Colors.white,
-        bottomNavigationBar: customBottomNav(),
+        bottomNavigationBar: controller.merchant.value != null ? customBottomNav() : null,
         body: controller.isLoading.value
             ? Center(
                 child: Column(

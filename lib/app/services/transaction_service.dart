@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../data/providers/transaction_provider.dart';
 import '../data/models/transaction_model.dart';
+import '../data/models/order_item_model.dart';
 import '../widgets/custom_snackbar.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,44 +22,20 @@ class TransactionService extends GetxService {
         final responseData = response.data;
         if (responseData != null && responseData['meta']?['status'] == 'success') {
           try {
-            // Extract transaction data from the response
             final transactionJson = responseData['data'];
             debugPrint('\n=== TransactionService: Creating TransactionModel ===');
             debugPrint('Transaction JSON: $transactionJson');
 
-            // Verify required fields are present
             if (transactionJson == null) {
               throw Exception('Transaction data is null');
             }
 
-            // Log the items data specifically
-            if (transactionJson['items'] != null) {
-              debugPrint('\n=== Transaction Items Data ===');
-              debugPrint('Items: ${transactionJson['items']}');
-            } else {
-              debugPrint('Warning: No items data in response');
-            }
-
-            // Create TransactionModel from the response
             final transaction = TransactionModel.fromJson(transactionJson);
             debugPrint('\n=== TransactionService: Transaction Created ===');
             debugPrint('Transaction ID: ${transaction.id}');
             debugPrint('Order ID: ${transaction.orderId}');
             debugPrint('Total Price: ${transaction.totalPrice}');
             debugPrint('Items Count: ${transaction.items.length}');
-            debugPrint('Items Details:');
-            for (var item in transaction.items) {
-              debugPrint('- Product: ${item.product.name}');
-              debugPrint('  Quantity: ${item.quantity}');
-              debugPrint('  Price: ${item.price}');
-              debugPrint('  Merchant: ${item.merchant.name}');
-              debugPrint('  Images: ${item.product.galleries}');
-            }
-
-            // Verify the transaction data is complete
-            if (transaction.items.isEmpty) {
-              debugPrint('Warning: Transaction created but has no items');
-            }
 
             return transaction;
           } catch (parseError, stackTrace) {
@@ -66,7 +43,7 @@ class TransactionService extends GetxService {
             debugPrint('Parse Error: $parseError');
             debugPrint('Stack Trace: $stackTrace');
             debugPrint('Raw Data: ${responseData['data']}');
-            
+
             CustomSnackbarX.showError(
               title: 'Error',
               message: 'Terjadi kesalahan saat memproses data transaksi',
@@ -83,31 +60,10 @@ class TransactionService extends GetxService {
           );
         }
       }
-
-      if (response.statusCode == 422) {
-        final data = response.data;
-        if (data != null && data['data'] != null) {
-          final errors = data['data'] as Map<String, dynamic>;
-          final errorMessages = <String>[];
-          errors.forEach((key, value) {
-            if (value is List) {
-              errorMessages.addAll(value.map((e) => e.toString()));
-            } else {
-              errorMessages.add(value.toString());
-            }
-          });
-          CustomSnackbarX.showError(
-            title: 'Error',
-            message: errorMessages.join('\n'),
-            position: SnackPosition.BOTTOM,
-          );
-        }
-      }
       return null;
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('\n=== TransactionService: Error Creating Transaction ===');
       debugPrint('Error: $e');
-      debugPrint('Stack Trace: $stackTrace');
       CustomSnackbarX.showError(
         title: 'Error',
         message: 'Gagal membuat transaksi: $e',
@@ -133,17 +89,21 @@ class TransactionService extends GetxService {
         final List<dynamic> transactionsData = response.data['data'];
         debugPrint('\n=== Getting Transactions ===');
         debugPrint('Found ${transactionsData.length} transactions');
-        
-        final transactions = transactionsData.map((json) {
-          try {
-            return TransactionModel.fromJson(json);
-          } catch (e, stackTrace) {
-            debugPrint('Error parsing transaction: $e');
-            debugPrint('Stack trace: $stackTrace');
-            debugPrint('JSON data: $json');
-            return null;
-          }
-        }).where((t) => t != null).cast<TransactionModel>().toList();
+
+        final transactions = transactionsData
+            .map((json) {
+              try {
+                return TransactionModel.fromJson(json);
+              } catch (e, stackTrace) {
+                debugPrint('Error parsing transaction: $e');
+                debugPrint('Stack trace: $stackTrace');
+                debugPrint('JSON data: $json');
+                return null;
+              }
+            })
+            .where((t) => t != null)
+            .cast<TransactionModel>()
+            .toList();
 
         debugPrint('Successfully parsed ${transactions.length} transactions');
         return transactions;
@@ -163,7 +123,7 @@ class TransactionService extends GetxService {
         final transactionJson = response.data['data'];
         debugPrint('\n=== Getting Transaction By ID ===');
         debugPrint('Transaction data: $transactionJson');
-        
+
         final transaction = TransactionModel.fromJson(transactionJson);
         debugPrint('Successfully parsed transaction ${transaction.id}');
         return transaction;
@@ -175,10 +135,25 @@ class TransactionService extends GetxService {
     }
   }
 
-  Future<bool> cancelTransaction(String id) async {
+  Future<bool> cancelTransaction(String transactionId) async {
     try {
-      final response = await _transactionProvider.cancelTransaction(id);
-      return response.statusCode == 200;
+      debugPrint('\n=== TransactionService: Canceling Transaction ===');
+      debugPrint('Transaction ID: $transactionId');
+
+      final response = await _transactionProvider.cancelTransaction(transactionId);
+      
+      if (response.statusCode == 200) {
+        debugPrint('Successfully canceled transaction');
+        return true;
+      }
+      
+      final message = response.data?['meta']?['message'] ?? 'Failed to cancel transaction';
+      CustomSnackbarX.showError(
+        title: 'Error',
+        message: message,
+        position: SnackPosition.BOTTOM,
+      );
+      return false;
     } catch (e) {
       debugPrint('Error canceling transaction: $e');
       return false;
@@ -199,29 +174,94 @@ class TransactionService extends GetxService {
         status: status,
       );
 
-      if (response.statusCode == 200) {
-        return response.data['data'];
+      debugPrint('\n=== Getting Merchant Orders ===');
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Data: ${response.data}');
+
+      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
+        final data = response.data['data'];
+        if (data != null) {
+          final List<dynamic> ordersJson = data['data'] ?? [];
+          final List<TransactionModel> orders = ordersJson.map((json) {
+            try {
+              return TransactionModel.fromJson(json);
+            } catch (e, stackTrace) {
+              debugPrint('Error parsing order: $e');
+              debugPrint('Stack trace: $stackTrace');
+              debugPrint('JSON data: $json');
+              return null;
+            }
+          }).where((order) => order != null).cast<TransactionModel>().toList();
+
+          return {
+            'orders': orders,
+            'pagination': {
+              'current_page': data['current_page'],
+              'last_page': data['last_page'],
+              'per_page': data['per_page'],
+              'total': data['total'],
+            },
+            'meta': response.data['meta'],
+          };
+        }
       }
       return null;
-    } catch (e) {
-      debugPrint('Error getting merchant transactions: $e');
+    } catch (e, stackTrace) {
+      debugPrint('Error getting merchant orders: $e');
+      debugPrint('Stack trace: $stackTrace');
       return null;
     }
   }
 
-  Future<Map<String, dynamic>?> getTransactionSummaryByMerchant(
-    String merchantId,
-  ) async {
+  Future<Map<String, dynamic>?> getTransactionSummaryByMerchant(String merchantId) async {
     try {
       final response = await _transactionProvider.getTransactionSummaryByMerchant(merchantId);
-      if (response.statusCode == 200) {
-        return response.data['data'];
+      debugPrint('\n=== Getting Transaction Summary ===');
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Data: ${response.data}');
+      
+      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
+        final data = response.data['data'];
+        if (data != null) {
+          final statistics = data['statistics'] ?? {};
+          final ordersData = data['orders'] ?? {};
+          
+          return {
+            'statistics': {
+              'total_orders': statistics['total_orders'] ?? 0,
+              'pending_orders': statistics['pending_orders'] ?? 0,
+              'processing_orders': statistics['processing_orders'] ?? 0,
+              'completed_orders': statistics['completed_orders'] ?? 0,
+              'canceled_orders': statistics['canceled_orders'] ?? 0,
+              'total_revenue': (statistics['total_revenue'] as num?)?.toDouble() ?? 0.0,
+            },
+            'orders': {
+              'pending': _parseOrdersList(ordersData['pending']),
+              'processing': _parseOrdersList(ordersData['processing']),
+              'completed': _parseOrdersList(ordersData['completed']),
+              'canceled': _parseOrdersList(ordersData['canceled']),
+            },
+          };
+        }
       }
       return null;
     } catch (e) {
       debugPrint('Error getting transaction summary: $e');
       return null;
     }
+  }
+
+  List<TransactionModel> _parseOrdersList(List<dynamic>? ordersList) {
+    if (ordersList == null) return [];
+    return ordersList.map((json) {
+      try {
+        return TransactionModel.fromJson(json);
+      } catch (e) {
+        debugPrint('Error parsing order in summary: $e');
+        debugPrint('Order JSON: $json');
+        return null;
+      }
+    }).where((order) => order != null).cast<TransactionModel>().toList();
   }
 
   Future<bool> updateOrderStatus(
@@ -238,32 +278,20 @@ class TransactionService extends GetxService {
         notes: notes,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
         CustomSnackbarX.showSuccess(
           title: 'Success',
-          message: 'Status pesanan berhasil diperbarui',
+          message: response.data['meta']?['message'] ?? 'Status pesanan berhasil diperbarui',
           position: SnackPosition.BOTTOM,
         );
         return true;
-      } else if (response.statusCode == 422) {
-        final data = response.data;
-        if (data != null && data['data'] != null) {
-          final errors = data['data'] as Map<String, dynamic>;
-          final errorMessages = <String>[];
-          errors.forEach((key, value) {
-            if (value is List) {
-              errorMessages.addAll(value.map((e) => e.toString()));
-            } else {
-              errorMessages.add(value.toString());
-            }
-          });
-          CustomSnackbarX.showError(
-            title: 'Error',
-            message: errorMessages.join('\n'),
-            position: SnackPosition.BOTTOM,
-          );
-        }
       }
+
+      CustomSnackbarX.showError(
+        title: 'Error',
+        message: response.data['meta']?['message'] ?? 'Gagal memperbarui status pesanan',
+        position: SnackPosition.BOTTOM,
+      );
       return false;
     } catch (e) {
       debugPrint('Error updating order status: $e');

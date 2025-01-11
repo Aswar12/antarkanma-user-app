@@ -17,40 +17,54 @@ class OrderCard extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    final items = transaction.items.isNotEmpty 
-        ? transaction.items 
-        : (transaction.order?.orderItems ?? []);
-    
-    final orderId = (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
-    final status = transaction.status;
-    final date = transaction.createdAt != null
-        ? DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!)
-        : '-';
-
-    return GestureDetector(
-      onTap: () => onTap(transaction),
-      child: Container(
-        margin: EdgeInsets.only(bottom: Dimenssions.height12),
-        decoration: BoxDecoration(
-          color: backgroundColor2,
-          borderRadius: BorderRadius.circular(Dimenssions.radius15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+  Future<void> _showCancelDialog() async {
+    await showDialog(
+      context: Get.context!,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor1,
+        title: Text(
+          'Konfirmasi Pembatalan',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font16,
+            fontWeight: semiBold,
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin membatalkan pesanan ini?',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font14,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Tidak',
+              style: primaryTextStyle.copyWith(
+                color: logoColorSecondary,
+                fontSize: Dimenssions.font14,
+              ),
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _buildHeader(orderId, status, date),
-            _buildContent(items, status),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Get.back();
+              final controller = Get.find<OrderController>();
+              await controller.cancelOrder(transaction.id.toString());
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: alertColor,
+            ),
+            child: Text(
+              'Ya, Batalkan',
+              style: primaryTextStyle.copyWith(
+                color: Colors.white,
+                fontSize: Dimenssions.font14,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -59,7 +73,7 @@ class OrderCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(Dimenssions.height12),
       decoration: BoxDecoration(
-        color: backgroundColor3.withOpacity(0.05),
+        color: backgroundColor3.withValues(alpha: 13),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Dimenssions.radius15),
           topRight: Radius.circular(Dimenssions.radius15),
@@ -74,7 +88,7 @@ class OrderCard extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(Dimenssions.height6),
                   decoration: BoxDecoration(
-                    color: logoColorSecondary.withOpacity(0.1),
+                    color: logoColorSecondary.withValues(alpha: 26),
                     borderRadius: BorderRadius.circular(Dimenssions.radius8),
                   ),
                   child: Icon(
@@ -146,7 +160,7 @@ class OrderCard extends StatelessWidget {
             Divider(
               height: 1,
               thickness: 1,
-              color: backgroundColor3.withOpacity(0.1),
+              color: backgroundColor3.withValues(alpha: 26),
             ),
             SizedBox(height: Dimenssions.height8),
           ],
@@ -168,7 +182,7 @@ class OrderCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Dimenssions.radius8),
               border: Border.all(
-                color: backgroundColor3.withOpacity(0.2),
+                color: backgroundColor3.withValues(alpha: 51),
                 width: 1,
               ),
             ),
@@ -179,7 +193,7 @@ class OrderCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
                     Container(
-                      color: backgroundColor3.withOpacity(0.1),
+                      color: backgroundColor3.withValues(alpha: 26),
                       child: Icon(
                         Icons.image_not_supported_outlined,
                         color: secondaryTextColor,
@@ -212,30 +226,35 @@ class OrderCard extends StatelessWidget {
                 ),
                 SizedBox(height: Dimenssions.height4),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimenssions.width6,
-                        vertical: Dimenssions.height2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: logoColorSecondary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(Dimenssions.radius6),
-                      ),
-                      child: Text(
-                        '${item.quantity} item',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font12,
-                          color: logoColorSecondary,
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width6,
+                            vertical: Dimenssions.height2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: logoColorSecondary.withValues(alpha: 26),
+                            borderRadius: BorderRadius.circular(Dimenssions.radius6),
+                          ),
+                          child: Text(
+                            '${item.quantity} item',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font12,
+                              color: logoColorSecondary,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(width: Dimenssions.width8),
-                    Text(
-                      formatPrice(item.price.toDouble()),
-                      style: priceTextStyle.copyWith(
-                        fontSize: Dimenssions.font12,
-                      ),
+                        SizedBox(width: Dimenssions.width8),
+                        Text(
+                          formatPrice(item.price.toDouble()),
+                          style: priceTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -272,64 +291,68 @@ class OrderCard extends StatelessWidget {
           ],
         ),
         if (status.toUpperCase() == 'PENDING')
-          _buildCancelButton(),
+          TextButton(
+            onPressed: _showCancelDialog,
+            style: TextButton.styleFrom(
+              backgroundColor: alertColor.withValues(alpha: 26),
+              padding: EdgeInsets.symmetric(
+                horizontal: Dimenssions.width8,
+                vertical: Dimenssions.height2,
+              ),
+              minimumSize: Size(0, 0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Dimenssions.radius6),
+                side: BorderSide(color: alertColor),
+              ),
+            ),
+            child: Text(
+              'Batalkan',
+              style: primaryTextStyle.copyWith(
+                color: alertColor,
+                fontSize: Dimenssions.font12,
+                fontWeight: medium,
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildCancelButton() {
-    return TextButton(
-      onPressed: () {
-        if (transaction.id != null) {
-          _showCancelConfirmation();
-        }
-      },
-      style: TextButton.styleFrom(
-        backgroundColor: alertColor.withOpacity(0.1),
-        padding: EdgeInsets.symmetric(
-          horizontal: Dimenssions.width8,
-          vertical: Dimenssions.height2,
-        ),
-        minimumSize: Size(0, 0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Dimenssions.radius6),
-          side: BorderSide(color: alertColor),
-        ),
-      ),
-      child: Text(
-        'Batalkan',
-        style: primaryTextStyle.copyWith(
-          color: alertColor,
-          fontSize: Dimenssions.font12,
-          fontWeight: medium,
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final items = transaction.items.isNotEmpty 
+        ? transaction.items 
+        : (transaction.order?.orderItems ?? []);
+    
+    final orderId = (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
+    final status = transaction.status;
+    final date = transaction.createdAt != null
+        ? DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!)
+        : '-';
 
-  void _showCancelConfirmation() {
-    Get.defaultDialog(
-      title: 'Konfirmasi Pembatalan',
-      titleStyle: primaryTextStyle.copyWith(
-        fontSize: Dimenssions.font16,
-        fontWeight: semiBold,
+    return GestureDetector(
+      onTap: () => onTap(transaction),
+      child: Container(
+        margin: EdgeInsets.only(bottom: Dimenssions.height12),
+        decoration: BoxDecoration(
+          color: backgroundColor2,
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 13),
+              spreadRadius: 1,
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _buildHeader(orderId, status, date),
+            _buildContent(items, status),
+          ],
+        ),
       ),
-      middleText: 'Apakah Anda yakin ingin membatalkan pesanan ini?',
-      middleTextStyle: primaryTextStyle.copyWith(
-        fontSize: Dimenssions.font14,
-      ),
-      contentPadding: EdgeInsets.all(Dimenssions.height20),
-      onCancel: () => Get.back(),
-      onConfirm: () {
-        Get.find<OrderController>().cancelOrder(transaction.id.toString());
-        Get.back();
-      },
-      textConfirm: 'Ya',
-      textCancel: 'Tidak',
-      confirmTextColor: Colors.white,
-      cancelTextColor: logoColorSecondary,
-      buttonColor: alertColor,
-      radius: Dimenssions.radius12,
     );
   }
 }

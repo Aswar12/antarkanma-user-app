@@ -63,19 +63,9 @@ class _AddressFormState extends State<AddressForm> {
   final List<String> provinces = ['SULAWESI SELATAN'];
   final List<String> cities = ['PANGKAJENE KEPULAUAN'];
   final List<String> districts = [
-    'BALOCCI',
-    'BUNGORO',
-    'LABAKKANG',
-    'LIUKANG KALMAS',
-    'LIUKANG TANGAYA',
-    'LIUKANG TUPABBIRING',
-    'LIUKANG TUPABBIRING UTARA',
     'MANDALLE',
     'MARANG',
-    'MINASATENE',
-    'PANGKAJENE',
     'SEGERI',
-    'TONDONG TALLASA'
   ];
 
   final UserLocationController controller = Get.find<UserLocationController>();
@@ -550,6 +540,7 @@ class _AddressFormState extends State<AddressForm> {
   }
 
   void _submitForm() async {
+    // Validate form
     if (!_formKey.currentState!.validate()) {
       showCustomSnackbar(
         title: 'Peringatan',
@@ -559,6 +550,7 @@ class _AddressFormState extends State<AddressForm> {
       return;
     }
 
+    // Check district selection
     if (_selectedDistrict == null) {
       showCustomSnackbar(
         title: 'Peringatan',
@@ -568,6 +560,7 @@ class _AddressFormState extends State<AddressForm> {
       return;
     }
 
+    // Check location selection
     if (_latitude == 0.0 || _longitude == 0.0) {
       showCustomSnackbar(
         title: 'Peringatan',
@@ -613,12 +606,13 @@ class _AddressFormState extends State<AddressForm> {
               : 'Alamat berhasil diperbarui',
           backgroundColor: Colors.green,
         );
-        Get.offNamed('/main/address');
+        // Close the page after successful submission
+        Get.back();
       }
     } catch (e) {
       showCustomSnackbar(
         title: 'Error',
-        message: e.toString(),
+        message: 'Terjadi kesalahan saat menyimpan alamat',
         backgroundColor: Colors.red,
       );
     }

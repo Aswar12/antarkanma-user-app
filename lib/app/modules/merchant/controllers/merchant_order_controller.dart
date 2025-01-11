@@ -5,6 +5,7 @@ import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 
 class MerchantOrderController extends GetxController {
@@ -22,12 +23,19 @@ class MerchantOrderController extends GetxController {
   final Rx<int?> merchantId = Rx<int?>(null);
 
   // Order statistics
-  final RxMap<String, int> orderStats = <String, int>{}.obs;
+  final RxMap<String, int> orderStats = <String, int>{
+    'PENDING': 0,
+    'ACCEPTED': 0,
+    'PROCESSING': 0,
+    'COMPLETED': 0,
+    'REJECTED': 0,
+  }.obs;
   final RxDouble totalAmount = 0.0.obs;
 
   @override
   void onInit() {
     super.onInit();
+    print("MerchantOrderController onInit called");
     _initMerchantId();
   }
 
@@ -39,14 +47,16 @@ class MerchantOrderController extends GetxController {
       }
 
       merchantId.value = merchant.id;
-      fetchOrders();
-      fetchOrderSummary();
+      await fetchOrders();
+      await fetchOrderSummary();
     } catch (e) {
       errorMessage.value = 'Failed to initialize merchant: ${e.toString()}';
       CustomSnackbarX.showError(
         message: errorMessage.value,
         title: 'Error',
       );
+      // Redirect to login if no merchant found
+      Get.offAllNamed(Routes.login);
     }
   }
 
@@ -62,8 +72,17 @@ class MerchantOrderController extends GetxController {
       );
 
       if (response != null) {
-        orderStats.value = Map<String, int>.from(response['status_counts'] ?? {});
-        totalAmount.value = ((response['total_sales'] ?? 0) as num).toDouble();
+        final statistics = response['statistics'];
+        if (statistics != null) {
+          orderStats.value = {
+            'PENDING': statistics['pending_orders'] ?? 0,
+            'ACCEPTED': statistics['accepted_orders'] ?? 0,
+            'PROCESSING': statistics['processing_orders'] ?? 0,
+            'COMPLETED': statistics['completed_orders'] ?? 0,
+            'REJECTED': statistics['rejected_orders'] ?? 0,
+          };
+          totalAmount.value = (statistics['total_revenue'] as num?)?.toDouble() ?? 0.0;
+        }
       }
     } catch (e) {
       print('Error fetching order summary: $e');
@@ -80,6 +99,7 @@ class MerchantOrderController extends GetxController {
       if (refresh) {
         currentPage.value = 1;
         hasMoreData.value = true;
+        orders.clear();
       }
 
       if (!hasMoreData.value && !refresh) return;
@@ -97,22 +117,21 @@ class MerchantOrderController extends GetxController {
       );
 
       if (response != null && response['orders'] != null) {
-        final List<dynamic> orderList = response['orders'];
-        final newOrders = orderList.map((json) => TransactionModel.fromJson(json)).toList();
-
-        if (refresh) {
-          orders.clear();
-        }
-
+        final List<TransactionModel> newOrders = response['orders'];
+        
         if (newOrders.isEmpty) {
           hasMoreData.value = false;
         } else {
           orders.addAll(newOrders);
           currentPage.value++;
         }
+      } else {
+        print("No orders found in response");
+        print("Response: $response");
       }
       
     } catch (e) {
+      print("Error in fetchOrders: $e");
       errorMessage.value = 'Gagal memuat pesanan: ${e.toString()}';
       CustomSnackbarX.showError(
         message: errorMessage.value,
@@ -153,7 +172,7 @@ class MerchantOrderController extends GetxController {
         );
 
         // Refresh order summary
-        fetchOrderSummary();
+        await fetchOrderSummary();
       }
       
     } catch (e) {
@@ -201,7 +220,7 @@ class MerchantOrderController extends GetxController {
         );
 
         // Refresh order summary
-        fetchOrderSummary();
+        await fetchOrderSummary();
       }
       
     } catch (e) {
