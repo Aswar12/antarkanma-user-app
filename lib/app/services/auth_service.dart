@@ -183,7 +183,7 @@ class AuthService extends GetxService {
     }
   }
 
-Future<bool> updateProfilePhoto(File photo) async {
+  Future<bool> updateProfilePhoto(File photo) async {
     try {
       final token = _storageService.getToken();
       if (token == null) {
@@ -442,7 +442,7 @@ Future<bool> updateProfilePhoto(File photo) async {
       final response = await _authProvider.deleteAccount(token);
       if (response.statusCode == 200) {
         showCustomSnackbar(title: 'Sukses', message: 'Akun berhasil dihapus');
-        await _clearAuthData();
+        await _clearAuthData(fullClear: true);
         return true;
       }
 
@@ -469,20 +469,43 @@ Future<bool> updateProfilePhoto(File photo) async {
     } catch (e) {
       print('Error during logout: $e');
     } finally {
-      await _clearAuthData();
+      await _clearAuthData(fullClear: true);
       Get.offAllNamed(Routes.login);
     }
   }
 
-  Future<void> _clearAuthData() async {
-    await _storageService.clearAuth();
+  Future<void> _clearAuthData({bool fullClear = false}) async {
+    if (fullClear) {
+      // Clear all data except remember me settings if enabled
+      if (_storageService.getRememberMe()) {
+        final credentials = _storageService.getSavedCredentials();
+        await _storageService.clearAll();
+        if (credentials != null) {
+          await _storageService.saveRememberMe(true);
+          await _storageService.saveCredentials(
+            credentials['identifier']!,
+            credentials['password']!
+          );
+        }
+      } else {
+        await _storageService.clearAll();
+      }
+    } else {
+      await _storageService.clearAuth();
+    }
+    
+    // Clear observable states
     isLoggedIn.value = false;
     currentUser.value = null;
+    
+    // Clear any cached data
+    await _storageService.clearOrders();
+    await _storageService.clearLocationData();
   }
 
   void handleAuthError(dynamic error) {
     if (error.toString().contains('401')) {
-      _clearAuthData();
+      _clearAuthData(fullClear: true);
       showCustomSnackbar(
           title: 'Error',
           message: 'Sesi Anda telah berakhir. Silakan login kembali.',

@@ -1,73 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
 import 'package:antarkanma/app/utils/order_utils.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_order_controller.dart';
 import 'package:antarkanma/theme.dart';
 
-class OrderCard extends StatelessWidget {
+class MerchantOrderCard extends StatelessWidget {
   final TransactionModel transaction;
   final Function(TransactionModel) onTap;
 
-  const OrderCard({
+  const MerchantOrderCard({
     Key? key,
     required this.transaction,
     required this.onTap,
   }) : super(key: key);
-
-  Future<void> _showCancelDialog() async {
-    await showDialog(
-      context: Get.context!,
-      builder: (context) => AlertDialog(
-        backgroundColor: backgroundColor1,
-        title: Text(
-          'Konfirmasi Pembatalan',
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font16,
-            fontWeight: semiBold,
-          ),
-        ),
-        content: Text(
-          'Apakah Anda yakin ingin membatalkan pesanan ini?',
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font14,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              'Tidak',
-              style: primaryTextStyle.copyWith(
-                color: logoColorSecondary,
-                fontSize: Dimenssions.font14,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              final controller = Get.find<OrderController>();
-              await controller.cancelOrder(transaction.id.toString());
-            },
-            style: TextButton.styleFrom(
-              backgroundColor: alertColor,
-            ),
-            child: Text(
-              'Ya, Batalkan',
-              style: primaryTextStyle.copyWith(
-                color: Colors.white,
-                fontSize: Dimenssions.font14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildHeader(String orderId, String status, String date) {
     return Container(
@@ -138,7 +86,7 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(List<dynamic> items, String status) {
+  Widget _buildContent(List<dynamic> items) {
     return Container(
       padding: EdgeInsets.all(Dimenssions.height12),
       child: Column(
@@ -164,7 +112,7 @@ class OrderCard extends StatelessWidget {
             ),
             SizedBox(height: Dimenssions.height8),
           ],
-          _buildFooter(status),
+          _buildFooter(),
         ],
       ),
     );
@@ -217,13 +165,6 @@ class OrderCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: Dimenssions.height2),
-                Text(
-                  'Toko: ${item.merchant.name}',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font12,
-                  ),
-                ),
                 SizedBox(height: Dimenssions.height4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -266,7 +207,7 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter(String status) {
+  Widget _buildFooter() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -275,14 +216,14 @@ class OrderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Total Pembayaran',
+              'Subtotal',
               style: secondaryTextStyle.copyWith(
                 fontSize: Dimenssions.font12,
               ),
             ),
             SizedBox(height: Dimenssions.height2),
             Text(
-              transaction.formattedGrandTotal,
+              transaction.formattedTotalPrice,
               style: priceTextStyle.copyWith(
                 fontSize: Dimenssions.font14,
                 fontWeight: semiBold,
@@ -290,27 +231,23 @@ class OrderCard extends StatelessWidget {
             ),
           ],
         ),
-        if (status.toUpperCase() == 'PENDING')
-          TextButton(
-            onPressed: _showCancelDialog,
-            style: TextButton.styleFrom(
-              backgroundColor: alertColor.withOpacity(0.26),
+        if (transaction.status == 'PROCESSING')
+          ElevatedButton.icon(
+            onPressed: () {
+              final controller = Get.find<MerchantOrderController>();
+              controller.markAsReadyForPickup(transaction.id.toString());
+            },
+            icon: Icon(Icons.delivery_dining, size: 18),
+            label: Text('Siap Antar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: logoColorSecondary,
+              foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
-                horizontal: Dimenssions.width8,
-                vertical: Dimenssions.height2,
+                horizontal: Dimenssions.width12,
+                vertical: Dimenssions.height8,
               ),
-              minimumSize: Size(0, 0),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Dimenssions.radius6),
-                side: BorderSide(color: alertColor),
-              ),
-            ),
-            child: Text(
-              'Batalkan',
-              style: primaryTextStyle.copyWith(
-                color: alertColor,
-                fontSize: Dimenssions.font12,
-                fontWeight: medium,
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
               ),
             ),
           ),
@@ -349,7 +286,7 @@ class OrderCard extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(orderId, status, date),
-            _buildContent(items, status),
+            _buildContent(items),
           ],
         ),
       ),

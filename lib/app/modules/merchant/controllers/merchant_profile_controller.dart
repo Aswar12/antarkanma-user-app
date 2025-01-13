@@ -103,20 +103,11 @@ class MerchantProfileController extends GetxController {
       if (success) {
         // Create a new MerchantModel instance with updated values
         if (merchantData.value != null) {
-          final updatedMerchant = MerchantModel(
-            id: merchantData.value!.id,
-            name: merchantData.value!.name,
-            address: merchantData.value!.address,
-            phoneNumber: merchantData.value!.phoneNumber,
-            description: merchantData.value!.description,
-            logo: merchantData.value!.logo,
+          final updatedMerchant = merchantData.value!.copyWith(
             openingTime: openingTime,
             closingTime: closingTime,
             operatingDays: operatingDays,
-            status: merchantData.value!.status,
-            ownerId: merchantData.value!.ownerId,
-            createdAt: merchantData.value!.createdAt,
-            updatedAt: DateTime.now(), // Update to DateTime
+            updatedAt: DateTime.now(),
           );
 
           // Update the merchant data directly
@@ -148,6 +139,8 @@ class MerchantProfileController extends GetxController {
         position: SnackPosition.BOTTOM,
       );
       return false;
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -158,11 +151,11 @@ class MerchantProfileController extends GetxController {
 
   // Getters
   MerchantModel? get merchant => merchantData.value;
-  String? get merchantLogo => merchant?.logo;
-  String? get merchantName => merchant?.name;
+  String? get merchantLogo => merchant?.merchantLogoUrl;  // Updated to use merchantLogoUrl
+  String? get merchantName => merchant?.merchantName;
   String? get merchantDescription => merchant?.description;
   String? get merchantAddress => merchant?.address;
-  String? get merchantPhone => merchant?.phoneNumber;
+  String? get merchantPhone => merchant?.merchantContact;
   String? get merchantEmail => _authService.currentUser.value?.email;
 
   void logout() async {

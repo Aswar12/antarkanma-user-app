@@ -18,8 +18,7 @@ class MerchantService {
 
   // Storage keys
   static const String _merchantProductsKey = 'merchant_products_by_page';
-  static const String _merchantProductsMetadataKey =
-      'merchant_products_metadata';
+  static const String _merchantProductsMetadataKey = 'merchant_products_metadata';
   static const String _lastRefreshKey = 'merchant_last_refresh';
 
   // Optimization constants
@@ -33,26 +32,39 @@ class MerchantService {
 
   get token => _authService.getToken();
   Map<String, dynamic>? get user => _storageService.getUser();
-  int? get ownerId =>
-      user != null ? int.tryParse(user!['id'].toString()) : null;
+  int? get ownerId => user != null ? int.tryParse(user!['id'].toString()) : null;
 
   MerchantModel? _currentMerchant;
 
   Future<MerchantModel?> getMerchant() async {
     try {
       if (ownerId == null) {
-        throw Exception(
-            "Owner ID is null. User must be logged in to fetch merchant.");
+        throw Exception("Owner ID is null. User must be logged in to fetch merchant.");
       }
 
-      final response =
-          await _merchantProvider.getMerchantsByOwnerId(token, ownerId!);
+      final response = await _merchantProvider.getMerchantsByOwnerId(token, ownerId!);
 
-      if (response.data != null &&
-          response.data['data'] is List &&
-          response.data['data'].isNotEmpty) {
-        _currentMerchant = MerchantModel.fromJson(response.data['data'][0]);
-        return _currentMerchant;
+      if (response.data != null) {
+        // Handle both array and single object responses
+        var merchantData;
+        if (response.data['data'] is List) {
+          if (response.data['data'].isEmpty) return null;
+          merchantData = response.data['data'][0];
+        } else if (response.data['data'] is Map) {
+          merchantData = response.data['data'];
+        } else {
+          print('Unexpected merchant data format: ${response.data}');
+          return null;
+        }
+
+        try {
+          _currentMerchant = MerchantModel.fromJson(merchantData);
+          return _currentMerchant;
+        } catch (e) {
+          print('Error parsing merchant data: $e');
+          print('Merchant data: $merchantData');
+          return null;
+        }
       }
       return null;
     } catch (e) {
@@ -61,8 +73,8 @@ class MerchantService {
     }
   }
 
-  Future<List<ProductModel>> getMerchantProducts(
-      {int page = 1, int pageSize = 10}) async {
+  // Rest of the file remains unchanged...
+  Future<List<ProductModel>> getMerchantProducts({int page = 1, int pageSize = 10}) async {
     try {
       if (_currentMerchant?.id == null) {
         final merchant = await getMerchant();
@@ -71,16 +83,13 @@ class MerchantService {
         }
       }
 
-      // Check request throttling
       if (_lastRequestTime != null) {
-        final timeSinceLastRequest =
-            DateTime.now().difference(_lastRequestTime!);
+        final timeSinceLastRequest = DateTime.now().difference(_lastRequestTime!);
         if (timeSinceLastRequest < requestThrottle) {
           await Future.delayed(requestThrottle - timeSinceLastRequest);
         }
       }
 
-      // Try to get from cache first
       final cachedProducts = _getPageFromStorage(page);
       if (cachedProducts != null) {
         print('Loading merchant products page $page from cache');
@@ -88,7 +97,6 @@ class MerchantService {
         return cachedProducts;
       }
 
-      // If not in cache, fetch from backend
       final response = await _merchantProvider.getMerchantProducts(
         token,
         _currentMerchant!.id!,
@@ -102,13 +110,9 @@ class MerchantService {
           response.data['data'] != null &&
           response.data['data']['data'] is List) {
         final productsData = response.data['data']['data'] as List;
-        final products =
-            productsData.map((json) => ProductModel.fromJson(json)).toList();
+        final products = productsData.map((json) => ProductModel.fromJson(json)).toList();
 
-        // Save to cache
         await _savePageToStorage(page, products);
-
-        // Prefetch next page
         _prefetchNextPage(page, pageSize);
 
         return products;
@@ -124,8 +128,7 @@ class MerchantService {
     }
   }
 
-  Future<bool> createProduct(
-      Map<String, dynamic> productData, List<XFile> images) async {
+  Future<bool> createProduct(Map<String, dynamic> productData, List<XFile> images) async {
     try {
       if (_currentMerchant?.id == null) {
         final merchant = await getMerchant();
@@ -143,8 +146,7 @@ class MerchantService {
       if (productResponse.data == null ||
           productResponse.data['meta'] == null ||
           productResponse.data['meta']['status'] != 'success') {
-        throw Exception(productResponse.data?['meta']?['message'] ??
-            'Failed to create product');
+        throw Exception(productResponse.data?['meta']?['message'] ?? 'Failed to create product');
       }
 
       final createdProductData = productResponse.data['data'];
@@ -161,8 +163,7 @@ class MerchantService {
         if (galleryResponse.data == null ||
             galleryResponse.data['meta'] == null ||
             galleryResponse.data['meta']['status'] != 'success') {
-          throw Exception(galleryResponse.data?['meta']?['message'] ??
-              'Failed to upload gallery');
+          throw Exception(galleryResponse.data?['meta']?['message'] ?? 'Failed to upload gallery');
         }
 
         if (galleryResponse.data['data'] != null) {
@@ -171,8 +172,8 @@ class MerchantService {
       }
 
       final product = ProductModel.fromJson(createdProductData);
-      await _productService.addProductToLocal(1, [product]); // Add to first page
-      await clearCache(); // Clear cache to force refresh of merchant products
+      await _productService.addProductToLocal(1, [product]);
+      await clearCache();
       return true;
     } catch (e) {
       print('Error creating product: $e');
@@ -180,6 +181,8 @@ class MerchantService {
     }
   }
 
+  // Rest of the methods remain unchanged...
+  
   Future<bool> updateProduct(int productId, Map<String, dynamic> productData,
       List<XFile> newImages) async {
     try {
@@ -400,10 +403,7 @@ class MerchantService {
       print('Error updating merchant details: $e');
       return false;
     }
-  }
-
-  // Cache management methods
-  Future<void> _prefetchNextPage(int currentPage, int pageSize) async {
+  }Future<void> _prefetchNextPage(int currentPage, int pageSize) async {
     if (_prefetchInProgress) return;
 
     try {
@@ -420,8 +420,7 @@ class MerchantService {
 
   List<ProductModel>? _getPageFromStorage(int page) {
     try {
-      final Map<String, dynamic>? allPages =
-          _storage.read(_merchantProductsKey);
+      final Map<String, dynamic>? allPages = _storage.read(_merchantProductsKey);
       if (allPages != null && allPages.containsKey(page.toString())) {
         final String compressedData = allPages[page.toString()];
         final List<dynamic> pageProducts = jsonDecode(compressedData);
@@ -440,11 +439,9 @@ class MerchantService {
 
   Future<void> _savePageToStorage(int page, List<ProductModel> products) async {
     try {
-      final Map<String, dynamic> allPages =
-          _storage.read(_merchantProductsKey) ?? {};
+      final Map<String, dynamic> allPages = _storage.read(_merchantProductsKey) ?? {};
 
-      final String compressedData =
-          jsonEncode(products.map((p) => p.toJson()).toList());
+      final String compressedData = jsonEncode(products.map((p) => p.toJson()).toList());
       allPages[page.toString()] = compressedData;
 
       if (allPages.length > maxStoredPages) {
@@ -460,8 +457,7 @@ class MerchantService {
 
   Future<void> _updatePageMetadata(int page) async {
     try {
-      final Map<String, dynamic> metadata =
-          _storage.read(_merchantProductsMetadataKey) ?? {};
+      final Map<String, dynamic> metadata = _storage.read(_merchantProductsMetadataKey) ?? {};
       metadata[page.toString()] = {
         'lastAccess': DateTime.now().toIso8601String(),
         'accessCount': (metadata[page.toString()]?['accessCount'] ?? 0) + 1,

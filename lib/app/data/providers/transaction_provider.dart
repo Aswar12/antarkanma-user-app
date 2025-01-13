@@ -92,7 +92,9 @@ class TransactionProvider {
         break;
       case 422:
         final data = error.response?.data;
-        if (data != null && data['meta'] != null && data['meta']['message'] != null) {
+        if (data != null &&
+            data['meta'] != null &&
+            data['meta']['message'] != null) {
           message = data['meta']['message'];
         } else if (data != null && data['data'] != null) {
           final errors = data['data'] as Map<String, dynamic>;
@@ -123,7 +125,8 @@ class TransactionProvider {
         if (data != null && data['message'] != null) {
           message = data['message'];
         } else {
-          message = 'Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.';
+          message =
+              'Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.';
         }
         break;
       default:
@@ -146,7 +149,8 @@ class TransactionProvider {
     throw Exception(message);
   }
 
-  Future<dio.Response> createTransaction(Map<String, dynamic> transactionData) async {
+  Future<dio.Response> createTransaction(
+      Map<String, dynamic> transactionData) async {
     try {
       debugPrint('\n=== Creating Transaction ===');
       debugPrint('Transaction Data: $transactionData');
@@ -262,7 +266,8 @@ class TransactionProvider {
       }
 
       if (response.statusCode == 422) {
-        final message = response.data?['meta']?['message'] ?? 'Transaksi tidak dapat dibatalkan';
+        final message = response.data?['meta']?['message'] ??
+            'Transaksi tidak dapat dibatalkan';
         throw dio.DioException(
           requestOptions: response.requestOptions,
           response: response,
@@ -283,7 +288,6 @@ class TransactionProvider {
     }
   }
 
-  // Updated merchant endpoints based on API documentation
   Future<dio.Response> getTransactionsByMerchant(
     String merchantId, {
     int page = 1,
@@ -293,45 +297,105 @@ class TransactionProvider {
     try {
       final queryParams = {
         'page': page,
+        'limit': limit,
         if (status != null) 'status': status,
       };
 
       debugPrint('\n=== Getting Merchant Orders ===');
       debugPrint('Query parameters: $queryParams');
 
-      return await _dio.get(
-        '/merchant/orders',
+      final response = await _dio.get(
+        '/merchants/$merchantId/orders',
         queryParameters: queryParams,
       );
+
+      // Add READYTOPICKUP to status counts if not present
+
+      return response;
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
     }
   }
 
-  Future<dio.Response> getTransactionSummaryByMerchant(String merchantId) async {
+  Future<dio.Response> getTransactionSummaryByMerchant(
+      String merchantId) async {
     try {
-      return await _dio.get('/merchant/orders/summary');
+      final response = await _dio.get('/merchants/$merchantId/orders/summary');
+
+      // Add READYTOPICKUP to statistics if not present
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        final data = response.data['data'];
+        if (data['statistics'] != null) {
+          data['statistics']['readytopickup_orders'] =
+              data['statistics']['readytopickup_orders'] ?? 0;
+        }
+      }
+
+      return response;
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;
     }
   }
 
-  Future<dio.Response> updateOrderStatus(
-    String merchantId,
-    String orderId, {
-    required String status,
-    String? notes,
-  }) async {
+  Future<dio.Response> updateOrderStatus(String orderId, String action,
+      {String? notes}) async {
     try {
-      return await _dio.put(
-        '/orders/$orderId/status',
-        data: {
-          'status': status,
-          if (notes != null) 'notes': notes,
-        },
+      debugPrint('\n=== Updating Order Status ===');
+      debugPrint('Order ID: $orderId');
+      debugPrint('Action: $action');
+      if (notes != null) debugPrint('Notes: $notes');
+
+      final response = await _dio.post(
+        '/orders/$orderId/$action',
+        data: notes != null ? {'notes': notes} : null,
       );
+
+      debugPrint('\n=== Update Order Status Response ===');
+      debugPrint('Status code: ${response.statusCode}');
+      debugPrint('Response data: ${response.data}');
+
+      // Check for error status codes
+      if (response.statusCode == 500) {
+        _handleError(dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+        ));
+      }
+
+      if (response.statusCode == 422) {
+        final message = response.data?['meta']?['message'] ?? 'Validasi gagal';
+        throw dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+          error: message,
+        );
+      }
+
+      if (response.statusCode != 200) {
+        throw dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+          error: 'Failed to update order status',
+        );
+      }
+
+      // Verify response data structure
+      if (response.data == null ||
+          response.data['meta']?['status'] != 'success') {
+        throw dio.DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: dio.DioExceptionType.badResponse,
+          error: 'Invalid response format',
+        );
+      }
+
+      return response;
     } on dio.DioException catch (e) {
       _handleError(e);
       rethrow;

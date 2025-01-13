@@ -59,6 +59,11 @@ class OrderStatusBadge extends StatelessWidget {
           color: logoColorSecondary,
           text: 'Sedang Diproses',
         );
+      case 'READYTOPICKUP':
+        return StatusInfo(
+          color: Colors.orange,
+          text: 'Siap Antar',
+        );
       case 'SHIPPED':
         return StatusInfo(
           color: Colors.blue,

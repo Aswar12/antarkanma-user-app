@@ -9,7 +9,7 @@ class OrderModel {
   final String userId;
   final List<OrderItemModel> items;
   final double totalAmount;
-  final String orderStatus; // PENDING, PROCESSING, COMPLETED, CANCELED
+  final String _orderStatus; // PENDING, PROCESSING, COMPLETED, CANCELED
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -21,11 +21,14 @@ class OrderModel {
     required this.userId,
     required this.items,
     required this.totalAmount,
-    this.orderStatus = 'PENDING',
+    String orderStatus = 'PENDING',
     this.createdAt,
     this.updatedAt,
     this.transaction,
-  });
+  }) : _orderStatus = orderStatus;
+
+  // Getter untuk order status
+  String get orderStatus => _orderStatus;
 
   // Getter untuk total items
   int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
@@ -46,7 +49,7 @@ class OrderModel {
       'user_id': userId,
       'items': items.map((item) => item.toJson()).toList(),
       'total_amount': totalAmount,
-      'order_status': orderStatus,
+      'order_status': _orderStatus,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -105,7 +108,7 @@ class OrderModel {
       userId: userId ?? this.userId,
       items: items ?? this.items,
       totalAmount: totalAmount ?? this.totalAmount,
-      orderStatus: orderStatus ?? this.orderStatus,
+      orderStatus: orderStatus ?? this._orderStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       transaction: transaction ?? this.transaction,
@@ -121,7 +124,7 @@ class OrderModel {
 
   // Status-related methods
   String get statusDisplay {
-    switch (orderStatus.toUpperCase()) {
+    switch (_orderStatus.toUpperCase()) {
       case 'PENDING':
         return 'Menunggu Pembayaran';
       case 'PROCESSING':
@@ -136,7 +139,7 @@ class OrderModel {
   }
 
   Color getStatusColor() {
-    switch (orderStatus.toUpperCase()) {
+    switch (_orderStatus.toUpperCase()) {
       case 'PENDING':
         return Colors.orange;
       case 'PROCESSING':
@@ -152,7 +155,7 @@ class OrderModel {
 
   // Method untuk mengecek apakah order masih bisa dibatalkan
   bool get canBeCanceled {
-    return orderStatus == 'PENDING' || orderStatus == 'PROCESSING';
+    return _orderStatus == 'PENDING' || _orderStatus == 'PROCESSING';
   }
 
   // Method untuk mendapatkan ringkasan order

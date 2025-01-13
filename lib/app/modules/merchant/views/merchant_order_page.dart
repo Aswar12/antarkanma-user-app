@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/theme.dart';
-import 'package:antarkanma/app/widgets/order_card.dart';
+import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_order_controller.dart';
+import 'package:antarkanma/app/modules/merchant/widgets/merchant_order_card.dart';
 
 class MerchantOrderPage extends StatefulWidget {
   const MerchantOrderPage({super.key});
@@ -16,34 +17,42 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final MerchantOrderController controller;
   late TabController _tabController;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    controller = Get.put(MerchantOrderController());
-    _tabController = TabController(length: 6, vsync: this);
+
+    // Initialize the controller using Get.find()
+    controller = Get.find<MerchantOrderController>();
+
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         switch (_tabController.index) {
           case 0:
-            controller.filterOrders('all');
-            break;
-          case 1:
             controller.filterOrders('PENDING');
             break;
-          case 2:
-            controller.filterOrders('ACCEPTED');
-            break;
-          case 3:
+          case 1:
             controller.filterOrders('PROCESSING');
             break;
-          case 4:
+          case 2:
+            controller.filterOrders('READYTOPICKUP');
+            break;
+          case 3:
             controller.filterOrders('COMPLETED');
             break;
-          case 5:
-            controller.filterOrders('REJECTED');
+          case 4:
+            controller.filterOrders('all');
             break;
         }
+      }
+    });
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        controller.loadMore();
       }
     });
   }
@@ -51,6 +60,7 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -62,18 +72,16 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          _buildOrderStatistics(),
           _buildStatusTabs(),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList('all'),
                 _buildOrderList('PENDING'),
-                _buildOrderList('ACCEPTED'),
                 _buildOrderList('PROCESSING'),
+                _buildOrderList('READYTOPICKUP'),
                 _buildOrderList('COMPLETED'),
-                _buildOrderList('REJECTED'),
+                _buildOrderList('all'),
               ],
             ),
           ),
@@ -107,106 +115,60 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
     );
   }
 
-  Widget _buildOrderStatistics() {
-    return Obx(() {
-      final stats = controller.orderStats;
-      final total = controller.totalAmount.value;
-
-      return Container(
-        padding: EdgeInsets.all(Dimenssions.width16),
-        color: Colors.white,
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  'Pending',
-                  stats['PENDING']?.toString() ?? '0',
-                  Colors.orange,
-                ),
-                _buildStatItem(
-                  'Diterima',
-                  stats['ACCEPTED']?.toString() ?? '0',
-                  Colors.green,
-                ),
-                _buildStatItem(
-                  'Proses',
-                  stats['PROCESSING']?.toString() ?? '0',
-                  logoColorSecondary,
-                ),
-                _buildStatItem(
-                  'Selesai',
-                  stats['COMPLETED']?.toString() ?? '0',
-                  primaryColor,
-                ),
-              ],
-            ),
-            SizedBox(height: Dimenssions.height12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Total Pendapatan: ',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    fontWeight: medium,
-                  ),
-                ),
-                Text(
-                  'Rp ${total.toStringAsFixed(0)}',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font16,
-                    fontWeight: bold,
-                    color: logoColorSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font20,
-            fontWeight: bold,
-            color: color,
-          ),
-        ),
-        SizedBox(height: Dimenssions.height4),
-        Text(
-          label,
-          style: secondaryTextStyle.copyWith(
-            fontSize: Dimenssions.font12,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatusTabs() {
     return Container(
       color: Colors.white,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        labelColor: logoColor,
-        unselectedLabelColor: subtitleColor,
-        indicatorColor: logoColor,
-        tabs: const [
-          Tab(text: 'Semua'),
-          Tab(text: 'Pending'),
-          Tab(text: 'Diterima'),
-          Tab(text: 'Proses'),
-          Tab(text: 'Selesai'),
-          Tab(text: 'Ditolak'),
+      child: Obx(() {
+        final stats = controller.orderStats;
+        final totalOrders = (stats['PENDING'] ?? 0) +
+            (stats['PROCESSING'] ?? 0) +
+            (stats['READYTOPICKUP'] ?? 0) +
+            (stats['COMPLETED'] ?? 0) +
+            (stats['CANCELED'] ?? 0);
+        return TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: logoColor,
+          unselectedLabelColor: subtitleColor,
+          indicatorColor: logoColor,
+          tabs: [
+            _buildTab('Pending', stats['PENDING'] ?? 0),
+            _buildTab('Proses', stats['PROCESSING'] ?? 0),
+            _buildTab('Siap Antar', stats['READYTOPICKUP'] ?? 0),
+            _buildTab('Selesai', stats['COMPLETED'] ?? 0),
+            _buildTab('Semua', totalOrders),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildTab(String text, int count) {
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text),
+          if (count > 0) ...[
+            SizedBox(width: Dimenssions.width8),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Dimenssions.width6,
+                vertical: Dimenssions.height2,
+              ),
+              decoration: BoxDecoration(
+                color: logoColorSecondary,
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+              ),
+              child: Text(
+                count.toString(),
+                style: primaryTextStyle.copyWith(
+                  color: Colors.white,
+                  fontSize: Dimenssions.font12,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -222,11 +184,12 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
         );
       }
 
-      if (controller.errorMessage.value.isNotEmpty && controller.orders.isEmpty) {
+      if (controller.errorMessage.value.isNotEmpty &&
+          controller.orders.isEmpty) {
         return _buildErrorState();
       }
 
-      if (controller.orders.isEmpty) {
+      if (controller.filteredOrders.isEmpty) {
         return _buildEmptyState();
       }
 
@@ -234,11 +197,29 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
         onRefresh: () => controller.refreshOrders(),
         color: logoColorSecondary,
         child: ListView.builder(
+          controller: _scrollController,
           padding: EdgeInsets.all(Dimenssions.width16),
-          itemCount: controller.filteredOrders.length,
+          itemCount: controller.filteredOrders.length +
+              (controller.hasMore.value ? 1 : 0),
           itemBuilder: (context, index) {
+            if (index == controller.filteredOrders.length) {
+              return Center(
+                child: Padding(
+                  padding: EdgeInsets.all(Dimenssions.width8),
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(logoColorSecondary),
+                  ),
+                ),
+              );
+            }
             final transaction = controller.filteredOrders[index];
-            return _buildOrderCard(transaction);
+            return MerchantOrderCard(
+              transaction: transaction,
+              onTap: (transaction) {
+                _showOrderActions(transaction);
+              },
+            );
           },
         ),
       );
@@ -303,279 +284,675 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
     );
   }
 
-  Widget _buildOrderCard(transaction) {
-    return Card(
-      margin: EdgeInsets.only(bottom: Dimenssions.height16),
-      color: backgroundColor1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Dimenssions.radius12),
-      ),
-      child: Column(
-        children: [
-          _buildOrderHeader(transaction),
-          _buildOrderContent(transaction),
-          if (controller.canProcessOrder(transaction.status))
-            _buildOrderFooter(transaction),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderHeader(transaction) {
-    return Container(
-      padding: EdgeInsets.all(Dimenssions.width16),
-      decoration: BoxDecoration(
-        color: backgroundColor1,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(Dimenssions.radius12),
-          topRight: Radius.circular(Dimenssions.radius12),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  void _showOrderActions(TransactionModel transaction) {
+    if (controller.canProcessOrder(transaction.status)) {
+      Get.bottomSheet(
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+          ),
+          child: Stack(
+            alignment: Alignment.bottomCenter,
             children: [
-              Text(
-                'Order #${transaction.orderId ?? transaction.id}',
-                style: primaryTextStyle.copyWith(
-                  fontWeight: semiBold,
+              // Animated background overlay
+              GestureDetector(
+                onTap: () => Get.back(),
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
                 ),
               ),
-              SizedBox(height: Dimenssions.height4),
-              Text(
-                transaction.createdAt != null
-                    ? transaction.createdAt!.toString()
-                    : '-',
-                style: secondaryTextStyle.copyWith(
-                  fontSize: Dimenssions.font12,
-                ),
-              ),
-            ],
-          ),
-          _buildStatusBadge(transaction.status),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String status) {
-    final color = controller.getStatusColor(status);
-    final text = controller.getStatusText(status);
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Dimenssions.width12,
-        vertical: Dimenssions.height4,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(Dimenssions.radius12),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Text(
-        text,
-        style: primaryTextStyle.copyWith(
-          color: color,
-          fontSize: Dimenssions.font12,
-          fontWeight: medium,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderContent(transaction) {
-    return Container(
-      padding: EdgeInsets.all(Dimenssions.width16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor: logoColor.withOpacity(0.1),
-                child: Icon(Icons.person_outline, color: logoColor),
-              ),
-              SizedBox(width: Dimenssions.width12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transaction.user?.name ?? 'Unknown Customer',
-                      style: primaryTextStyle.copyWith(fontWeight: medium),
-                    ),
-                    SizedBox(height: Dimenssions.height4),
-                    Text(
-                      transaction.user?.phone ?? 'No Phone',
-                      style: secondaryTextStyle,
-                    ),
-                    Text(
-                      transaction.userLocation?.address ?? 'No Address',
-                      style: secondaryTextStyle,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Divider(height: Dimenssions.height24),
-          Text(
-            'Daftar Pesanan:',
-            style: primaryTextStyle.copyWith(fontWeight: medium),
-          ),
-          SizedBox(height: Dimenssions.height8),
-          ...transaction.items.map<Widget>((item) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: Dimenssions.height12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: Dimenssions.height60,
-                          height: Dimenssions.height60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                            image: DecorationImage(
-                              image: NetworkImage(item.product.firstImageUrl),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+              // Bottom Sheet Content
+              TweenAnimationBuilder<double>(
+                duration: Duration(milliseconds: 300),
+                tween: Tween(begin: 1.0, end: 0.0),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, value * 400),
+                    child: child,
+                  );
+                },
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.85,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.95,
+                  builder: (context, scrollController) => Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(Dimenssions.radius20),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: Offset(0, -5),
                         ),
-                        SizedBox(width: Dimenssions.width12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.product.name,
-                                style: primaryTextStyle.copyWith(
-                                  fontWeight: medium,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: Dimenssions.height4),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: Dimenssions.width8,
-                                  vertical: Dimenssions.height4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: logoColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                      Dimenssions.radius8),
-                                ),
-                                child: Text(
-                                  '${item.quantity} item',
-                                  style: primaryTextStyle.copyWith(
-                                    color: logoColor,
-                                    fontWeight: medium,
-                                    fontSize: Dimenssions.font12,
-                                  ),
-                                ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Drag Handle
+                        Container(
+                          margin: EdgeInsets.only(top: 12),
+                        ),
+                        // Header
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width16,
+                            vertical: Dimenssions.height16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(Dimenssions.radius20),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 2,
+                                offset: Offset(0, 1),
                               ),
                             ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          logoColorSecondary.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.receipt_outlined,
+                                      color: logoColorSecondary,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  SizedBox(width: Dimenssions.width12),
+                                  Text(
+                                    'Detail Pesanan',
+                                    style: primaryTextStyle.copyWith(
+                                      fontSize: Dimenssions.font18,
+                                      fontWeight: semiBold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.close, color: subtitleColor),
+                                onPressed: () => Get.back(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Content
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            physics: BouncingScrollPhysics(),
+                            child: Padding(
+                              padding: EdgeInsets.all(Dimenssions.width16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Order Status
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: Dimenssions.width12,
+                                      vertical: Dimenssions.height8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          logoColorSecondary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                          Dimenssions.radius8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.access_time,
+                                          size: 18,
+                                          color: logoColorSecondary,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Status: ${transaction.statusDisplay}',
+                                          style: primaryTextStyle.copyWith(
+                                            color: logoColorSecondary,
+                                            fontWeight: medium,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: Dimenssions.height20),
+
+                                  // Order Items Section
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.shopping_bag_outlined,
+                                        color: logoColor,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Item Pesanan',
+                                        style: primaryTextStyle.copyWith(
+                                          fontSize: Dimenssions.font16,
+                                          fontWeight: medium,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: Dimenssions.height12),
+
+                                  // Items List with Card Style
+                                  ...transaction.items
+                                      .map((item) => Container(
+                                            margin: EdgeInsets.only(
+                                                bottom: Dimenssions.height12),
+                                            padding: EdgeInsets.all(
+                                                Dimenssions.width12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      Dimenssions.radius12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.05),
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // Product Image
+                                                if (item.product.galleries
+                                                    .isNotEmpty)
+                                                  ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            Dimenssions
+                                                                .radius8),
+                                                    child: Image.network(
+                                                      item.product
+                                                          .firstImageUrl,
+                                                      width:
+                                                          Dimenssions.width60,
+                                                      height:
+                                                          Dimenssions.width60,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (context,
+                                                              error,
+                                                              stackTrace) =>
+                                                          Container(
+                                                        width:
+                                                            Dimenssions.width60,
+                                                        height:
+                                                            Dimenssions.width60,
+                                                        color: backgroundColor3,
+                                                        child: Icon(
+                                                            Icons
+                                                                .image_not_supported,
+                                                            color:
+                                                                subtitleColor),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                SizedBox(
+                                                    width: Dimenssions.width12),
+                                                // Product Details
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        item.product.name,
+                                                        style: primaryTextStyle
+                                                            .copyWith(
+                                                          fontWeight: medium,
+                                                        ),
+                                                      ),
+                                                      SizedBox(
+                                                          height: Dimenssions
+                                                              .height4),
+                                                      Row(
+                                                        children: [
+                                                          Container(
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 2,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: logoColorSecondary
+                                                                  .withOpacity(
+                                                                      0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          4),
+                                                            ),
+                                                            child: Text(
+                                                              '${item.quantity}x',
+                                                              style:
+                                                                  primaryTextStyle
+                                                                      .copyWith(
+                                                                color:
+                                                                    logoColorSecondary,
+                                                                fontSize:
+                                                                    Dimenssions
+                                                                        .font12,
+                                                                fontWeight:
+                                                                    medium,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text(
+                                                            item.formattedPrice,
+                                                            style:
+                                                                primaryTextStyle
+                                                                    .copyWith(
+                                                              color:
+                                                                  subtitleColor,
+                                                              fontSize:
+                                                                  Dimenssions
+                                                                      .font12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      SizedBox(
+                                                          height: Dimenssions
+                                                              .height4),
+                                                      Text(
+                                                        item.formattedTotalPrice,
+                                                        style: primaryTextStyle
+                                                            .copyWith(
+                                                          color: logoColor,
+                                                          fontWeight: semiBold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ))
+                                      .toList(),
+
+                                  SizedBox(height: Dimenssions.height20),
+
+                                  // Total Section with Card Style
+                                  Container(
+                                    padding:
+                                        EdgeInsets.all(Dimenssions.width16),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          logoColorSecondary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                          Dimenssions.radius12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              'Subtotal',
+                                              style: primaryTextStyle,
+                                            ),
+                                            Text(
+                                              transaction.formattedTotalPrice,
+                                              style: primaryTextStyle,
+                                            ),
+                                          ],
+                                        ),
+                                        if (transaction.shippingPrice > 0) ...[
+                                          SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'Biaya Pengiriman',
+                                                style: primaryTextStyle,
+                                              ),
+                                              Text(
+                                                transaction
+                                                    .formattedShippingPrice,
+                                                style: primaryTextStyle,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        SizedBox(height: 12),
+                                        Divider(color: Colors.grey[300]),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              'Total Pembayaran',
+                                              style: primaryTextStyle.copyWith(
+                                                fontWeight: semiBold,
+                                              ),
+                                            ),
+                                            Text(
+                                              transaction.formattedGrandTotal,
+                                              style: primaryTextStyle.copyWith(
+                                                fontWeight: semiBold,
+                                                color: logoColor,
+                                                fontSize: Dimenssions.font16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  SizedBox(height: Dimenssions.height20),
+
+                                  // Customer Information Section
+                                  if (transaction.user != null) ...[
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person_outline,
+                                          color: logoColor,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Informasi Pemesan',
+                                          style: primaryTextStyle.copyWith(
+                                            fontSize: Dimenssions.font16,
+                                            fontWeight: medium,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: Dimenssions.height12),
+                                    Container(
+                                      padding:
+                                          EdgeInsets.all(Dimenssions.width16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(
+                                            Dimenssions.radius12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.05),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildInfoRow(
+                                            Icons.person,
+                                            'Nama',
+                                            transaction.user!.name,
+                                          ),
+                                          if (transaction.user!.phoneNumber !=
+                                              null) ...[
+                                            SizedBox(height: 8),
+                                            _buildInfoRow(
+                                              Icons.phone,
+                                              'Telepon',
+                                              transaction.user!.phoneNumber!,
+                                            ),
+                                          ],
+                                          if (transaction.user!.email !=
+                                              null) ...[
+                                            SizedBox(height: 8),
+                                            _buildInfoRow(
+                                              Icons.email,
+                                              'Email',
+                                              transaction.user!.email!,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(height: Dimenssions.height20),
+                                  ],
+
+                                  // Delivery Address Section
+                                  if (transaction.userLocation != null) ...[
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on_outlined,
+                                          color: logoColor,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Alamat Pengiriman',
+                                          style: primaryTextStyle.copyWith(
+                                            fontSize: Dimenssions.font16,
+                                            fontWeight: medium,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: Dimenssions.height12),
+                                    Container(
+                                      padding:
+                                          EdgeInsets.all(Dimenssions.width16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(
+                                            Dimenssions.radius12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.05),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildInfoRow(
+                                            Icons.location_on,
+                                            'Alamat',
+                                            transaction
+                                                .userLocation!.fullAddress,
+                                          ),
+                                          SizedBox(height: 8),
+                                          _buildInfoRow(
+                                            Icons.phone,
+                                            'Telepon',
+                                            transaction.userLocation!
+                                                .formattedPhoneNumber,
+                                          ),
+                                          if (transaction.userLocation!.notes
+                                                  ?.isNotEmpty ??
+                                              false) ...[
+                                            SizedBox(height: 8),
+                                            _buildInfoRow(
+                                              Icons.note,
+                                              'Catatan',
+                                              transaction.userLocation!.notes!,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+
+                                  SizedBox(height: Dimenssions.height24),
+
+                                  // Action Buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Get.back();
+                                            _showRejectDialog(transaction);
+                                          },
+                                          icon: Icon(Icons.close),
+                                          label: Text('Tolak'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                alertColor.withOpacity(0.1),
+                                            foregroundColor: alertColor,
+                                            elevation: 0,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: Dimenssions.height16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      Dimenssions.radius12),
+                                              side:
+                                                  BorderSide(color: alertColor),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: Dimenssions.width12),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Get.back();
+                                            _showProcessDialog(transaction);
+                                          },
+                                          icon: Icon(Icons.check),
+                                          label: Text('Terima'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: logoColorSecondary,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: Dimenssions.height16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      Dimenssions.radius12),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    item.formattedPrice,
-                    style: primaryTextStyle.copyWith(
-                      fontWeight: medium,
-                      color: logoColor,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-          Divider(height: Dimenssions.height24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Pembayaran',
-                style: primaryTextStyle.copyWith(fontWeight: semiBold),
-              ),
-              Text(
-                transaction.formattedGrandTotal,
-                style: primaryTextStyle.copyWith(
-                  fontWeight: bold,
-                  color: logoColor,
-                  fontSize: Dimenssions.font16,
                 ),
               ),
             ],
           ),
-        ],
-      ),
-    );
+        ),
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      );
+    }
   }
 
-  Widget _buildOrderFooter(transaction) {
-    return Container(
-      padding: EdgeInsets.all(Dimenssions.width16),
-      decoration: BoxDecoration(
-        color: backgroundColor1,
-        border: Border(
-          top: BorderSide(color: Colors.grey[200]!),
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: subtitleColor,
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => _showRejectDialog(transaction),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: alertColor.withOpacity(0.1),
-                foregroundColor: alertColor,
-                side: BorderSide(color: alertColor),
-                padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
-              ),
-              child: Text('Tolak Pesanan'),
-            ),
-          ),
-          SizedBox(width: Dimenssions.width12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _showProcessDialog(transaction),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: logoColorSecondary,
-                padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
-              ),
-              child: Text(
-                'Proses Pesanan',
+        SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
                 style: primaryTextStyle.copyWith(
-                  color: backgroundColor1,
+                  color: subtitleColor,
+                  fontSize: Dimenssions.font12,
                 ),
               ),
-            ),
+              SizedBox(height: 2),
+              Text(
+                value,
+                style: primaryTextStyle,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  void _showProcessDialog(transaction) {
+  void _showProcessDialog(TransactionModel transaction) {
     Get.dialog(
       AlertDialog(
         backgroundColor: backgroundColor1,
-        title: Text('Proses Pesanan'),
-        content: Text('Apakah Anda yakin ingin memproses pesanan ini?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimenssions.radius12),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: logoColorSecondary,
+              size: 24,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Proses Pesanan',
+              style: primaryTextStyle.copyWith(
+                fontWeight: semiBold,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin memproses pesanan ini?',
+          style: primaryTextStyle,
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
             child: Text(
               'Batal',
-              style: primaryTextStyle.copyWith(color: secondaryTextColor),
+              style: primaryTextStyle.copyWith(
+                color: secondaryTextColor,
+              ),
             ),
           ),
           ElevatedButton(
@@ -583,10 +960,17 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
               Get.back();
               controller.processOrder(transaction.id.toString());
             },
-            style: ElevatedButton.styleFrom(backgroundColor: logoColorSecondary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: logoColorSecondary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+              ),
+            ),
             child: Text(
               'Proses',
-              style: primaryTextStyle.copyWith(color: backgroundColor1),
+              style: primaryTextStyle.copyWith(
+                color: backgroundColor1,
+              ),
             ),
           ),
         ],
@@ -594,22 +978,46 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
     );
   }
 
-  void _showRejectDialog(transaction) {
+  void _showRejectDialog(TransactionModel transaction) {
     final reasonController = TextEditingController();
     Get.dialog(
       AlertDialog(
         backgroundColor: backgroundColor1,
-        title: Text('Tolak Pesanan'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimenssions.radius12),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.cancel_outlined,
+              color: alertColor,
+              size: 24,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Tolak Pesanan',
+              style: primaryTextStyle.copyWith(
+                fontWeight: semiBold,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Apakah Anda yakin ingin menolak pesanan ini?'),
+            Text(
+              'Apakah Anda yakin ingin menolak pesanan ini?',
+              style: primaryTextStyle,
+            ),
             SizedBox(height: Dimenssions.height16),
             TextField(
               controller: reasonController,
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: 'Alasan penolakan (opsional)',
+                hintStyle: primaryTextStyle.copyWith(
+                  color: subtitleColor,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(Dimenssions.radius8),
                 ),
@@ -630,7 +1038,9 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
             onPressed: () => Get.back(),
             child: Text(
               'Batal',
-              style: primaryTextStyle.copyWith(color: secondaryTextColor),
+              style: primaryTextStyle.copyWith(
+                color: secondaryTextColor,
+              ),
             ),
           ),
           ElevatedButton(
@@ -641,10 +1051,17 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
                 reasonController.text,
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: alertColor),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: alertColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+              ),
+            ),
             child: Text(
               'Tolak',
-              style: primaryTextStyle.copyWith(color: backgroundColor1),
+              style: primaryTextStyle.copyWith(
+                color: backgroundColor1,
+              ),
             ),
           ),
         ],

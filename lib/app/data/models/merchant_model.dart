@@ -7,6 +7,7 @@ class MerchantModel {
   final String? status;
   final String? description;
   final String? logo;
+  final String? logoUrl;  // Added logoUrl field
   final String? openingTime;
   final String? closingTime;
   final List<String>? operatingDays;
@@ -27,6 +28,7 @@ class MerchantModel {
     this.status = 'ACTIVE',
     this.description,
     this.logo,
+    this.logoUrl,  // Added to constructor
     required this.createdAt,
     this.productCount,
     required this.updatedAt,
@@ -43,14 +45,22 @@ class MerchantModel {
     try {
       int? parseInt(dynamic value) {
         if (value == null) return null;
-        if (value is int) return value == 0 ? null : value;  // Return null for ID 0
+        if (value is int) return value == 0 ? null : value;
+        if (value is double) return value.toInt();  // Handle double values
         if (value is String) {
           try {
-            final parsed = int.parse(value);
-            return parsed == 0 ? null : parsed;  // Return null for ID 0
+            // First try parsing as double, then convert to int
+            final doubleValue = double.parse(value);
+            return doubleValue.toInt();
           } catch (e) {
-            print('Error parsing $value to int: $e');
-            return null;
+            try {
+              // If double parsing fails, try direct int parsing
+              final parsed = int.parse(value);
+              return parsed == 0 ? null : parsed;
+            } catch (e) {
+              print('Error parsing $value to int: $e');
+              return null;
+            }
           }
         }
         return null;
@@ -68,7 +78,7 @@ class MerchantModel {
       }
 
       return MerchantModel(
-        id: parseInt(json['id']),  // This will now return null for ID 0
+        id: parseInt(json['id']),
         ownerId: parseInt(json['owner_id'].toString()) ?? 0,
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
@@ -76,6 +86,7 @@ class MerchantModel {
         status: json['status']?.toString() ?? 'ACTIVE',
         description: json['description']?.toString(),
         logo: json['logo']?.toString(),
+        logoUrl: json['logo_url']?.toString(),  // Parse logo_url from JSON
         openingTime: json['opening_time']?.toString(),
         closingTime: json['closing_time']?.toString(),
         operatingDays: parseOperatingDays(json['operating_days']),
@@ -92,15 +103,17 @@ class MerchantModel {
             : DateTime.now(),
       );
     } catch (e) {
+      print('Error creating MerchantModel: $e');
       // Return a minimal valid merchant with null ID instead of 0
       return MerchantModel(
-        id: null,  // Changed from 0 to null
+        id: null,
         ownerId: 0,
         name: '',
         address: '',
         phoneNumber: '',
         description: null,
         logo: null,
+        logoUrl: null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         productCount: 0,
@@ -122,6 +135,7 @@ class MerchantModel {
       'status': status,
       'description': description,
       'logo': logo,
+      'logo_url': logoUrl,  // Include logoUrl in JSON
       'product_count': productCount,
       'opening_time': openingTime,
       'closing_time': closingTime,
@@ -142,6 +156,7 @@ class MerchantModel {
     String? status,
     String? description,
     String? logo,
+    String? logoUrl,  // Added to copyWith
     int? productCount,
     String? openingTime,
     String? closingTime,
@@ -162,6 +177,7 @@ class MerchantModel {
       status: status ?? this.status,
       description: description ?? this.description,
       logo: logo ?? this.logo,
+      logoUrl: logoUrl ?? this.logoUrl,  // Include in copyWith
       productCount: productCount ?? this.productCount,
       openingTime: openingTime ?? this.openingTime,
       closingTime: closingTime ?? this.closingTime,
@@ -188,7 +204,7 @@ class MerchantModel {
 
   String get summary => '$name - $address';
 
-  String? get merchantLogoUrl => logo;
+  String? get merchantLogoUrl => logoUrl;  // Use the provided full URL
   String get merchantName => name;
   String get merchantContact => phoneNumber;
   String? get merchantOpeningHours => openingTime;
@@ -206,7 +222,8 @@ class MerchantModel {
         other.phoneNumber == phoneNumber &&
         other.status == status &&
         other.description == description &&
-        other.logo == logo;
+        other.logo == logo &&
+        other.logoUrl == logoUrl;  // Added to equality check
   }
 
   @override
@@ -218,11 +235,12 @@ class MerchantModel {
         phoneNumber.hashCode ^
         status.hashCode ^
         description.hashCode ^
-        logo.hashCode;
+        logo.hashCode ^
+        logoUrl.hashCode;  // Added to hash
   }
 
   @override
   String toString() {
-    return 'MerchantModel(id: $id, name: $name, status: $status, description: $description, logo: $logo)';
+    return 'MerchantModel(id: $id, name: $name, status: $status, description: $description, logo: $logo, logoUrl: $logoUrl)';
   }
 }

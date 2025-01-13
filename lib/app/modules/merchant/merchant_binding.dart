@@ -8,6 +8,8 @@ import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_profile_controller.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_product_controller.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_product_form_controller.dart';
+import 'package:antarkanma/app/modules/merchant/controllers/merchant_order_controller.dart';
+import 'package:antarkanma/app/modules/merchant/services/merchant_order_service.dart';
 
 class MerchantBinding extends Bindings {
   @override
@@ -15,6 +17,7 @@ class MerchantBinding extends Bindings {
     // Services first
     Get.put(UserLocationService());
     Get.put(MerchantService(), permanent: true);
+    Get.put(MerchantOrderService(), permanent: true);
     
     // Initialize ProductCategoryService first and ensure it loads categories
     final categoryService = Get.put(ProductCategoryService(), permanent: true);
@@ -27,6 +30,7 @@ class MerchantBinding extends Bindings {
     Get.put(MerchantController(), permanent: true);
     Get.put(MerchantProfileController(), permanent: true);
     Get.put(MerchantProductController(merchantService: Get.find<MerchantService>()), permanent: true);
+    Get.put(MerchantOrderController(), permanent: true); // Add MerchantOrderController
     
     // Initialize product form controller with fenix to recreate when needed
     Get.lazyPut<MerchantProductFormController>(

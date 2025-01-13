@@ -8,22 +8,26 @@ import 'package:flutter/foundation.dart';
 class TransactionService extends GetxService {
   final TransactionProvider _transactionProvider = TransactionProvider();
 
-  Future<TransactionModel?> createTransaction(Map<String, dynamic> transactionData) async {
+  Future<TransactionModel?> createTransaction(
+      Map<String, dynamic> transactionData) async {
     try {
       debugPrint('\n=== TransactionService: Creating Transaction ===');
       debugPrint('Transaction Data: $transactionData');
 
-      final response = await _transactionProvider.createTransaction(transactionData);
+      final response =
+          await _transactionProvider.createTransaction(transactionData);
       debugPrint('\n=== TransactionService: Response Received ===');
       debugPrint('Status Code: ${response.statusCode}');
       debugPrint('Response Data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = response.data;
-        if (responseData != null && responseData['meta']?['status'] == 'success') {
+        if (responseData != null &&
+            responseData['meta']?['status'] == 'success') {
           try {
             final transactionJson = responseData['data'];
-            debugPrint('\n=== TransactionService: Creating TransactionModel ===');
+            debugPrint(
+                '\n=== TransactionService: Creating TransactionModel ===');
             debugPrint('Transaction JSON: $transactionJson');
 
             if (transactionJson == null) {
@@ -52,7 +56,8 @@ class TransactionService extends GetxService {
             return null;
           }
         } else {
-          final message = responseData?['meta']?['message'] ?? 'Gagal membuat transaksi';
+          final message =
+              responseData?['meta']?['message'] ?? 'Gagal membuat transaksi';
           CustomSnackbarX.showError(
             title: 'Error',
             message: message,
@@ -140,14 +145,16 @@ class TransactionService extends GetxService {
       debugPrint('\n=== TransactionService: Canceling Transaction ===');
       debugPrint('Transaction ID: $transactionId');
 
-      final response = await _transactionProvider.cancelTransaction(transactionId);
-      
+      final response =
+          await _transactionProvider.cancelTransaction(transactionId);
+
       if (response.statusCode == 200) {
         debugPrint('Successfully canceled transaction');
         return true;
       }
-      
-      final message = response.data?['meta']?['message'] ?? 'Failed to cancel transaction';
+
+      final message =
+          response.data?['meta']?['message'] ?? 'Failed to cancel transaction';
       CustomSnackbarX.showError(
         title: 'Error',
         message: message,
@@ -167,6 +174,12 @@ class TransactionService extends GetxService {
     String? status,
   }) async {
     try {
+      debugPrint('\n=== Getting Merchant Orders ===');
+      debugPrint('Merchant ID: $merchantId');
+      debugPrint('Page: $page');
+      debugPrint('Limit: $limit');
+      debugPrint('Status Filter: $status');
+
       final response = await _transactionProvider.getTransactionsByMerchant(
         merchantId,
         page: page ?? 1,
@@ -174,37 +187,66 @@ class TransactionService extends GetxService {
         status: status,
       );
 
-      debugPrint('\n=== Getting Merchant Orders ===');
       debugPrint('Response Status Code: ${response.statusCode}');
       debugPrint('Response Data: ${response.data}');
 
-      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
+      if (response.statusCode == 200 &&
+          response.data['meta']?['status'] == 'success') {
         final data = response.data['data'];
         if (data != null) {
-          final List<dynamic> ordersJson = data['data'] ?? [];
-          final List<TransactionModel> orders = ordersJson.map((json) {
-            try {
-              return TransactionModel.fromJson(json);
-            } catch (e, stackTrace) {
-              debugPrint('Error parsing order: $e');
-              debugPrint('Stack trace: $stackTrace');
-              debugPrint('JSON data: $json');
-              return null;
+          final transactions = data['transactions'];
+          
+          // Handle status_counts as List or Map
+          final defaultCounts = {
+            'PENDING': 0,
+            'PROCESSING': 0,
+            'READYTOPICKUP': 0,
+            'COMPLETED': 0,
+            'CANCELED': 0,
+          };
+
+          Map<String, int> mergedStatusCounts = Map<String, int>.from(defaultCounts);
+          
+          // Get status_counts from response
+          final statusCountsData = data['status_counts'];
+          if (statusCountsData != null) {
+            if (statusCountsData is List) {
+              // If it's a list, process each item
+              for (var item in statusCountsData) {
+                if (item is Map) {
+                  String? status = item['status']?.toString().toUpperCase();
+                  int count = item['count'] is num ? (item['count'] as num).toInt() : 0;
+                  if (status != null && defaultCounts.containsKey(status)) {
+                    mergedStatusCounts[status] = count;
+                  }
+                }
+              }
+            } else if (statusCountsData is Map) {
+              // If it's a map, process directly
+              statusCountsData.forEach((key, value) {
+                String status = key.toString().toUpperCase();
+                if (defaultCounts.containsKey(status)) {
+                  mergedStatusCounts[status] = value is num ? value.toInt() : 0;
+                }
+              });
             }
-          }).where((order) => order != null).cast<TransactionModel>().toList();
+          }
+
+          debugPrint('\n=== Status Counts ===');
+          mergedStatusCounts.forEach((key, value) {
+            debugPrint('$key: $value');
+          });
 
           return {
-            'orders': orders,
-            'pagination': {
-              'current_page': data['current_page'],
-              'last_page': data['last_page'],
-              'per_page': data['per_page'],
-              'total': data['total'],
-            },
-            'meta': response.data['meta'],
+            'transactions': transactions,
+            'status_counts': mergedStatusCounts,
           };
         }
       }
+
+      debugPrint('Failed to get merchant orders');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Data: ${response.data}');
       return null;
     } catch (e, stackTrace) {
       debugPrint('Error getting merchant orders: $e');
@@ -213,31 +255,37 @@ class TransactionService extends GetxService {
     }
   }
 
-  Future<Map<String, dynamic>?> getTransactionSummaryByMerchant(String merchantId) async {
+  Future<Map<String, dynamic>?> getTransactionSummaryByMerchant(
+      String merchantId) async {
     try {
-      final response = await _transactionProvider.getTransactionSummaryByMerchant(merchantId);
+      final response = await _transactionProvider
+          .getTransactionSummaryByMerchant(merchantId);
       debugPrint('\n=== Getting Transaction Summary ===');
       debugPrint('Response Status Code: ${response.statusCode}');
       debugPrint('Response Data: ${response.data}');
-      
-      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
+
+      if (response.statusCode == 200 &&
+          response.data['meta']?['status'] == 'success') {
         final data = response.data['data'];
         if (data != null) {
           final statistics = data['statistics'] ?? {};
           final ordersData = data['orders'] ?? {};
-          
+
           return {
             'statistics': {
               'total_orders': statistics['total_orders'] ?? 0,
               'pending_orders': statistics['pending_orders'] ?? 0,
               'processing_orders': statistics['processing_orders'] ?? 0,
+              'readytopickup_orders': statistics['readytopickup_orders'] ?? 0,
               'completed_orders': statistics['completed_orders'] ?? 0,
               'canceled_orders': statistics['canceled_orders'] ?? 0,
-              'total_revenue': (statistics['total_revenue'] as num?)?.toDouble() ?? 0.0,
+              'total_revenue':
+                  (statistics['total_revenue'] as num?)?.toDouble() ?? 0.0,
             },
             'orders': {
               'pending': _parseOrdersList(ordersData['pending']),
               'processing': _parseOrdersList(ordersData['processing']),
+              'readytopickup': _parseOrdersList(ordersData['readytopickup']),
               'completed': _parseOrdersList(ordersData['completed']),
               'canceled': _parseOrdersList(ordersData['canceled']),
             },
@@ -253,43 +301,60 @@ class TransactionService extends GetxService {
 
   List<TransactionModel> _parseOrdersList(List<dynamic>? ordersList) {
     if (ordersList == null) return [];
-    return ordersList.map((json) {
-      try {
-        return TransactionModel.fromJson(json);
-      } catch (e) {
-        debugPrint('Error parsing order in summary: $e');
-        debugPrint('Order JSON: $json');
-        return null;
-      }
-    }).where((order) => order != null).cast<TransactionModel>().toList();
+    return ordersList
+        .map((json) {
+          try {
+            return TransactionModel.fromJson(json);
+          } catch (e) {
+            debugPrint('Error parsing order in summary: $e');
+            debugPrint('Order JSON: $json');
+            return null;
+          }
+        })
+        .where((order) => order != null)
+        .cast<TransactionModel>()
+        .toList();
   }
 
   Future<bool> updateOrderStatus(
     String merchantId,
     String orderId, {
-    required String status,
+    required String action,
     String? notes,
   }) async {
     try {
+      debugPrint('\n=== Updating Order Status ===');
+      debugPrint('Merchant ID: $merchantId');
+      debugPrint('Order ID: $orderId');
+      debugPrint('Action: $action');
+      if (notes != null) debugPrint('Notes: $notes');
+
       final response = await _transactionProvider.updateOrderStatus(
-        merchantId,
         orderId,
-        status: status,
+        action,
         notes: notes,
       );
 
-      if (response.statusCode == 200 && response.data['meta']?['status'] == 'success') {
+      if (response.statusCode == 200 &&
+          response.data['meta']?['status'] == 'success') {
+        debugPrint('Successfully updated order status');
         CustomSnackbarX.showSuccess(
           title: 'Success',
-          message: response.data['meta']?['message'] ?? 'Status pesanan berhasil diperbarui',
+          message: response.data['meta']?['message'] ??
+              'Status pesanan berhasil diperbarui',
           position: SnackPosition.BOTTOM,
         );
         return true;
       }
 
+      debugPrint('Failed to update order status');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Data: ${response.data}');
+
       CustomSnackbarX.showError(
         title: 'Error',
-        message: response.data['meta']?['message'] ?? 'Gagal memperbarui status pesanan',
+        message: response.data['meta']?['message'] ??
+            'Gagal memperbarui status pesanan',
         position: SnackPosition.BOTTOM,
       );
       return false;

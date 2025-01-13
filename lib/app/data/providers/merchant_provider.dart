@@ -26,7 +26,6 @@ class MerchantProvider {
           print('Making request to: ${options.path}');
           print('Request data: ${options.data}');
 
-          // Only add Content-Type for non-FormData requests
           if (options.data is! FormData) {
             options.headers.addAll({
               'Accept': 'application/json',
@@ -96,6 +95,77 @@ class MerchantProvider {
     } catch (e) {
       print('Error fetching merchant products: $e');
       throw Exception('Failed to load merchant products: $e');
+    }
+  }
+
+  Future<Response> getMerchantOrders(
+    String token,
+    int merchantId, {
+    int page = 1,
+    int limit = 10,
+    String? status,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      print('Fetching orders for merchant ID: $merchantId');
+      
+      final Map<String, dynamic> queryParams = {
+        'page': page,
+        'limit': limit,
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+      if (startDate != null) {
+        queryParams['start_date'] = startDate;
+      }
+      if (endDate != null) {
+        queryParams['end_date'] = endDate;
+      }
+
+      final response = await _dio.get(
+        '/merchants/$merchantId/orders',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        queryParameters: queryParams,
+      );
+      print('Orders API Response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error fetching merchant orders: $e');
+      throw Exception('Failed to load merchant orders: $e');
+    }
+  }
+
+  Future<Response> updateOrderStatus(
+    String token,
+    int merchantId,
+    int orderId,
+    String status,
+  ) async {
+    try {
+      print('Updating order status: Merchant ID: $merchantId, Order ID: $orderId, New Status: $status');
+      final response = await _dio.put(
+        '/merchants/$merchantId/orders/$orderId/status',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: {
+          'status': status,
+        },
+      );
+      print('Update order status response: ${response.data}');
+      return response;
+    } catch (e) {
+      print('Error updating order status: $e');
+      throw Exception('Failed to update order status: $e');
     }
   }
 
@@ -298,7 +368,6 @@ class MerchantProvider {
           if (error.response?.data != null && error.response?.data['data'] != null) {
             final errors = error.response?.data['data'];
             if (errors is Map) {
-              // Get the first error message from the validation errors
               message = errors.values.first.first.toString();
             } else {
               message = 'Validation error occurred';

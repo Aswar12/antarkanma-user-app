@@ -38,7 +38,8 @@ class MerchantController extends GetxController {
 
   bool _shouldRefreshData() {
     if (merchant.value == null) return true;
-    return DateTime.now().difference(lastFetchTime.value) > cacheValidityDuration;
+    return DateTime.now().difference(lastFetchTime.value) >
+        cacheValidityDuration;
   }
 
   Future<void> fetchMerchantData({bool forceRefresh = false}) async {
@@ -55,7 +56,7 @@ class MerchantController extends GetxController {
       errorMessage.value = '';
 
       final data = await _merchantService.getMerchant();
-      
+
       if (data != null) {
         merchant.value = data;
         lastFetchTime.value = DateTime.now();
