@@ -56,7 +56,9 @@ class MerchantOrderController extends GetxController {
     if (currentFilter.value == 'all') {
       return orders;
     }
-    return orders.where((order) => order.status == currentFilter.value).toList();
+    return orders
+        .where((order) => order.status == currentFilter.value)
+        .toList();
   }
 
   @override
@@ -123,10 +125,12 @@ class MerchantOrderController extends GetxController {
               pagination['current_page'] < pagination['last_page'];
 
           // Update order statistics from response
-          final Map<String, int>? statusCounts = response['status_counts'] as Map<String, int>?;
+          final Map<String, int>? statusCounts =
+              response['status_counts'] as Map<String, int>?;
           if (statusCounts != null) {
             debugPrint('\n=== Updating Order Stats ===');
-            orderStats.value = Map<String, int>.from(orderStats); // Create a new map
+            orderStats.value =
+                Map<String, int>.from(orderStats); // Create a new map
             statusCounts.forEach((key, value) {
               if (orderStats.containsKey(key)) {
                 orderStats[key] = value;

@@ -9,6 +9,8 @@ import '../services/product_service.dart';
 import '../services/transaction_service.dart';
 import '../services/category_service.dart';
 import '../services/merchant_service.dart';
+import '../services/notification_service.dart';
+import '../services/fcm_token_service.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -19,14 +21,20 @@ class InitialBinding extends Bindings {
     debugPrint('Initializing AuthService...');
     Get.put(AuthService(), permanent: true);
 
+    debugPrint('Initializing TransactionService...');
+    Get.put(TransactionService(), permanent: true);
+
+    debugPrint('Initializing FCMTokenService...');
+    Get.putAsync(() => FCMTokenService().init(), permanent: true);
+
+    debugPrint('Initializing NotificationService...');
+    Get.putAsync(() => NotificationService().init(), permanent: true);
+
     debugPrint('Initializing CategoryService...');
     Get.put(CategoryService(), permanent: true);
 
     debugPrint('Initializing ProductService...');
     Get.put(ProductService(), permanent: true);
-
-    debugPrint('Initializing TransactionService...');
-    Get.put(TransactionService(), permanent: true);
 
     debugPrint('Initializing MerchantService...');
     Get.put(MerchantService(), permanent: true);

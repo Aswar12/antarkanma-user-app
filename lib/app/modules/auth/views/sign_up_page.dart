@@ -41,7 +41,7 @@ class SignUpPage extends StatelessWidget {
     return Column(
       children: [
         Image.asset(
-          'assets/Logo_AntarkanMaNoFont.png',
+          'assets/logo.png',
           height: Dimenssions
               .height65, // Reduced from height80 to height65 (20% smaller)
           fit: BoxFit.contain,

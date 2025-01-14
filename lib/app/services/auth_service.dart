@@ -7,6 +7,7 @@ import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile, Response;
 import 'package:dio/dio.dart';
+import 'package:antarkanma/app/services/fcm_token_service.dart';
 
 class AuthService extends GetxService {
   final StorageService _storageService = StorageService.instance;
@@ -20,6 +21,24 @@ class AuthService extends GetxService {
     super.onInit();
   }
 
+  // FCM token management
+  Future<void> _handleFCMToken({bool register = true}) async {
+    try {
+      final fcmTokenService = Get.find<FCMTokenService>();
+      if (register) {
+        final fcmToken = fcmTokenService.currentToken;
+        if (fcmToken != null && currentUser.value?.id != null) {
+          await fcmTokenService.registerFCMToken(fcmToken);
+        }
+      } else {
+        await fcmTokenService.unregisterToken();
+      }
+    } catch (e) {
+      print('Error handling FCM token: $e');
+    }
+  }
+
+  // Rest of the methods remain unchanged...
   Future<bool> verifyToken(String token) async {
     try {
       final response = await _authProvider.refreshToken(token);
@@ -92,6 +111,9 @@ class AuthService extends GetxService {
         currentUser.value = UserModel.fromJson(userData);
         print("User logged in successfully: ${currentUser.value}"); // Debug log
         isLoggedIn.value = true;
+
+        // Register FCM token after successful login
+        await _handleFCMToken(register: true);
 
         // Only redirect and show snackbar if not auto-login
         if (!isAutoLogin) {
@@ -465,6 +487,8 @@ class AuthService extends GetxService {
       final token = _storageService.getToken();
       if (token != null) {
         await _authProvider.logout(token);
+        // Unregister FCM token before logging out
+        await _handleFCMToken(register: false);
       }
     } catch (e) {
       print('Error during logout: $e');
@@ -483,9 +507,7 @@ class AuthService extends GetxService {
         if (credentials != null) {
           await _storageService.saveRememberMe(true);
           await _storageService.saveCredentials(
-            credentials['identifier']!,
-            credentials['password']!
-          );
+              credentials['identifier']!, credentials['password']!);
         }
       } else {
         await _storageService.clearAll();
@@ -493,11 +515,11 @@ class AuthService extends GetxService {
     } else {
       await _storageService.clearAuth();
     }
-    
+
     // Clear observable states
     isLoggedIn.value = false;
     currentUser.value = null;
-    
+
     // Clear any cached data
     await _storageService.clearOrders();
     await _storageService.clearLocationData();

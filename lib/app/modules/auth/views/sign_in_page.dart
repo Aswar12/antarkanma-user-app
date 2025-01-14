@@ -45,7 +45,7 @@ class SignInPage extends GetView<AuthController> {
     return Column(
       children: [
         Image.asset(
-          'assets/Logo_AntarkanMaNoFont.png',
+          'assets/logo.png',
           height: Dimenssions
               .height80, // Reduced from height100 to height80 (20% smaller)
           fit: BoxFit.contain,

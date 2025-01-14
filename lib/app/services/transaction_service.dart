@@ -195,7 +195,7 @@ class TransactionService extends GetxService {
         final data = response.data['data'];
         if (data != null) {
           final transactions = data['transactions'];
-          
+
           // Handle status_counts as List or Map
           final defaultCounts = {
             'PENDING': 0,
@@ -205,8 +205,9 @@ class TransactionService extends GetxService {
             'CANCELED': 0,
           };
 
-          Map<String, int> mergedStatusCounts = Map<String, int>.from(defaultCounts);
-          
+          Map<String, int> mergedStatusCounts =
+              Map<String, int>.from(defaultCounts);
+
           // Get status_counts from response
           final statusCountsData = data['status_counts'];
           if (statusCountsData != null) {
@@ -215,7 +216,8 @@ class TransactionService extends GetxService {
               for (var item in statusCountsData) {
                 if (item is Map) {
                   String? status = item['status']?.toString().toUpperCase();
-                  int count = item['count'] is num ? (item['count'] as num).toInt() : 0;
+                  int count =
+                      item['count'] is num ? (item['count'] as num).toInt() : 0;
                   if (status != null && defaultCounts.containsKey(status)) {
                     mergedStatusCounts[status] = count;
                   }

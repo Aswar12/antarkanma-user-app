@@ -1,7 +1,6 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 double defaultMargin = Dimenssions.height10;
 
@@ -52,40 +51,58 @@ const MaterialColor primarySwatch = MaterialColor(
   },
 );
 
-TextStyle primaryTextStyle = GoogleFonts.palanquinDark(
+TextStyle primaryTextStyle = TextStyle(
   color: primaryTextColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle secondaryTextStyle = GoogleFonts.palanquinDark(
+TextStyle secondaryTextStyle = TextStyle(
   color: secondaryTextColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle subtitleTextStyle = GoogleFonts.palanquinDark(
+TextStyle subtitleTextStyle = TextStyle(
   color: subtitleColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle priceTextStyle = GoogleFonts.palanquinDark(
+TextStyle priceTextStyle = TextStyle(
   color: logoColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: medium,
 );
 
-TextStyle purpleTextStyle = GoogleFonts.palanquinDark(
+TextStyle purpleTextStyle = TextStyle(
   color: primaryColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle blackTextStyle = GoogleFonts.palanquinDark(
+TextStyle blackTextStyle = TextStyle(
   color: blackColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle alertTextStyle = GoogleFonts.palanquinDark(
+TextStyle alertTextStyle = TextStyle(
   color: alertColor,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle textwhite = GoogleFonts.palanquinDark(
+TextStyle textwhite = TextStyle(
   color: backgroundColor1,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
-TextStyle primaryTextOrange = GoogleFonts.palanquinDark(
+TextStyle primaryTextOrange = TextStyle(
   color: logoColorSecondary,
+  fontFamily: 'PalanquinDark',
+  fontWeight: regular,
 );
 
 FontWeight light = FontWeight.w300;
