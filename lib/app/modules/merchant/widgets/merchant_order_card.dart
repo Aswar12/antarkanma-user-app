@@ -208,6 +208,7 @@ class MerchantOrderCard extends StatelessWidget {
   }
 
   Widget _buildFooter() {
+    final orderStatus = transaction.order?.orderStatus ?? transaction.status;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -231,7 +232,7 @@ class MerchantOrderCard extends StatelessWidget {
             ),
           ],
         ),
-        if (transaction.status == 'PROCESSING')
+        if (orderStatus == 'PROCESSING')
           ElevatedButton.icon(
             onPressed: () {
               final controller = Get.find<MerchantOrderController>();
@@ -262,7 +263,7 @@ class MerchantOrderCard extends StatelessWidget {
         : (transaction.order?.orderItems ?? []);
     
     final orderId = (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
-    final status = transaction.status;
+    final status = transaction.order?.orderStatus ?? transaction.status;
     final date = transaction.createdAt != null
         ? DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!)
         : '-';

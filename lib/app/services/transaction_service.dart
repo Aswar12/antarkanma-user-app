@@ -198,11 +198,11 @@ class TransactionService extends GetxService {
 
           // Handle status_counts as List or Map
           final defaultCounts = {
-            'PENDING': 0,
-            'PROCESSING': 0,
-            'READYTOPICKUP': 0,
-            'COMPLETED': 0,
-            'CANCELED': 0,
+            OrderItemStatus.pending: 0,
+            OrderItemStatus.processing: 0,
+            OrderItemStatus.readyForPickup: 0,
+            OrderItemStatus.completed: 0,
+            OrderItemStatus.canceled: 0,
           };
 
           Map<String, int> mergedStatusCounts =

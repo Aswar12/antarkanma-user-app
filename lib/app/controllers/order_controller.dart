@@ -5,6 +5,7 @@ import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/foundation.dart';
+import 'package:antarkanma/app/data/models/order_item_model.dart';
 
 class OrderController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -34,7 +35,7 @@ class OrderController extends GetxController {
     debugPrint('Auth status: ${_authService.isLoggedIn.value}');
 
     if (_authService.isLoggedIn.value) {
-      fetchTransactions(status: 'PENDING,PROCESSING,ON_DELIVERY');
+      fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
     } else {
       debugPrint('User not logged in, skipping transaction fetch');
     }
@@ -42,7 +43,7 @@ class OrderController extends GetxController {
     ever(_authService.isLoggedIn, (bool isLoggedIn) {
       if (isLoggedIn) {
         debugPrint('User logged in, fetching transactions');
-        fetchTransactions(status: 'PENDING,PROCESSING,ON_DELIVERY');
+        fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
       } else {
         debugPrint('User logged out, clearing transactions');
         transactions.clear();
@@ -98,11 +99,11 @@ class OrderController extends GetxController {
 
   List<TransactionModel> get activeOrders {
     final active = transactions.where((t) {
-      final status = t.status.toUpperCase();
+      final status = (t.order?.orderStatus ?? t.status).toUpperCase();
       debugPrint('Checking transaction ${t.id} with status: $status');
-      return status == 'PENDING' || 
-             status == 'PROCESSING' || 
-             status == 'ON_DELIVERY';
+      return status == OrderItemStatus.pending || 
+             status == OrderItemStatus.processing || 
+             status == OrderItemStatus.readyForPickup;
     }).toList();
 
     debugPrint('\n=== Active Orders ===');
@@ -116,11 +117,10 @@ class OrderController extends GetxController {
 
   List<TransactionModel> get historyOrders {
     final history = transactions.where((t) {
-      final status = t.status.toUpperCase();
+      final status = (t.order?.orderStatus ?? t.status).toUpperCase();
       debugPrint('Checking transaction ${t.id} with status: $status');
-      return status == 'COMPLETED' || 
-             status == 'CANCELLED' || 
-             status == 'CANCELED';
+      return status == OrderItemStatus.completed || 
+             status == OrderItemStatus.canceled;
     }).toList();
 
     debugPrint('\n=== History Orders ===');
@@ -140,9 +140,9 @@ class OrderController extends GetxController {
     errorMessage.value = '';
 
     if (index == 0) {
-      await fetchTransactions(status: 'PENDING,PROCESSING,ON_DELIVERY');
+      await fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
     } else {
-      await fetchTransactions(status: 'COMPLETED,CANCELLED,CANCELED');
+      await fetchTransactions(status: '${OrderItemStatus.completed},${OrderItemStatus.canceled}');
     }
   }
 
@@ -188,8 +188,8 @@ class OrderController extends GetxController {
     if (_authService.isLoggedIn.value) {
       await fetchTransactions(
           status: currentTab.value == 0
-              ? 'PENDING,PROCESSING,ON_DELIVERY'
-              : 'COMPLETED,CANCELLED,CANCELED');
+              ? '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}'
+              : '${OrderItemStatus.completed},${OrderItemStatus.canceled}');
     } else {
       debugPrint('User not logged in, skipping refresh');
     }

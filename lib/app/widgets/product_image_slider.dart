@@ -1,28 +1,56 @@
 import 'package:antarkanma/app/utils/image_viewer_page.dart';
+import 'package:antarkanma/app/widgets/cached_image_view.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
+/// A widget that displays a carousel of product images with lazy loading,
+/// image caching, and interactive features like zooming and indicators.
 class ProductImageSlider extends StatelessWidget {
+  /// List of image URLs to display in the carousel
   final List<String> imageUrls;
+
+  /// Current active index in the carousel
   final int currentIndex;
+
+  /// Callback function when page changes
   final Function(int) onPageChanged;
+
+  /// Unique identifier for the product
   final String productId;
+
+  /// Default placeholder images when no images are provided
   static const List<String> PLACEHOLDER_IMAGES = [
     'assets/image_shoes.png',
     'assets/image_shoes2.png',
     'assets/image_shoes3.png',
   ];
 
-  const ProductImageSlider({
-    Key? key,
+  /// Whether to enable infinite scrolling
+  final bool enableInfiniteScroll;
+
+  /// Whether to enable auto play
+  final bool enableAutoPlay;
+
+  /// Duration between auto play transitions
+  final Duration autoPlayInterval;
+
+  /// Position of the indicator from bottom
+  final double indicatorBottomPosition;
+
+  ProductImageSlider({
+    super.key,
     required this.imageUrls,
     required this.currentIndex,
     required this.onPageChanged,
     required this.productId,
-  }) : super(key: key);
+    this.enableInfiniteScroll = false,
+    this.enableAutoPlay = true,
+    this.autoPlayInterval = const Duration(seconds: 3),
+    this.indicatorBottomPosition = 40,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,23 +59,24 @@ class ProductImageSlider extends StatelessWidget {
 
     return Stack(
       children: [
-        CarouselSlider.builder(
-          itemCount: displayImages.length,
+        CarouselSlider(
           options: CarouselOptions(
             height: double.infinity,
             viewportFraction: 1.0,
             enlargeCenterPage: false,
-            autoPlay: displayImages.length > 1,
-            autoPlayInterval: const Duration(seconds: 3),
+            enableInfiniteScroll: enableInfiniteScroll,
+            autoPlayInterval: autoPlayInterval,
+            scrollPhysics: const BouncingScrollPhysics(),
             onPageChanged: (index, _) => onPageChanged(index),
           ),
-          itemBuilder: (context, index, realIndex) {
-            return _buildImageSliderItem(
-              imageUrl: displayImages[index],
-              index: index,
-              displayImages: displayImages,
-            );
-          },
+          items: [
+            for (var i = 0; i < displayImages.length; i++)
+              _buildImageSliderItem(
+                imageUrl: displayImages[i],
+                index: i,
+                displayImages: displayImages,
+              ),
+          ],
         ),
         _buildImageIndicator(displayImages.length),
       ],
@@ -59,81 +88,30 @@ class ProductImageSlider extends StatelessWidget {
     required int index,
     required List<String> displayImages,
   }) {
-    final String uniqueId = '${productId}_${DateTime.now().millisecondsSinceEpoch}';
-
     return GestureDetector(
       onTap: () {
         Get.to(
-          () => ImageViewerPage(
+          ImageViewerPage(
             imageUrls: displayImages,
             initialIndex: index,
-            heroTagPrefix: uniqueId,
+            heroTagPrefix: '${productId}_$index',
           ),
           transition: Transition.zoom,
         );
       },
       child: Hero(
-        tag: 'product_image_${uniqueId}_$index',
+        tag: 'product_image_${productId}_$index',
         child: Container(
           decoration: BoxDecoration(
             color: backgroundColor3,
           ),
-          child: _buildImage(imageUrl),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage(String imageUrl) {
-    return imageUrl.startsWith('assets/')
-        ? _buildAssetImage(imageUrl)
-        : _buildNetworkImage(imageUrl);
-  }
-
-  Widget _buildAssetImage(String imageUrl) {
-    return Image.asset(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stackTrace) {
-        return _buildErrorPlaceholder();
-      },
-    );
-  }
-
-  Widget _buildNetworkImage(String imageUrl) {
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded /
-                    loadingProgress.expectedTotalBytes!
-                : null,
-            color: logoColorSecondary,
+          child: CachedImageView(
+            imageUrl: imageUrl,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            placeholder: PLACEHOLDER_IMAGES[0],
           ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return _buildErrorPlaceholder();
-      },
-    );
-  }
-
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: backgroundColor3,
-      child: Center(
-        child: Icon(
-          Icons.error_outline,
-          color: alertColor,
-          size: 40,
         ),
       ),
     );
@@ -141,7 +119,7 @@ class ProductImageSlider extends StatelessWidget {
 
   Widget _buildImageIndicator(int imageCount) {
     return Positioned(
-      bottom: Dimenssions.height40,
+      bottom: indicatorBottomPosition,
       left: 0,
       right: 0,
       child: Center(

@@ -69,7 +69,7 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(String orderId, String status, String date) {
+  Widget _buildHeader(String orderId, String? orderStatus, String date) {
     return Container(
       padding: EdgeInsets.all(Dimenssions.height12),
       decoration: BoxDecoration(
@@ -132,13 +132,13 @@ class OrderCard extends StatelessWidget {
               ],
             ),
           ),
-          OrderStatusBadge(status: status),
+          if (orderStatus != null) OrderStatusBadge(status: orderStatus),
         ],
       ),
     );
   }
 
-  Widget _buildContent(List<dynamic> items, String status) {
+  Widget _buildContent(List<dynamic> items, String? status) {
     return Container(
       padding: EdgeInsets.all(Dimenssions.height12),
       child: Column(
@@ -164,7 +164,7 @@ class OrderCard extends StatelessWidget {
             ),
             SizedBox(height: Dimenssions.height8),
           ],
-          _buildFooter(status),
+          _buildFooter(status ?? 'PENDING'),
         ],
       ),
     );
@@ -191,15 +191,14 @@ class OrderCard extends StatelessWidget {
               child: Image.network(
                 item.product.firstImageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    Container(
-                      color: backgroundColor3.withOpacity(0.26),
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: secondaryTextColor,
-                        size: Dimenssions.font20,
-                      ),
-                    ),
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: backgroundColor3.withOpacity(0.26),
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: secondaryTextColor,
+                    size: Dimenssions.font20,
+                  ),
+                ),
               ),
             ),
           ),
@@ -237,7 +236,8 @@ class OrderCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: logoColorSecondary.withOpacity(0.26),
-                            borderRadius: BorderRadius.circular(Dimenssions.radius6),
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius6),
                           ),
                           child: Text(
                             '${item.quantity} item',
@@ -320,12 +320,13 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = transaction.items.isNotEmpty 
-        ? transaction.items 
+    final items = transaction.items.isNotEmpty
+        ? transaction.items
         : (transaction.order?.orderItems ?? []);
-    
-    final orderId = (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
-    final status = transaction.status;
+
+    final orderId =
+        (transaction.orderId ?? transaction.id)?.toString() ?? 'Unknown';
+    final status = transaction.order?.orderStatus;
     final date = transaction.createdAt != null
         ? DateFormat('dd MMM yyyy HH:mm').format(transaction.createdAt!)
         : '-';

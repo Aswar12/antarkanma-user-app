@@ -26,13 +26,26 @@ class OrderStatusBadge extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Text(
-        statusInfo.text,
-        style: primaryTextStyle.copyWith(
-          color: statusInfo.color,
-          fontSize: Dimenssions.font12,
-          fontWeight: semiBold,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (statusInfo.icon != null) ...[
+            Icon(
+              statusInfo.icon,
+              size: Dimenssions.font14,
+              color: statusInfo.color,
+            ),
+            SizedBox(width: Dimenssions.width4),
+          ],
+          Text(
+            statusInfo.text,
+            style: primaryTextStyle.copyWith(
+              color: statusInfo.color,
+              fontSize: Dimenssions.font12,
+              fontWeight: semiBold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -43,56 +56,62 @@ class OrderStatusBadge extends StatelessWidget {
         return StatusInfo(
           color: priceColor,
           text: 'Menunggu Konfirmasi',
+          icon: Icons.hourglass_empty,
         );
       case 'ACCEPTED':
         return StatusInfo(
           color: Colors.green,
           text: 'Diterima',
+          icon: Icons.check_circle_outline,
         );
       case 'REJECTED':
         return StatusInfo(
           color: Colors.red,
           text: 'Ditolak',
+          icon: Icons.cancel_outlined,
         );
       case 'PROCESSING':
         return StatusInfo(
           color: logoColorSecondary,
           text: 'Sedang Diproses',
+          icon: Icons.sync,
         );
       case 'READYTOPICKUP':
         return StatusInfo(
           color: Colors.orange,
           text: 'Siap Antar',
+          icon: Icons.delivery_dining,
         );
       case 'SHIPPED':
+      case 'ON_DELIVERY':
         return StatusInfo(
           color: Colors.blue,
           text: 'Dalam Pengiriman',
+          icon: Icons.local_shipping_outlined,
         );
       case 'DELIVERED':
         return StatusInfo(
           color: Colors.purple,
           text: 'Terkirim',
-        );
-      case 'ON_DELIVERY':
-        return StatusInfo(
-          color: Colors.blue,
-          text: 'Dalam Pengiriman',
+          icon: Icons.done_all,
         );
       case 'COMPLETED':
         return StatusInfo(
           color: primaryColor,
           text: 'Selesai',
+          icon: Icons.verified_outlined,
         );
       case 'CANCELED':
         return StatusInfo(
           color: alertColor,
           text: 'Dibatalkan',
+          icon: Icons.highlight_off,
         );
       default:
         return StatusInfo(
           color: secondaryTextColor,
           text: status,
+          icon: Icons.help_outline,
         );
     }
   }
@@ -101,9 +120,11 @@ class OrderStatusBadge extends StatelessWidget {
 class StatusInfo {
   final Color color;
   final String text;
+  final IconData? icon;
 
   StatusInfo({
     required this.color,
     required this.text,
+    this.icon,
   });
 }

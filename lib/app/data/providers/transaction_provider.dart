@@ -298,7 +298,7 @@ class TransactionProvider {
       final queryParams = {
         'page': page,
         'limit': limit,
-        if (status != null) 'status': status,
+        if (status != null) 'order_status': status,
       };
 
       debugPrint('\n=== Getting Merchant Orders ===');
@@ -308,8 +308,6 @@ class TransactionProvider {
         '/merchants/$merchantId/orders',
         queryParameters: queryParams,
       );
-
-      // Add READYTOPICKUP to status counts if not present
 
       return response;
     } on dio.DioException catch (e) {

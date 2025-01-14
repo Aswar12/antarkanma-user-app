@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
+import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/modules/merchant/controllers/merchant_order_controller.dart';
 import 'package:antarkanma/app/modules/merchant/widgets/merchant_order_card.dart';
 
@@ -31,16 +32,16 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
       if (!_tabController.indexIsChanging) {
         switch (_tabController.index) {
           case 0:
-            controller.filterOrders('PENDING');
+            controller.filterOrders(OrderItemStatus.pending);
             break;
           case 1:
-            controller.filterOrders('PROCESSING');
+            controller.filterOrders(OrderItemStatus.processing);
             break;
           case 2:
-            controller.filterOrders('READYTOPICKUP');
+            controller.filterOrders(OrderItemStatus.readyForPickup);
             break;
           case 3:
-            controller.filterOrders('COMPLETED');
+            controller.filterOrders(OrderItemStatus.completed);
             break;
           case 4:
             controller.filterOrders('all');
@@ -77,10 +78,10 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList('PENDING'),
-                _buildOrderList('PROCESSING'),
-                _buildOrderList('READYTOPICKUP'),
-                _buildOrderList('COMPLETED'),
+                _buildOrderList(OrderItemStatus.pending),
+                _buildOrderList(OrderItemStatus.processing),
+                _buildOrderList(OrderItemStatus.readyForPickup),
+                _buildOrderList(OrderItemStatus.completed),
                 _buildOrderList('all'),
               ],
             ),
@@ -120,11 +121,11 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
       color: Colors.white,
       child: Obx(() {
         final stats = controller.orderStats;
-        final totalOrders = (stats['PENDING'] ?? 0) +
-            (stats['PROCESSING'] ?? 0) +
-            (stats['READYTOPICKUP'] ?? 0) +
-            (stats['COMPLETED'] ?? 0) +
-            (stats['CANCELED'] ?? 0);
+        final totalOrders = (stats[OrderItemStatus.pending] ?? 0) +
+            (stats[OrderItemStatus.processing] ?? 0) +
+            (stats[OrderItemStatus.readyForPickup] ?? 0) +
+            (stats[OrderItemStatus.completed] ?? 0) +
+            (stats[OrderItemStatus.canceled] ?? 0);
         return TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -132,10 +133,10 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
           unselectedLabelColor: subtitleColor,
           indicatorColor: logoColor,
           tabs: [
-            _buildTab('Pending', stats['PENDING'] ?? 0),
-            _buildTab('Proses', stats['PROCESSING'] ?? 0),
-            _buildTab('Siap Antar', stats['READYTOPICKUP'] ?? 0),
-            _buildTab('Selesai', stats['COMPLETED'] ?? 0),
+            _buildTab('Pending', stats[OrderItemStatus.pending] ?? 0),
+            _buildTab('Proses', stats[OrderItemStatus.processing] ?? 0),
+            _buildTab('Siap Antar', stats[OrderItemStatus.readyForPickup] ?? 0),
+            _buildTab('Selesai', stats[OrderItemStatus.completed] ?? 0),
             _buildTab('Semua', totalOrders),
           ],
         );
@@ -285,7 +286,8 @@ class MerchantOrderPageState extends State<MerchantOrderPage>
   }
 
   void _showOrderActions(TransactionModel transaction) {
-    if (controller.canProcessOrder(transaction.status)) {
+    final orderStatus = transaction.order?.orderStatus ?? transaction.status;
+    if (controller.canProcessOrder(orderStatus)) {
       Get.bottomSheet(
         Container(
           decoration: BoxDecoration(

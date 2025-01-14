@@ -4,6 +4,7 @@ import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
+import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:flutter/foundation.dart';
 
 class MerchantOrderController extends GetxController {
@@ -14,11 +15,11 @@ class MerchantOrderController extends GetxController {
 
   // Define valid order statuses
   static const List<String> validOrderStatuses = [
-    'PENDING',
-    'PROCESSING',
-    'READYTOPICKUP',
-    'COMPLETED',
-    'CANCELED'
+    OrderItemStatus.pending,
+    OrderItemStatus.processing,
+    OrderItemStatus.readyForPickup,
+    OrderItemStatus.completed,
+    OrderItemStatus.canceled
   ];
 
   MerchantOrderController() {
@@ -44,21 +45,29 @@ class MerchantOrderController extends GetxController {
 
   // Order statistics
   final RxMap<String, int> orderStats = <String, int>{
-    'PENDING': 0,
-    'PROCESSING': 0,
-    'READYTOPICKUP': 0,
-    'COMPLETED': 0,
-    'CANCELED': 0,
+    OrderItemStatus.pending: 0,
+    OrderItemStatus.processing: 0,
+    OrderItemStatus.readyForPickup: 0,
+    OrderItemStatus.completed: 0,
+    OrderItemStatus.canceled: 0,
   }.obs;
 
   // Computed list of filtered orders
   List<TransactionModel> get filteredOrders {
-    if (currentFilter.value == 'all') {
-      return orders;
-    }
-    return orders
-        .where((order) => order.status == currentFilter.value)
-        .toList();
+    var filteredList = currentFilter.value == 'all'
+        ? List<TransactionModel>.from(orders)
+        : orders.where((order) => 
+            (order.order?.orderStatus ?? order.status).toUpperCase() == currentFilter.value.toUpperCase()
+          ).toList();
+    
+    // Sort by ID in ascending order
+    filteredList.sort((a, b) {
+      int aId = int.tryParse(a.id.toString()) ?? 0;
+      int bId = int.tryParse(b.id.toString()) ?? 0;
+      return aId.compareTo(bId);
+    });
+    
+    return filteredList;
   }
 
   @override
@@ -181,7 +190,9 @@ class MerchantOrderController extends GetxController {
   }
 
   bool canProcessOrder(String status) {
-    return status == 'PENDING' || status == 'PROCESSING';
+    final upperStatus = status.toUpperCase();
+    return upperStatus == OrderItemStatus.pending || 
+           upperStatus == OrderItemStatus.processing;
   }
 
   Future<void> markAsReadyForPickup(String orderId) async {
