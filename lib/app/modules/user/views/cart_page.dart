@@ -3,6 +3,7 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
+import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +119,7 @@ class _CartPageState extends State<CartPage> {
             child: ElevatedButton(
               onPressed: () {
                 Get.find<UserMainController>().currentIndex.value = 0;
-                Get.offAllNamed('/usermainpage');
+                _navigateToHomePage();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: logoColorSecondary,
@@ -532,5 +533,18 @@ class _CartPageState extends State<CartPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _navigateToHomePage() async {
+    debugPrint('Navigating to order page...');
+    final controller = Get.put(UserMainController(), permanent: true);
+    controller.currentIndex.value = 0;
+    await Future.delayed(const Duration(milliseconds: 100));
+    await Get.offAll(
+      () => const UserMainPage(),
+      transition: Transition.noTransition,
+      duration: const Duration(milliseconds: 0),
+    );
+    debugPrint('Navigation to order page complete');
   }
 }

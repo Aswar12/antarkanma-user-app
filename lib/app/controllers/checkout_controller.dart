@@ -42,6 +42,8 @@ class CheckoutController extends GetxController {
     super.onInit();
     _initializeCheckoutLocation();
     _initializeCheckout();
+    // Set COD as default payment method
+    setPaymentMethod('COD');
     ever(userLocationController.selectedLocation, (location) {
       if (location != null) {
         setDeliveryLocation(location);
