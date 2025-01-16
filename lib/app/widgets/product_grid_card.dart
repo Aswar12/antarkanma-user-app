@@ -119,7 +119,7 @@ class ProductGridCard extends StatelessWidget {
                         fontSize: Dimenssions.font14,
                         fontWeight: semiBold,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
@@ -131,6 +131,8 @@ class ProductGridCard extends StatelessWidget {
                           fontSize: Dimenssions.font12,
                           fontWeight: medium,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     const Spacer(),
                     // Price and Rating Row

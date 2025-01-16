@@ -65,9 +65,8 @@ class PaginatedResponse<T> {
 
       debugPrint('Successfully parsed ${parsedData.length} items');
 
-      // Get pagination info
+      // Get pagination info from the API response
       String? nextCursor;
-      bool hasMore = false;
       int currentPage = 1;
       int lastPage = 1;
       int total = 0;
@@ -77,10 +76,17 @@ class PaginatedResponse<T> {
         currentPage = paginationData['current_page'] as int? ?? 1;
         lastPage = paginationData['last_page'] as int? ?? 1;
         total = paginationData['total'] as int? ?? 0;
-        hasMore = currentPage < lastPage;
-        
-        debugPrint('Pagination info: currentPage=$currentPage, lastPage=$lastPage, total=$total, hasMore=$hasMore');
+
+        debugPrint('Pagination info from API:');
+        debugPrint('- Current page: $currentPage');
+        debugPrint('- Last page: $lastPage');
+        debugPrint('- Total items: $total');
+        debugPrint('- Next cursor: $nextCursor');
       }
+
+      // Determine if there are more pages based on current_page and last_page
+      bool hasMore = currentPage < lastPage;
+      debugPrint('Has more pages: $hasMore (current: $currentPage, last: $lastPage)');
 
       return PaginatedResponse(
         data: parsedData,
@@ -116,6 +122,6 @@ class PaginatedResponse<T> {
 
   @override
   String toString() {
-    return 'PaginatedResponse(items: ${data.length}, currentPage: $currentPage, lastPage: $lastPage, total: $total, nextCursor: $nextCursor, hasMore: $hasMore)';
+    return 'PaginatedResponse(items: ${data.length}, currentPage: $currentPage, lastPage: $lastPage, total: $total, hasMore: $hasMore)';
   }
 }

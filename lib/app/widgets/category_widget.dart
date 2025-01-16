@@ -108,7 +108,6 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(
                   horizontal: Dimenssions.width15,
-                  vertical: Dimenssions.height5,
                 ),
                 child: Row(
                   children: [

@@ -16,6 +16,13 @@ class MerchantProductController extends GetxController {
   var sortBy = 'Baru'.obs;
   var categories = <String>[].obs;
 
+  // Pagination variables
+  var currentPage = 1;
+  var hasMoreData = true.obs;
+  var isLoadingMore = false.obs;
+  var totalItems = 0;
+  var lastPage = 1;
+
   final searchController = TextEditingController();
 
   MerchantProductController({required this.merchantService});
@@ -34,24 +41,53 @@ class MerchantProductController extends GetxController {
 
   Future<void> fetchProducts() async {
     try {
-      isLoading(true);
+      if (currentPage == 1) {
+        isLoading(true);
+      }
       errorMessage('');
-      final fetchedProducts = await merchantService.getMerchantProducts();
-      products.assignAll(fetchedProducts);
+      
+      final response = await merchantService.getMerchantProducts(
+        page: currentPage,
+        pageSize: 10,
+      );
+      
+      if (currentPage == 1) {
+        products.clear();
+      }
+      
+      products.addAll(response.data);
+      hasMoreData.value = response.hasMore;
+      lastPage = response.lastPage;
+      totalItems = response.total;
       
       // Extract unique categories
-      final uniqueCategories = fetchedProducts
+      final uniqueCategories = products
           .where((p) => p.category != null)
           .map((p) => p.category!.name)
           .toSet()
           .toList();
-      categories.assignAll(uniqueCategories);
+      categories.assignAll(['Semua', ...uniqueCategories]);
       
       _applyFilters();
     } catch (e) {
       errorMessage('Gagal memuat produk: $e');
     } finally {
       isLoading(false);
+      isLoadingMore(false);
+    }
+  }
+
+  Future<void> loadMoreProducts() async {
+    if (!hasMoreData.value || isLoadingMore.value || currentPage >= lastPage) {
+      return;
+    }
+
+    try {
+      isLoadingMore(true);
+      currentPage++;
+      await fetchProducts();
+    } finally {
+      isLoadingMore(false);
     }
   }
 
@@ -77,12 +113,16 @@ class MerchantProductController extends GetxController {
 
   void searchProducts(String query) {
     searchQuery.value = query;
-    _applyFilters();
+    currentPage = 1;
+    hasMoreData.value = true;
+    fetchProducts();
   }
 
   void filterByCategory(String category) {
     selectedCategory.value = category;
-    _applyFilters();
+    currentPage = 1;
+    hasMoreData.value = true;
+    fetchProducts();
   }
 
   void sortProducts(String sortType) {

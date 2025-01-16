@@ -75,9 +75,20 @@ class MerchantProvider {
     int merchantId, {
     int page = 1,
     int pageSize = 10,
+    Map<String, dynamic>? queryParams,
   }) async {
     try {
       print('Fetching products for merchant ID: $merchantId (page: $page, pageSize: $pageSize)');
+      
+      final Map<String, dynamic> params = {
+        'page': page,
+        'page_size': pageSize,
+      };
+
+      if (queryParams != null) {
+        params.addAll(queryParams);
+      }
+
       final response = await _dio.get(
         '/merchants/$merchantId/products',
         options: Options(
@@ -85,10 +96,7 @@ class MerchantProvider {
             'Authorization': 'Bearer $token',
           },
         ),
-        queryParameters: {
-          'page': page,
-          'page_size': pageSize,
-        },
+        queryParameters: params,
       );
       print('Products API Response: ${response.data}');
       return response;

@@ -194,7 +194,7 @@ class ProductManagementPage extends GetView<MerchantProductController> {
           ),
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value) {
+              if (controller.isLoading.value && controller.products.isEmpty) {
                 return Center(child: CircularProgressIndicator());
               }
 
@@ -231,20 +231,51 @@ class ProductManagementPage extends GetView<MerchantProductController> {
               }
 
               return RefreshIndicator(
-                onRefresh: () async => controller.fetchProducts(),
-                child: GridView.builder(
-                  padding: EdgeInsets.all(16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.68,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: controller.filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = controller.filteredProducts[index];
-                    return _buildProductCard(product);
+                onRefresh: () async {
+                  controller.currentPage = 1;
+                  return controller.fetchProducts();
+                },
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (ScrollNotification scrollInfo) {
+                    if (scrollInfo is ScrollEndNotification &&
+                        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200 &&
+                        !controller.isLoadingMore.value &&
+                        controller.hasMoreData.value) {
+                      controller.loadMoreProducts();
+                    }
+                    return false;
                   },
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.all(16),
+                        sliver: SliverGrid(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.68,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final product = controller.filteredProducts[index];
+                              return _buildProductCard(product);
+                            },
+                            childCount: controller.filteredProducts.length,
+                          ),
+                        ),
+                      ),
+                      if (controller.isLoadingMore.value)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               );
             }),

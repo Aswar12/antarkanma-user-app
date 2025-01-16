@@ -55,7 +55,7 @@ class _SearchInputFieldState extends State<SearchInputField> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = (_isFocused || _hasText)
+    final logoColor = (_isFocused || _hasText)
         ? logoColorSecondary
         : Colors.grey.withOpacity(0.5);
     return Container(
@@ -64,7 +64,7 @@ class _SearchInputFieldState extends State<SearchInputField> {
         color: backgroundColor1,
         borderRadius: BorderRadius.circular(Dimenssions.radius12),
         border: Border.all(
-          color: borderColor,
+          color: logoColor,
           width: 1.85,
         ),
       ),

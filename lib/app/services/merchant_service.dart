@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:antarkanma/app/data/providers/merchant_provider.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/data/models/paginated_response.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
@@ -73,8 +74,12 @@ class MerchantService {
     }
   }
 
-  // Rest of the file remains unchanged...
-  Future<List<ProductModel>> getMerchantProducts({int page = 1, int pageSize = 10}) async {
+  Future<PaginatedResponse<ProductModel>> getMerchantProducts({
+    int page = 1,
+    int pageSize = 10,
+    String? query,
+    String? category,
+  }) async {
     try {
       if (_currentMerchant?.id == null) {
         final merchant = await getMerchant();
@@ -90,11 +95,29 @@ class MerchantService {
         }
       }
 
-      final cachedProducts = _getPageFromStorage(page);
-      if (cachedProducts != null) {
-        print('Loading merchant products page $page from cache');
-        _prefetchNextPage(page, pageSize);
-        return cachedProducts;
+      // Only use cache if no filters are applied
+      if (query == null && category == null) {
+        final cachedProducts = _getPageFromStorage(page);
+        if (cachedProducts != null) {
+          print('Loading merchant products page $page from cache');
+          _prefetchNextPage(page, pageSize);
+          return PaginatedResponse(
+            data: cachedProducts,
+            currentPage: page,
+            hasMore: true,
+          );
+        }
+      }
+
+      Map<String, dynamic>? queryParams;
+      if (query != null || category != null) {
+        queryParams = {};
+        if (query != null && query.isNotEmpty) {
+          queryParams['name'] = query;
+        }
+        if (category != null && category != 'Semua') {
+          queryParams['category'] = category;
+        }
       }
 
       final response = await _merchantProvider.getMerchantProducts(
@@ -102,27 +125,24 @@ class MerchantService {
         _currentMerchant!.id!,
         page: page,
         pageSize: pageSize,
+        queryParams: queryParams,
       );
 
-      if (response.data != null &&
-          response.data['meta'] != null &&
-          response.data['meta']['status'] == 'success' &&
-          response.data['data'] != null &&
-          response.data['data']['data'] is List) {
-        final productsData = response.data['data']['data'] as List;
-        final products = productsData.map((json) => ProductModel.fromJson(json)).toList();
+      final paginatedResponse = PaginatedResponse<ProductModel>.fromJson(
+        response.data,
+        (json) => ProductModel.fromJson(json as Map<String, dynamic>),
+      );
 
-        await _savePageToStorage(page, products);
+      // Only cache if no filters are applied
+      if (query == null && category == null) {
+        await _savePageToStorage(page, paginatedResponse.data);
         _prefetchNextPage(page, pageSize);
-
-        return products;
       }
 
-      print('Unexpected response structure: ${response.data}');
-      return [];
+      return paginatedResponse;
     } catch (e) {
       print('Error fetching merchant products: $e');
-      return [];
+      return PaginatedResponse(data: [], hasMore: false);
     } finally {
       _lastRequestTime = DateTime.now();
     }
@@ -172,7 +192,7 @@ class MerchantService {
       }
 
       final product = ProductModel.fromJson(createdProductData);
-      await _productService.addProductToLocal(1, [product]);
+      _productService.addProductToLocal(product);
       await clearCache();
       return true;
     } catch (e) {
@@ -181,8 +201,6 @@ class MerchantService {
     }
   }
 
-  // Rest of the methods remain unchanged...
-  
   Future<bool> updateProduct(int productId, Map<String, dynamic> productData,
       List<XFile> newImages) async {
     try {
@@ -403,7 +421,9 @@ class MerchantService {
       print('Error updating merchant details: $e');
       return false;
     }
-  }Future<void> _prefetchNextPage(int currentPage, int pageSize) async {
+  }
+
+  Future<void> _prefetchNextPage(int currentPage, int pageSize) async {
     if (_prefetchInProgress) return;
 
     try {
@@ -451,7 +471,7 @@ class MerchantService {
       await _storage.write(_merchantProductsKey, allPages);
       await _updatePageMetadata(page);
     } catch (e) {
-      print('Error saving page $page to storage: $e');
+      print('Error saving page $page from storage: $e');
     }
   }
 

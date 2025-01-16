@@ -18,20 +18,20 @@ class HomePage extends GetView<HomePageController> {
   Widget _buildSearchBar() {
     return SearchInputField(
       controller: controller.searchController,
+      focusNode: controller.searchFocusNode,
       hintText: 'Apa Ku AntarkanKi ?',
       onClear: () {
         controller.searchController.clear();
+        controller.searchQuery.value = '';
+        FocusManager.instance.primaryFocus?.unfocus();
       },
       onChanged: (value) async {
+        controller.searchQuery.value = value;
         if (value.isNotEmpty) {
           await controller.performSearch();
         }
       },
     );
-  }
-
-  Widget _buildCategories() {
-    return const CategoryWidget();
   }
 
   Widget popularProductsTitle() {
@@ -118,23 +118,22 @@ class HomePage extends GetView<HomePageController> {
               final product = controller.popularProducts[index];
               return ProductCarouselCard(
                 product: product,
-                onTap: () =>
-                    Get.toNamed(Routes.productDetail, arguments: product),
+                onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
               );
             },
           ),
           SizedBox(height: Dimenssions.height10),
           Obx(() => AnimatedSmoothIndicator(
-            activeIndex: controller.currentIndex.value,
-            count: controller.popularProducts.length,
-            effect: WormEffect(
-              activeDotColor: logoColorSecondary,
-              dotColor: secondaryTextColor.withOpacity(0.2),
-              dotHeight: Dimenssions.height10,
-              dotWidth: Dimenssions.height10,
-              type: WormType.thin,
-            ),
-          )),
+                activeIndex: controller.currentIndex.value,
+                count: controller.popularProducts.length,
+                effect: WormEffect(
+                  activeDotColor: logoColorSecondary,
+                  dotColor: secondaryTextColor.withOpacity(0.2),
+                  dotHeight: Dimenssions.height10,
+                  dotWidth: Dimenssions.height10,
+                  type: WormType.thin,
+                ),
+              )),
         ],
       );
     });
@@ -208,13 +207,16 @@ class HomePage extends GetView<HomePageController> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final product = controller.filteredProducts[index];
-                if (index == controller.filteredProducts.length - 3) {
-                  controller.checkAndPreloadNextPage();
+
+                if (index >= 6 && !controller.isLoadingMore.value) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    controller.loadMoreProducts();
+                  });
                 }
+
                 return ProductGridCard(
                   product: product,
-                  onTap: () =>
-                      Get.toNamed(Routes.productDetail, arguments: product),
+                  onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
                 );
               },
               childCount: controller.filteredProducts.length,
@@ -232,21 +234,6 @@ class HomePage extends GetView<HomePageController> {
               ),
             ),
           ),
-        if (!controller.hasMoreData.value &&
-            controller.filteredProducts.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(Dimenssions.height10),
-              child: Center(
-                child: Text(
-                  'Tidak ada produk lagi',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     ];
   }
@@ -255,10 +242,12 @@ class HomePage extends GetView<HomePageController> {
   Widget build(BuildContext context) {
     return Obx(() {
       if (controller.isLoading.value && controller.searchQuery.isEmpty) {
-        return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(
-              color: logoColorSecondary,
+        return SafeArea(
+          child: Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                color: logoColorSecondary,
+              ),
             ),
           ),
         );
@@ -266,85 +255,87 @@ class HomePage extends GetView<HomePageController> {
 
       return Scaffold(
         backgroundColor: backgroundColor1,
-        body: RefreshIndicator(
-          onRefresh: controller.refreshProducts,
-          color: logoColorSecondary,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                backgroundColor: backgroundColor1,
-                floating: true,
-                snap: true,
-                elevation: 0,
-                toolbarHeight: kToolbarHeight,
-                title: Container(
-                  margin: EdgeInsets.symmetric(vertical: Dimenssions.height2),
-                  child: _buildSearchBar(),
-                ),
-                actions: [
-                  Container(
-                    margin: EdgeInsets.only(
-                      top: Dimenssions.height2,
-                      right: Dimenssions.width15,
-                      bottom: Dimenssions.height2,
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: controller.refreshProducts,
+            color: logoColorSecondary,
+            child: CustomScrollView(
+              controller: controller.scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: backgroundColor1,
+                  floating: true,
+                  pinned: true,
+                  elevation: 0,
+                  toolbarHeight: kToolbarHeight,
+                  title: Container(
+                    margin: EdgeInsets.symmetric(vertical: Dimenssions.height2),
+                    child: Row(
+                      children: [
+                        Expanded(child: _buildSearchBar()),
+                        SizedBox(width: Dimenssions.width10),
+                        Obx(() {
+                          final authService = Get.find<AuthService>();
+                          final user = authService.getUser();
+                          if (user == null) {
+                            return Container(
+                              width: Dimenssions.height40,
+                              height: Dimenssions.height40,
+                              decoration: BoxDecoration(
+                                color: backgroundColor3,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: logoColorSecondary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                color: secondaryTextColor,
+                                size: Dimenssions.iconSize20,
+                              ),
+                            );
+                          }
+                          return ProfileImage(
+                            user: user,
+                            size: Dimenssions.height40,
+                          );
+                        }),
+                      ],
                     ),
-                    child: Obx(() {
-                      final authService = Get.find<AuthService>();
-                      final user = authService.getUser();
-                      if (user == null) {
-                        return Container(
-                          width: Dimenssions.height40,
-                          height: Dimenssions.height40,
-                          decoration: BoxDecoration(
-                            color: backgroundColor3,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: logoColorSecondary.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.person,
-                            color: secondaryTextColor,
-                            size: Dimenssions.iconSize20,
-                          ),
-                        );
-                      }
-                      return ProfileImage(
-                        user: user,
-                        size: Dimenssions.height40,
-                      );
-                    }),
+                  ),
+                ),
+                // Only show popular products when not searching
+                if (controller.searchQuery.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        popularProductsTitle(),
+                        popularProducts(),
+                        SizedBox(height: Dimenssions.height10),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    popularProductsTitle(),
-                    popularProducts(),
-                    SizedBox(height: Dimenssions.height10),
-                  ],
-                ),
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SliverAppBarDelegate(
-                  minHeight: Dimenssions.height45,
-                  maxHeight: Dimenssions.height45,
-                  child: Container(
-                    color: backgroundColor1,
-                    alignment: Alignment.center,
-                    child: _buildCategories(),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverAppBarDelegate(
+                    minHeight: Dimenssions.height45,
+                    maxHeight: Dimenssions.height45,
+                    child: Container(
+                      color: backgroundColor1,
+                      alignment: Alignment.center,
+                      child: const CategoryWidget(),
+                    ),
                   ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: listProductsTitle(),
-              ),
-              ..._buildProductSlivers(),
-            ],
+                SliverToBoxAdapter(
+                  child: listProductsTitle(),
+                ),
+                ..._buildProductSlivers(),
+              ],
+            ),
           ),
         ),
       );
@@ -370,8 +361,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => maxHeight;
 
   @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return SizedBox.expand(child: child);
   }
 
