@@ -68,6 +68,7 @@ class CheckoutPage extends GetView<CheckoutController> {
     );
   }
 
+  // Previous methods remain the same...
   Widget _buildPaymentSection() {
     return Card(
       color: backgroundColor1,
@@ -569,15 +570,17 @@ class CheckoutPage extends GetView<CheckoutController> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Total Pembayaran',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font16,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    'Total Pembayaran',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font16,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
+                SizedBox(width: Dimenssions.width10),
                 Text(
                   NumberFormat.currency(
                     locale: 'id_ID',
@@ -709,4 +712,6 @@ class CheckoutPage extends GetView<CheckoutController> {
       ),
     );
   }
+
+  // Rest of the methods remain the same...
 }

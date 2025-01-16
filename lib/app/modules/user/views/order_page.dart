@@ -188,11 +188,12 @@ class _OrderPageState extends State<OrderPage>
                             ),
                         ],
                       ),
-                      OrderStatusBadge(status: transaction.status),
+                      OrderStatusBadge(status: transaction.order!.orderStatus),
                     ],
                   ),
                   SizedBox(height: Dimenssions.height15),
-                  Divider(height: 1, color: backgroundColor3.withValues(alpha: 51)),
+                  Divider(
+                      height: 1, color: backgroundColor3.withValues(alpha: 51)),
                 ],
               ),
             ),
@@ -218,7 +219,8 @@ class _OrderPageState extends State<OrderPage>
                           .map((item) => _buildDetailProductItem(item)),
                       SizedBox(height: Dimenssions.height15),
                       Divider(
-                          height: 1, color: backgroundColor3.withValues(alpha: 51)),
+                          height: 1,
+                          color: backgroundColor3.withValues(alpha: 51)),
                       SizedBox(height: Dimenssions.height15),
 
                       // Shipping Address
@@ -311,7 +313,7 @@ class _OrderPageState extends State<OrderPage>
               ),
             ),
             // Cancel Button at Bottom
-            if (transaction.status.toUpperCase() == 'PENDING') ...[
+            if (transaction.order!.orderStatus.toUpperCase() == 'PENDING') ...[
               Padding(
                 padding: EdgeInsets.all(Dimenssions.height15),
                 child: SizedBox(
@@ -355,6 +357,7 @@ class _OrderPageState extends State<OrderPage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
         ),
+        backgroundColor: backgroundColor1,
         child: Padding(
           padding: EdgeInsets.all(Dimenssions.height20),
           child: Column(

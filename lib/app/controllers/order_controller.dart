@@ -11,6 +11,15 @@ class OrderController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   late final TransactionService _transactionService;
 
+  // Define order status constants
+  static const String ORDER_STATUS_PENDING = 'PENDING';
+  static const String ORDER_STATUS_PROCESSING = 'PROCESSING';
+  static const String ORDER_STATUS_READYTOPICKUP = 'READYTOPICKUP';
+  static const String ORDER_STATUS_SHIPPED = 'SHIPPED';
+  static const String ORDER_STATUS_DELIVERED = 'DELIVERED';
+  static const String ORDER_STATUS_COMPLETED = 'COMPLETED';
+  static const String ORDER_STATUS_CANCELED = 'CANCELED';
+
   OrderController() {
     try {
       _transactionService = Get.find<TransactionService>();
@@ -35,7 +44,7 @@ class OrderController extends GetxController {
     debugPrint('Auth status: ${_authService.isLoggedIn.value}');
 
     if (_authService.isLoggedIn.value) {
-      fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
+      fetchTransactions(status: '$ORDER_STATUS_PENDING,$ORDER_STATUS_PROCESSING,$ORDER_STATUS_READYTOPICKUP,$ORDER_STATUS_SHIPPED');
     } else {
       debugPrint('User not logged in, skipping transaction fetch');
     }
@@ -43,7 +52,7 @@ class OrderController extends GetxController {
     ever(_authService.isLoggedIn, (bool isLoggedIn) {
       if (isLoggedIn) {
         debugPrint('User logged in, fetching transactions');
-        fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
+        fetchTransactions(status: '$ORDER_STATUS_PENDING,$ORDER_STATUS_PROCESSING,$ORDER_STATUS_READYTOPICKUP,$ORDER_STATUS_SHIPPED');
       } else {
         debugPrint('User logged out, clearing transactions');
         transactions.clear();
@@ -71,6 +80,7 @@ class OrderController extends GetxController {
       for (var transaction in result) {
         debugPrint('\nTransaction ID: ${transaction.id}');
         debugPrint('Status: ${transaction.status}');
+        debugPrint('Order Status: ${transaction.order?.orderStatus}');
         debugPrint('Items count: ${transaction.items.length}');
       }
 
@@ -99,17 +109,18 @@ class OrderController extends GetxController {
 
   List<TransactionModel> get activeOrders {
     final active = transactions.where((t) {
-      final status = (t.order?.orderStatus ?? t.status).toUpperCase();
-      debugPrint('Checking transaction ${t.id} with status: $status');
-      return status == OrderItemStatus.pending || 
-             status == OrderItemStatus.processing || 
-             status == OrderItemStatus.readyForPickup;
+      final orderStatus = t.order?.orderStatus.toUpperCase() ?? '';
+      debugPrint('Checking transaction ${t.id} with order status: $orderStatus');
+      return orderStatus == ORDER_STATUS_PENDING || 
+             orderStatus == ORDER_STATUS_PROCESSING || 
+             orderStatus == ORDER_STATUS_READYTOPICKUP ||
+             orderStatus == ORDER_STATUS_SHIPPED;
     }).toList();
 
     debugPrint('\n=== Active Orders ===');
     debugPrint('Count: ${active.length}');
     for (var order in active) {
-      debugPrint('ID: ${order.id}, Status: ${order.status}, Items: ${order.items.length}');
+      debugPrint('ID: ${order.id}, Order Status: ${order.order?.orderStatus}, Items: ${order.items.length}');
     }
 
     return active;
@@ -117,16 +128,17 @@ class OrderController extends GetxController {
 
   List<TransactionModel> get historyOrders {
     final history = transactions.where((t) {
-      final status = (t.order?.orderStatus ?? t.status).toUpperCase();
-      debugPrint('Checking transaction ${t.id} with status: $status');
-      return status == OrderItemStatus.completed || 
-             status == OrderItemStatus.canceled;
+      final orderStatus = t.order?.orderStatus.toUpperCase() ?? '';
+      debugPrint('Checking transaction ${t.id} with order status: $orderStatus');
+      return orderStatus == ORDER_STATUS_COMPLETED || 
+             orderStatus == ORDER_STATUS_CANCELED ||
+             orderStatus == ORDER_STATUS_DELIVERED;
     }).toList();
 
     debugPrint('\n=== History Orders ===');
     debugPrint('Count: ${history.length}');
     for (var order in history) {
-      debugPrint('ID: ${order.id}, Status: ${order.status}, Items: ${order.items.length}');
+      debugPrint('ID: ${order.id}, Order Status: ${order.order?.orderStatus}, Items: ${order.items.length}');
     }
 
     return history;
@@ -140,9 +152,9 @@ class OrderController extends GetxController {
     errorMessage.value = '';
 
     if (index == 0) {
-      await fetchTransactions(status: '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}');
+      await fetchTransactions(status: '$ORDER_STATUS_PENDING,$ORDER_STATUS_PROCESSING,$ORDER_STATUS_READYTOPICKUP,$ORDER_STATUS_SHIPPED');
     } else {
-      await fetchTransactions(status: '${OrderItemStatus.completed},${OrderItemStatus.canceled}');
+      await fetchTransactions(status: '$ORDER_STATUS_COMPLETED,$ORDER_STATUS_CANCELED,$ORDER_STATUS_DELIVERED');
     }
   }
 
@@ -188,8 +200,8 @@ class OrderController extends GetxController {
     if (_authService.isLoggedIn.value) {
       await fetchTransactions(
           status: currentTab.value == 0
-              ? '${OrderItemStatus.pending},${OrderItemStatus.processing},${OrderItemStatus.readyForPickup}'
-              : '${OrderItemStatus.completed},${OrderItemStatus.canceled}');
+              ? '$ORDER_STATUS_PENDING,$ORDER_STATUS_PROCESSING,$ORDER_STATUS_READYTOPICKUP,$ORDER_STATUS_SHIPPED'
+              : '$ORDER_STATUS_COMPLETED,$ORDER_STATUS_CANCELED,$ORDER_STATUS_DELIVERED');
     } else {
       debugPrint('User not logged in, skipping refresh');
     }

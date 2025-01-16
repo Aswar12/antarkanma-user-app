@@ -58,18 +58,6 @@ class OrderStatusBadge extends StatelessWidget {
           text: 'Menunggu Konfirmasi',
           icon: Icons.hourglass_empty,
         );
-      case 'ACCEPTED':
-        return StatusInfo(
-          color: Colors.green,
-          text: 'Diterima',
-          icon: Icons.check_circle_outline,
-        );
-      case 'REJECTED':
-        return StatusInfo(
-          color: Colors.red,
-          text: 'Ditolak',
-          icon: Icons.cancel_outlined,
-        );
       case 'PROCESSING':
         return StatusInfo(
           color: logoColorSecondary,

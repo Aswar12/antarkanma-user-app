@@ -1,3 +1,4 @@
+// Previous imports remain the same...
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
@@ -13,6 +14,7 @@ import 'package:flutter/foundation.dart';
 class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
 
+  // Previous methods remain the same...
   Future<void> _navigateToOrderPage() async {
     debugPrint('Navigating to order page...');
     final controller = Get.put(UserMainController(), permanent: true);
@@ -86,10 +88,13 @@ class CheckoutSuccessPage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: secondaryTextStyle,
+          Expanded(
+            child: Text(
+              label,
+              style: secondaryTextStyle,
+            ),
           ),
+          SizedBox(width: Dimenssions.width10),
           Text(
             value,
             style: primaryTextStyle.copyWith(
@@ -102,10 +107,12 @@ class CheckoutSuccessPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionCard(TransactionModel transaction, UserLocationModel deliveryAddress) {
+  Widget _buildTransactionCard(
+      TransactionModel transaction, UserLocationModel deliveryAddress) {
     String? merchantName;
     try {
-      if (transaction.items.isNotEmpty && transaction.items.first.merchant != null) {
+      if (transaction.items.isNotEmpty &&
+          transaction.items.first.merchant != null) {
         merchantName = transaction.items.first.merchant.name;
       }
     } catch (e) {
@@ -122,12 +129,15 @@ class CheckoutSuccessPage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Order ID: ${transaction.orderId}',
-                  style: primaryTextStyle.copyWith(
-                    fontWeight: semiBold,
+                Expanded(
+                  child: Text(
+                    'Order ID: ${transaction.orderId}',
+                    style: primaryTextStyle.copyWith(
+                      fontWeight: semiBold,
+                    ),
                   ),
                 ),
+                SizedBox(width: Dimenssions.width10),
                 Text(
                   transaction.statusDisplay,
                   style: primaryTextStyle.copyWith(
@@ -157,6 +167,7 @@ class CheckoutSuccessPage extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -165,16 +176,15 @@ class CheckoutSuccessPage extends StatelessWidget {
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey[300],
-                              child: Icon(
-                                Icons.image_not_supported,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.grey[300],
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -187,10 +197,23 @@ class CheckoutSuccessPage extends StatelessWidget {
                             style: primaryTextStyle.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            '${item.quantity}x ${item.formattedPrice}',
-                            style: primaryTextStyle,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${item.quantity}x ${item.formattedPrice}',
+                                style: primaryTextStyle,
+                              ),
+                              Text(
+                                item.formattedTotalPrice,
+                                style: primaryTextStyle.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -205,6 +228,7 @@ class CheckoutSuccessPage extends StatelessWidget {
     );
   }
 
+  // Rest of the code remains the same...
   @override
   Widget build(BuildContext context) {
     // Check arguments before building UI
@@ -214,7 +238,8 @@ class CheckoutSuccessPage extends StatelessWidget {
     }
 
     final args = Get.arguments as Map<String, dynamic>;
-    final List<TransactionModel> allTransactions = args['allTransactions'] ?? [];
+    final List<TransactionModel> allTransactions =
+        args['allTransactions'] ?? [];
     final List<OrderItemModel>? orderItems = args['orderItems'];
     final double? total = args['total'];
     final UserLocationModel? deliveryAddress = args['deliveryAddress'];
@@ -261,8 +286,46 @@ class CheckoutSuccessPage extends StatelessWidget {
                 ),
                 SizedBox(height: Dimenssions.height30),
 
+                // Important Notice about Order Cancellation
+                Card(
+                  color: backgroundColor1,
+                  child: Padding(
+                    padding: EdgeInsets.all(Dimenssions.width16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: alertColor,
+                              size: Dimenssions.height24,
+                            ),
+                            SizedBox(width: Dimenssions.width10),
+                            Text(
+                              'Penting!',
+                              style: primaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font18,
+                                fontWeight: semiBold,
+                                color: alertColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: Dimenssions.height15),
+                        Text(
+                          'Pesanan tidak dapat dibatalkan setelah status berubah menjadi "Sedang Diproses". Harap perhatikan status pesanan Anda.',
+                          style: primaryTextStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height20),
+
                 // Payment Instructions (if COD)
-                if (allTransactions.first.paymentMethod.toUpperCase() == 'MANUAL')
+                if (allTransactions.first.paymentMethod.toUpperCase() ==
+                    'MANUAL')
                   Card(
                     color: backgroundColor1,
                     child: Padding(
@@ -307,13 +370,15 @@ class CheckoutSuccessPage extends StatelessWidget {
                 SizedBox(height: Dimenssions.height20),
 
                 // Transactions List
-                ...allTransactions.map((transaction) => 
-                  Padding(
-                    padding: EdgeInsets.only(bottom: Dimenssions.height10),
-                    child: _buildTransactionCard(transaction, deliveryAddress),
-                  )
-                ).toList(),
-                
+                ...allTransactions
+                    .map((transaction) => Padding(
+                          padding:
+                              EdgeInsets.only(bottom: Dimenssions.height10),
+                          child: _buildTransactionCard(
+                              transaction, deliveryAddress),
+                        ))
+                    .toList(),
+
                 SizedBox(height: Dimenssions.height20),
 
                 // Delivery Address
