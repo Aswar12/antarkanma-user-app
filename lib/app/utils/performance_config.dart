@@ -16,15 +16,18 @@ class PerformanceConfig {
       debugPrintRebuildDirtyWidgets = false;
       debugPrintLayouts = false;
       debugProfileBuildsEnabled = false;
-      debugPrint = (String? message, {int? wrapWidth}) {};
+      // Keep debug prints enabled for development
+      debugPrint = (String? message, {int? wrapWidth}) {
+        print(message);
+      };
     }
 
     // Optimize image cache
     PaintingBinding.instance.imageCache.maximumSize = 50; // Reduce from default 1000
     PaintingBinding.instance.imageCache.maximumSizeBytes = 20 << 20; // 20 MB
 
-    // Disable GetX logging in debug
-    Get.isLogEnable = false;
+    // Enable GetX logging in debug
+    Get.isLogEnable = true;
   }
 
   static Future<void> clearMemory() async {

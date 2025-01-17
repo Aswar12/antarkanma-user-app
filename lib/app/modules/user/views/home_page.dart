@@ -12,8 +12,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
-class HomePage extends GetView<HomePageController> {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late HomePageController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure HomePageController is initialized
+    if (!Get.isRegistered<HomePageController>()) {
+      controller = Get.put(HomePageController(), permanent: true);
+    } else {
+      controller = Get.find<HomePageController>();
+    }
+  }
 
   Widget _buildSearchBar() {
     return SearchInputField(

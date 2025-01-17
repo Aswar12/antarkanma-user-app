@@ -22,7 +22,7 @@
     </queries>
 
     <application
-        android:label="antarkanma"
+        android:label="Antarkanma"
         android:name="${applicationName}"
         android:icon="@drawable/logo">
         
@@ -41,8 +41,8 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_color" />
 
-        <activity
-            android:name=".MainActivity"
+            <activity
+            android:name="com.antarkanma.user.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

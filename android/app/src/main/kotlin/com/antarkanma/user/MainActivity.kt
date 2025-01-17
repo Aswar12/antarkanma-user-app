@@ -1,4 +1,4 @@
-package com.example.antarkanma
+package com.antarkanma.user
 
 import io.flutter.embedding.android.FlutterActivity
 

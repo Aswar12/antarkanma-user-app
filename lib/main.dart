@@ -62,10 +62,10 @@ class MyApp extends StatelessWidget {
       initialRoute: Routes.splash,
       getPages: AppPages.routes,
       debugShowCheckedModeBanner: false,
-      defaultTransition: Transition.fadeIn, // Lighter transition
-      transitionDuration: const Duration(milliseconds: 200), // Faster transitions
-      popGesture: false, // Disable pop gesture to reduce overhead
-      enableLog: false, // Disable GetX logs
+      defaultTransition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 200),
+      popGesture: false,
+      enableLog: true, // Enable GetX logs for debugging
     );
   }
 }

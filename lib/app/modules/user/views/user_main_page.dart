@@ -8,6 +8,7 @@ import 'package:antarkanma/app/modules/user/views/profile_page.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:antarkanma/app/controllers/homepage_controller.dart';
 
 class UserMainPage extends GetView<UserMainController> {
   const UserMainPage({super.key});
@@ -16,6 +17,11 @@ class UserMainPage extends GetView<UserMainController> {
   Widget build(BuildContext context) {
     // Pastikan controller sudah diinisialisasi
     final UserMainController controller = Get.find();
+
+    // Ensure HomePageController is initialized
+    if (!Get.isRegistered<HomePageController>()) {
+      Get.put(HomePageController(), permanent: true);
+    }
 
     // Set initial page if provided in arguments
     if (Get.arguments != null && Get.arguments is Map<String, dynamic>) {

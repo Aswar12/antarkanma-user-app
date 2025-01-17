@@ -29,6 +29,22 @@ class SplashController extends GetxController {
     try {
       await Future.delayed(const Duration(seconds: 1));
 
+      // Load products first regardless of auth status
+      _loadingText.value = 'Memuat data kategori...';
+      await _categoryService.getCategories();
+
+      _loadingText.value = 'Memuat data produk...';
+      final homeController = Get.find<HomePageController>();
+      await homeController.loadPopularProducts();
+      await homeController.loadAllProducts();
+
+      if (homeController.popularProducts.isEmpty) {
+        print('Warning: No popular products loaded');
+        _loadingText.value = 'Mencoba memuat ulang data produk...';
+        await homeController.refreshProducts(showMessage: false);
+      }
+
+      // Now check authentication
       _loadingText.value = 'Memeriksa status login...';
       
       // First check if remember me is enabled
@@ -45,7 +61,6 @@ class SplashController extends GetxController {
           
           if (success) {
             print('Auto-login successful');
-            await _loadUserData();
             _isLoading.value = false;
             await Future.delayed(const Duration(seconds: 1));
             Get.offAllNamed(Routes.userMainPage);
@@ -65,7 +80,6 @@ class SplashController extends GetxController {
           _loadingText.value = 'Memuat data user...';
           _authService.currentUser.value = UserModel.fromJson(userData);
           _authService.isLoggedIn.value = true;
-          await _loadUserData();
           _isLoading.value = false;
           await Future.delayed(const Duration(seconds: 1));
           Get.offAllNamed(Routes.userMainPage);
@@ -82,26 +96,6 @@ class SplashController extends GetxController {
       Get.offAllNamed(Routes.login);
     } finally {
       _isLoading.value = false;
-    }
-  }
-
-  Future<void> _loadUserData() async {
-    _loadingText.value = 'Memuat data kategori...';
-    await _categoryService.getCategories();
-
-    _loadingText.value = 'Memuat data produk populer...';
-    if (!Get.isRegistered<HomePageController>()) {
-      final homeController = HomePageController();
-      Get.put(homeController, permanent: true);
-    }
-    final homeController = Get.find<HomePageController>();
-
-    await homeController.loadPopularProducts();
-
-    if (homeController.popularProducts.isEmpty) {
-      print('Warning: No popular products loaded');
-      _loadingText.value = 'Mencoba memuat ulang data produk...';
-      await homeController.refreshProducts(showMessage: false);
     }
   }
 }

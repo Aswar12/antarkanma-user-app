@@ -1,4 +1,3 @@
-// Previous imports remain the same...
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
@@ -14,7 +13,6 @@ import 'package:flutter/foundation.dart';
 class CheckoutSuccessPage extends StatelessWidget {
   const CheckoutSuccessPage({Key? key}) : super(key: key);
 
-  // Previous methods remain the same...
   Future<void> _navigateToOrderPage() async {
     debugPrint('Navigating to order page...');
     final controller = Get.put(UserMainController(), permanent: true);
@@ -31,7 +29,7 @@ class CheckoutSuccessPage extends StatelessWidget {
   void _navigateToHome() {
     debugPrint('Navigating to home...');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Get.offAllNamed(Routes.userMainPage);
+      Get.offAll(() => const UserMainPage());
     });
   }
 
@@ -43,7 +41,7 @@ class CheckoutSuccessPage extends StatelessWidget {
         message: message,
         isError: true,
       );
-      Get.offAllNamed(Routes.userMainPage);
+      Get.offAll(() => const UserMainPage());
     });
   }
 
@@ -228,7 +226,6 @@ class CheckoutSuccessPage extends StatelessWidget {
     );
   }
 
-  // Rest of the code remains the same...
   @override
   Widget build(BuildContext context) {
     // Check arguments before building UI
