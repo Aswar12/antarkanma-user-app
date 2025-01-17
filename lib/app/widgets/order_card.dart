@@ -5,6 +5,7 @@ import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
 import 'package:antarkanma/app/utils/order_utils.dart';
+import 'package:antarkanma/app/services/image_service.dart';
 import 'package:antarkanma/theme.dart';
 
 class OrderCard extends StatelessWidget {
@@ -171,6 +172,7 @@ class OrderCard extends StatelessWidget {
   }
 
   Widget _buildProductItem(dynamic item) {
+    final imageService = Get.find<ImageService>();
     return Container(
       margin: EdgeInsets.only(bottom: Dimenssions.height8),
       child: Row(
@@ -186,20 +188,9 @@ class OrderCard extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-              child: Image.network(
-                item.product.firstImageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: backgroundColor3.withOpacity(0.26),
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: secondaryTextColor,
-                    size: Dimenssions.font20,
-                  ),
-                ),
-              ),
+            child: imageService.buildProductThumbnail(
+              item.product.firstImageUrl,
+              size: Dimenssions.height65,
             ),
           ),
           SizedBox(width: Dimenssions.width8),

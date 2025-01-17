@@ -38,7 +38,6 @@ class AuthService extends GetxService {
     }
   }
 
-  // Rest of the methods remain unchanged...
   Future<bool> verifyToken(String token) async {
     try {
       final response = await _authProvider.refreshToken(token);
@@ -98,6 +97,18 @@ class AuthService extends GetxService {
       final token = response.data['data']['access_token'];
 
       if (token != null) {
+        // Create UserModel and check role
+        final user = UserModel.fromJson(userData);
+        if (!user.isUser) {
+          if (!isAutoLogin) {
+            showCustomSnackbar(
+                title: 'Login Gagal',
+                message: 'Aplikasi ini hanya untuk pengguna.',
+                isError: true);
+          }
+          return false;
+        }
+
         await _storageService.saveToken(token);
         await _storageService.saveUser(userData);
 
@@ -108,7 +119,7 @@ class AuthService extends GetxService {
           await _storageService.clearCredentials();
         }
 
-        currentUser.value = UserModel.fromJson(userData);
+        currentUser.value = user;
         print("User logged in successfully: ${currentUser.value}"); // Debug log
         isLoggedIn.value = true;
 
@@ -117,7 +128,7 @@ class AuthService extends GetxService {
 
         // Only redirect and show snackbar if not auto-login
         if (!isAutoLogin) {
-          _redirectBasedOnRole();
+          Get.offAllNamed(Routes.userMainPage);
           showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
         }
         return true;
@@ -154,6 +165,7 @@ class AuthService extends GetxService {
         'phone_number': phoneNumber,
         'password': password,
         'password_confirmation': confirmPassword,
+        'role': UserModel.ROLE_USER, // Use constant from UserModel
       };
 
       final response = await _authProvider.register(userData);
@@ -165,7 +177,7 @@ class AuthService extends GetxService {
           await _storageService.saveUser(userData);
           currentUser.value = UserModel.fromJson(userData);
           isLoggedIn.value = true;
-          _redirectBasedOnRole();
+          Get.offAllNamed(Routes.userMainPage);
           return true;
         }
         showCustomSnackbar(
@@ -184,24 +196,6 @@ class AuthService extends GetxService {
           message: 'Gagal registrasi: ${e.toString()}',
           isError: true);
       return false;
-    }
-  }
-
-  void _redirectBasedOnRole() {
-    if (currentUser.value == null) return;
-
-    switch (currentUser.value!.role) {
-      case 'USER':
-        Get.offAllNamed(Routes.userMainPage);
-        break;
-      case 'MERCHANT':
-        Get.offAllNamed(Routes.merchantMainPage);
-        break;
-      case 'COURIER':
-        Get.offAllNamed(Routes.courierMainPage);
-        break;
-      default:
-        Get.offAllNamed(Routes.login);
     }
   }
 
@@ -542,9 +536,7 @@ class AuthService extends GetxService {
   String get userEmail => currentUser.value?.email ?? '';
   String get userPhone => currentUser.value?.phoneNumber ?? '';
   String get userRole => currentUser.value?.role ?? '';
-  bool get isMerchant => userRole == 'MERCHANT';
-  bool get isCourier => userRole == 'COURIER';
-  bool get isUser => userRole == 'USER';
+  bool get isUser => currentUser.value?.isUser ?? false;
   int? get userId => currentUser.value?.id;
   String? get userProfilePhotoUrl => currentUser.value?.profilePhotoUrl;
   String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;

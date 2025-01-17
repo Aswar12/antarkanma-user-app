@@ -5,8 +5,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:antarkanma/theme.dart';
-import 'package:antarkanma/app/modules/merchant/controllers/merchant_order_controller.dart';
-import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 
 @pragma('vm:entry-point')
@@ -55,17 +53,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 
   // Use notification title and body if available, otherwise use defaults
-  String title = message.notification?.title ?? '📦 Pesanan Baru!';
+  String title = message.notification?.title ?? '📦 Status Pesanan';
   String body = message.notification?.body ??
       (itemsText.isNotEmpty
-          ? 'Pesanan baru untuk: $itemsText'
-          : 'Pesanan baru diterima');
+          ? 'Update status pesanan untuk: $itemsText'
+          : 'Ada update status pesanan');
 
   // Create notification channel for background notifications
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
     'antarkanma_order_channel',
     'Pesanan',
-    description: 'Notifikasi untuk pesanan baru dan update status',
+    description: 'Notifikasi untuk update status pesanan',
     importance: Importance.max,
     enableVibration: true,
     playSound: true,
@@ -96,7 +94,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           htmlFormatBigText: true,
           contentTitle: title,
           htmlFormatContentTitle: true,
-          summaryText: 'Ada pesanan baru yang menunggu konfirmasi',
+          summaryText: 'Update status pesanan Anda',
           htmlFormatSummaryText: true,
         ),
       ),
@@ -197,7 +195,7 @@ class NotificationService extends GetxService {
       await plugin.createNotificationChannel(AndroidNotificationChannel(
         _orderChannelKey,
         'Pesanan',
-        description: 'Notifikasi untuk pesanan baru dan update status',
+        description: 'Notifikasi untuk update status pesanan',
         importance: Importance.max,
         enableVibration: true,
         playSound: true,
@@ -269,11 +267,11 @@ class NotificationService extends GetxService {
     }
 
     // Use notification title and body if available, otherwise use defaults
-    String title = message.notification?.title ?? '📦 Pesanan Baru!';
+    String title = message.notification?.title ?? '📦 Status Pesanan';
     String body = message.notification?.body ??
         (itemsText.isNotEmpty
-            ? 'Pesanan baru untuk: $itemsText'
-            : 'Pesanan baru diterima');
+            ? 'Update status pesanan untuk: $itemsText'
+            : 'Ada update status pesanan');
 
     print('Final notification content - Title: $title, Body: $body');
 
@@ -282,7 +280,7 @@ class NotificationService extends GetxService {
         AndroidNotificationDetails(
       channelKey,
       'Pesanan',
-      channelDescription: 'Notifikasi untuk pesanan baru dan update status',
+      channelDescription: 'Notifikasi untuk update status pesanan',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
@@ -296,7 +294,7 @@ class NotificationService extends GetxService {
         htmlFormatBigText: true,
         contentTitle: title,
         htmlFormatContentTitle: true,
-        summaryText: 'Ada pesanan baru yang menunggu konfirmasi',
+        summaryText: 'Update status pesanan Anda',
         htmlFormatSummaryText: true,
       ),
       color: logoColorSecondary,
@@ -339,35 +337,14 @@ class NotificationService extends GetxService {
     String? orderId = data['order_id'];
     if (orderId != null) {
       try {
-        // First navigate to merchant main page
-        await Get.offAllNamed(Routes.merchantMainPage);
-
-        // Add a small delay to ensure the main page is loaded
+        // Navigate to order page
+        await Get.offAllNamed(Routes.userMainPage);
         await Future.delayed(const Duration(milliseconds: 300));
-
-        // Set the merchant controller to orders tab
-        try {
-          final merchantController = Get.find<MerchantController>();
-          merchantController.changePage(1); // Index 1 is for Orders tab
-        } catch (e) {
-          print('Error setting merchant controller tab: $e');
-        }
-
-        // Add another small delay to ensure the tab change is processed
-        await Future.delayed(const Duration(milliseconds: 200));
-
-        // Get the order controller and update the view
-        try {
-          final orderController = Get.find<MerchantOrderController>();
-          orderController.filterOrders('PENDING');
-          await orderController.refreshOrders();
-        } catch (e) {
-          print('Error updating order controller: $e');
-        }
+        Get.toNamed(Routes.userOrder);
       } catch (e) {
         print('Error handling notification tap: $e');
         // Fallback navigation
-        await Get.offAllNamed(Routes.merchantMainPage);
+        await Get.offAllNamed(Routes.userMainPage);
       }
     }
   }
@@ -377,7 +354,7 @@ class NotificationService extends GetxService {
         AndroidNotificationDetails(
       _orderChannelKey,
       'Pesanan',
-      channelDescription: 'Notifikasi untuk pesanan baru dan update status',
+      channelDescription: 'Notifikasi untuk update status pesanan',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/notification_icon',
@@ -397,8 +374,8 @@ class NotificationService extends GetxService {
 
     await _localNotifications.show(
       _generateNotificationId(),
-      '📦 Pesanan Baru!',
-      'Pesanan baru diterima',
+      '📦 Status Pesanan',
+      'Ada update status pesanan',
       platformChannelSpecifics,
       payload: json.encode(safeData),
     );

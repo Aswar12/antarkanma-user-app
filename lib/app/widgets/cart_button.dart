@@ -29,8 +29,11 @@ class CartButton extends StatelessWidget {
           child: IconButton(
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            icon: Icon(Icons.shopping_cart, color: logoColorSecondary),
-            onPressed: onPressed,
+            icon: Icon(
+              Icons.shopping_cart,
+              color: itemCount > 0 ? logoColorSecondary : Colors.grey,
+            ),
+            onPressed: itemCount > 0 ? onPressed : null,
           ),
         ),
         if (itemCount > 0)

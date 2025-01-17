@@ -118,8 +118,8 @@ class _CartPageState extends State<CartPage> {
             constraints: BoxConstraints(maxWidth: 200),
             child: ElevatedButton(
               onPressed: () {
-                Get.find<UserMainController>().currentIndex.value = 0;
-                _navigateToHomePage();
+                final userMainController = Get.find<UserMainController>();
+                userMainController.changePage(0);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: logoColorSecondary,
@@ -533,18 +533,5 @@ class _CartPageState extends State<CartPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _navigateToHomePage() async {
-    debugPrint('Navigating to order page...');
-    final controller = Get.put(UserMainController(), permanent: true);
-    controller.currentIndex.value = 0;
-    await Future.delayed(const Duration(milliseconds: 100));
-    await Get.offAll(
-      () => const UserMainPage(),
-      transition: Transition.noTransition,
-      duration: const Duration(milliseconds: 0),
-    );
-    debugPrint('Navigation to order page complete');
   }
 }

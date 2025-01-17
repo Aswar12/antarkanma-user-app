@@ -1,6 +1,0 @@
-feat: Enhance Merchant Profile Page Design
-
-- Updated header section to include a background image and merchant logo.
-- Implemented an address card to display the merchant's address with a button to view all addresses.
-- Created a menu section with options for editing the profile, viewing orders, and accessing help.
-- Added logout confirmation dialog functionality.

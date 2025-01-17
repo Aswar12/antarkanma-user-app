@@ -9,16 +9,23 @@ import 'app/constants/app_theme.dart';
 import 'app/constants/app_strings.dart';
 import 'app/bindings/initial_binding.dart';
 import 'package:get_storage/get_storage.dart';
+import 'app/utils/performance_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
+  // Initialize performance optimizations for debug mode
+  PerformanceConfig.initializeDebugMode();
+  
+  // Start periodic memory cleanup
+  PerformanceConfig.startPeriodicCleanup();
+
+  // Initialize Firebase with performance settings
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize local notifications plugin
+  // Initialize local notifications plugin with optimized settings
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -55,6 +62,10 @@ class MyApp extends StatelessWidget {
       initialRoute: Routes.splash,
       getPages: AppPages.routes,
       debugShowCheckedModeBanner: false,
+      defaultTransition: Transition.fadeIn, // Lighter transition
+      transitionDuration: const Duration(milliseconds: 200), // Faster transitions
+      popGesture: false, // Disable pop gesture to reduce overhead
+      enableLog: false, // Disable GetX logs
     );
   }
 }

@@ -1,38 +1,10 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
 import '../controllers/splash_controller.dart';
 
-class NeonSpinner extends CustomPainter {
-  final double angle;
-  final Color color;
-
-  NeonSpinner(this.angle, this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * 0.4;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    paint.maskFilter = const MaskFilter.blur(BlurStyle.outer, 8);
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    canvas.drawArc(rect, angle, 2 * pi / 3, false, paint);
-    paint.maskFilter = const MaskFilter.blur(BlurStyle.inner, 4);
-    canvas.drawArc(rect, angle + pi / 6, 2 * pi / 3, false, paint);
-  }
-
-  @override
-  bool shouldRepaint(NeonSpinner oldDelegate) => angle != oldDelegate.angle;
-}
-
 class SplashPage extends StatefulWidget {
-  const SplashPage({super.key});
+  SplashPage({Key? key}) : super(key: key);
 
   @override
   State<SplashPage> createState() => _SplashPageState();
@@ -40,54 +12,41 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _spinnerAnimation;
   final splashController = Get.find<SplashController>();
+  late final AnimationController _controller;
+  late final Animation<double> _opacityAnimation;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _setupAnimations();
-  }
-
-  void _setupAnimations() {
     _controller = AnimationController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.1)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40.0,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.1, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 60.0,
-      ),
-    ]).animate(_controller);
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.6,
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOut,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
     ));
 
-    _spinnerAnimation = Tween<double>(
-      begin: 0,
-      end: 2 * pi,
+    _scaleAnimation = Tween<double>(
+      begin: 0.85,
+      end: 1.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.linear,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOutBack),
     ));
 
-    _controller.repeat();
+    // Start animation after a brief delay
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
   }
 
   @override
@@ -104,47 +63,22 @@ class _SplashPageState extends State<SplashPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                AnimatedBuilder(
-                  animation: _spinnerAnimation,
-                  builder: (context, child) {
-                    return SizedBox(
-                      width: 240,
-                      height: 240,
-                      child: CustomPaint(
-                        painter: NeonSpinner(
-                          _spinnerAnimation.value,
-                          logoColorSecondary.withOpacity(0.8),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Container(
-                          width: 180,
-                          height: 180,
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image:
-                                  AssetImage('assets/Logo_AntarkanmaNoBg.png'),
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: Opacity(
+                    opacity: _opacityAnimation.value,
+                    child: Image.asset(
+                      'assets/Logo_AntarkanmaNoBg.png',
+                      width: 300,
+                      height: 300,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 40),
             Obx(() => splashController.isLoading

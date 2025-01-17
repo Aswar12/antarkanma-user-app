@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
+import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/widgets/product_review_section.dart';
@@ -10,6 +11,7 @@ import 'package:antarkanma/app/widgets/product_bottom_nav.dart';
 import 'package:antarkanma/app/widgets/cart_button.dart';
 import 'package:antarkanma/app/widgets/back_button.dart';
 import 'package:antarkanma/app/widgets/curved_bottom_decoration.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -90,7 +92,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ]
       };
 
-      Get.toNamed('/usermain/checkout', arguments: {
+      Get.toNamed(Routes.userCheckout, arguments: {
         'merchantItems': merchantItems,
         'type': 'direct_buy',
       });
@@ -108,6 +110,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     try {
       await initializeDateFormatting('id_ID', null);
     } catch (e) {}
+  }
+
+  void _navigateToCart() {
+    Get.back(); // Go back to UserMainPage
+    // Get UserMainController and change to cart tab (index 1)
+    final userMainController = Get.find<UserMainController>();
+    userMainController.changePage(1);
   }
 
   @override
@@ -187,7 +196,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           final cartController = Get.find<CartController>();
           return CartButton(
             itemCount: cartController.itemCount,
-            onPressed: () => Get.toNamed('/cart'),
+            onPressed: _navigateToCart,
             backgroundColor: backgroundColor1,
           );
         }),

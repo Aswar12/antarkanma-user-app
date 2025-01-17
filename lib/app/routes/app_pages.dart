@@ -3,16 +3,6 @@ import 'package:antarkanma/app/modules/auth/auth_binding.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
 import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
-import 'package:antarkanma/app/modules/courier/courier_binding.dart';
-import 'package:antarkanma/app/modules/courier/views/courier_main_page.dart';
-import 'package:antarkanma/app/modules/courier/views/courier_profile_page.dart';
-import 'package:antarkanma/app/modules/merchant/controllers/merchant_profile_controller.dart';
-import 'package:antarkanma/app/modules/merchant/views/merchant_main_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/merchant_order_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/merchant_profile_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/product_management_page.dart';
-import 'package:antarkanma/app/modules/merchant/views/product_form_page.dart';
-import 'package:antarkanma/app/modules/merchant/merchant_binding.dart';
 import 'package:antarkanma/app/modules/splash/views/splash_page.dart';
 import 'package:antarkanma/app/modules/user/user_binding.dart';
 import 'package:antarkanma/app/modules/user/views/add_edit_address_page.dart';
@@ -56,23 +46,6 @@ abstract class Routes {
   static const userMapPicker = '/usermain/map-picker';
   static const userCheckout = '/usermain/checkout';
   static const userEditProfile = '/usermain/edit-profile';
-
-  // Merchant routes
-  static const merchantMainPage = '/merchantmain';
-  static const merchantHome = '/merchant';
-  static const merchantProfile = '/merchantmain/profile';
-  static const merchantOrders = '/merchantmain/orders';
-  static const merchantProducts = '/merchantmain/products';
-  static const merchantAddProduct = '/merchantmain/add-product';
-  static const merchantEditProduct = '/merchantmain/edit-product/:id';
-  static const merchantEditInfo = '/merchantmain/edit-store-info';
-
-  // Courier routes
-  static const courierMainPage = '/couriermain';
-  static const courierHome = '/courier';
-  static const courierProfile = '/couriermain/profile';
-  static const courierDeliveries = '/couriermain/deliveries';
-  static const courierHistory = '/couriermain/history';
 }
 
 class AppPages {
@@ -81,7 +54,7 @@ class AppPages {
   static final routes = [
     GetPage(
       name: Routes.splash,
-      page: () => const SplashPage(),
+      page: () => SplashPage(),
     ),
     GetPage(
       name: Routes.login,
@@ -162,53 +135,6 @@ class AppPages {
           name: '/edit-profile',
           page: () => const EditProfileView(),
           binding: UserBinding(),
-        ),
-      ],
-    ),
-    GetPage(
-      name: Routes.merchantMainPage,
-      page: () => const MerchantMainPage(),
-      binding: MerchantBinding(),
-      middlewares: [
-        AuthMiddleware(), // Tambahkan middleware untuk cek auth
-      ],
-      children: [
-        GetPage(
-          name: '/profile',
-          page: () => MerchantProfilePage(),
-          binding: MerchantBinding(),
-        ),
-        GetPage(
-          name: '/orders',
-          page: () => const MerchantOrderPage(),
-          binding: MerchantBinding(),
-        ),
-        GetPage(
-          name: '/products',
-          page: () => const ProductManagementPage(),
-        ),
-        GetPage(
-          name: '/add-product',
-          page: () => const ProductFormPage(),
-        ),
-        GetPage(
-          name: '/edit-product/:id',
-          page: () => const ProductFormPage(),
-        ),
-        GetPage(
-          name: '/edit-store-info',
-          page: () => MerchantProfilePage(),
-        ),
-      ],
-    ),
-    GetPage(
-      name: Routes.courierMainPage,
-      page: () => const CourierMainPage(),
-      binding: CourierBinding(),
-      children: [
-        GetPage(
-          name: '/profile',
-          page: () => const CourierProfilePage(),
         ),
       ],
     ),

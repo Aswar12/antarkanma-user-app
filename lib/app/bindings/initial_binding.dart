@@ -8,9 +8,9 @@ import '../services/auth_service.dart';
 import '../services/product_service.dart';
 import '../services/transaction_service.dart';
 import '../services/category_service.dart';
-import '../services/merchant_service.dart';
 import '../services/notification_service.dart';
 import '../services/fcm_token_service.dart';
+import '../services/image_service.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -30,14 +30,14 @@ class InitialBinding extends Bindings {
     debugPrint('Initializing NotificationService...');
     Get.putAsync(() => NotificationService().init(), permanent: true);
 
+    debugPrint('Initializing ImageService...');
+    Get.putAsync(() => ImageService().init(), permanent: true);
+
     debugPrint('Initializing CategoryService...');
     Get.put(CategoryService(), permanent: true);
 
     debugPrint('Initializing ProductService...');
     Get.put(ProductService(), permanent: true);
-
-    debugPrint('Initializing MerchantService...');
-    Get.put(MerchantService(), permanent: true);
 
     // Controllers
     debugPrint('Initializing SplashController...');

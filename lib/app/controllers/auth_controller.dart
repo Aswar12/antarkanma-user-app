@@ -6,7 +6,6 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'package:antarkanma/app/modules/merchant/controllers/merchant_controller.dart';
 import 'package:antarkanma/app/utils/validators.dart';
 
 class AuthController extends GetxController {
@@ -61,20 +60,18 @@ class AuthController extends GetxController {
         );
       } else {
         String role = _authService.currentUser.value?.role ?? '';
-        switch (role) {
-          case 'USER':
-            print('Navigating to USER main page');
-            Get.offAllNamed(Routes.userMainPage);
-            break;
-          case 'MERCHANT':
-            Get.offAllNamed(Routes.merchantMainPage);
-            break;
-          case 'COURIER':
-            Get.offAllNamed(Routes.courierMainPage);
-            break;
-          default:
-            Get.offAllNamed(Routes.login);
+        if (role != 'USER') {
+          showCustomSnackbar(
+            title: 'Login Gagal',
+            message: 'Aplikasi ini hanya untuk pengguna.',
+            isError: true,
+          );
+          await logout();
+          return;
         }
+        
+        print('Navigating to USER main page');
+        Get.offAllNamed(Routes.userMainPage);
         showCustomSnackbar(
           title: 'Login Berhasil',
           message: 'Selamat datang kembali!',
@@ -174,20 +171,8 @@ class AuthController extends GetxController {
     }
   }
 
-  void navigateToHome(String role) {
-    switch (role) {
-      case 'USER':
-        Get.offAllNamed(Routes.userHome);
-        break;
-      case 'MERCHANT':
-        Get.offAllNamed(Routes.merchantMainPage);
-        break;
-      case 'COURIER':
-        Get.offAllNamed(Routes.courierMainPage);
-        break;
-      default:
-        Get.offAllNamed(Routes.login);
-    }
+  void navigateToHome() {
+    Get.offAllNamed(Routes.userMainPage);
   }
 
   String? validateIdentifier(String? value) {

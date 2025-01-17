@@ -3,10 +3,12 @@ class UserModel {
   final String name;
   final String? email;
   final String? phoneNumber;
-  final String role; // 'USER', 'MERCHANT', 'COURIER'
+  final String role;
   final String? username;
   final String? profilePhotoUrl;
-  final String? profilePhotoPath; // Tambahkan properti baru
+  final String? profilePhotoPath;
+
+  static const String ROLE_USER = 'USER';
 
   UserModel({
     required this.id,
@@ -16,7 +18,7 @@ class UserModel {
     required this.role,
     this.username,
     this.profilePhotoUrl,
-    this.profilePhotoPath, // Tambahkan parameter baru
+    this.profilePhotoPath,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -30,14 +32,26 @@ class UserModel {
       }
     }
 
+    // Handle role from different possible API response formats
+    String role;
+    if (json['role'] != null) {
+      role = json['role'].toString().toUpperCase();
+    } else if (json['roles'] != null) {
+      if (json['roles'] is List) {
+        role = (json['roles'] as List).first.toString().toUpperCase();
+      } else {
+        role = json['roles'].toString().toUpperCase();
+      }
+    } else {
+      role = ROLE_USER;  // Default to USER role
+    }
+
     return UserModel(
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String?,
       phoneNumber: json['phone_number'] as String?,
-      role: (json['roles'] is List)
-          ? (json['roles'] as List).first.toString()
-          : (json['roles']?.toString() ?? 'USER'),
+      role: role,
       username: json['username'] as String?,
       profilePhotoUrl: photoUrl,
       profilePhotoPath: json['profile_photo_path'] as String?,
@@ -50,10 +64,10 @@ class UserModel {
       'name': name,
       'email': email,
       'phone_number': phoneNumber,
-      'roles': role, // Pastikan ini sesuai dengan format yang diharapkan
+      'roles': role,
       'username': username,
       'profile_photo_url': profilePhotoUrl,
-      'profile_photo_path': profilePhotoPath, // Sertakan dalam JSON
+      'profile_photo_path': profilePhotoPath,
     };
   }
 
@@ -69,7 +83,7 @@ class UserModel {
         other.role == role &&
         other.username == username &&
         other.profilePhotoUrl == profilePhotoUrl &&
-        other.profilePhotoPath == profilePhotoPath; // Tambahkan perbandingan
+        other.profilePhotoPath == profilePhotoPath;
   }
 
   @override
@@ -81,7 +95,7 @@ class UserModel {
         role.hashCode ^
         username.hashCode ^
         profilePhotoUrl.hashCode ^
-        profilePhotoPath.hashCode; // Tambahkan hashCode
+        profilePhotoPath.hashCode;
   }
 
   UserModel copyWith({
@@ -92,7 +106,7 @@ class UserModel {
     String? role,
     String? username,
     String? profilePhotoUrl,
-    String? profilePhotoPath, // Tambahkan parameter baru
+    String? profilePhotoPath,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -102,8 +116,16 @@ class UserModel {
       role: role ?? this.role,
       username: username ?? this.username,
       profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
-      profilePhotoPath:
-          profilePhotoPath ?? this.profilePhotoPath, // Tambahkan parameter baru
+      profilePhotoPath: profilePhotoPath ?? this.profilePhotoPath,
     );
   }
+
+  // Helper methods
+  bool get isUser => role == ROLE_USER;
+  
+  String get displayName => username ?? name;
+  
+  bool get hasProfilePhoto => 
+      (profilePhotoUrl?.isNotEmpty ?? false) || 
+      (profilePhotoPath?.isNotEmpty ?? false);
 }
