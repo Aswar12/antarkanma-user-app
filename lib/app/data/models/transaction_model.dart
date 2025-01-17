@@ -53,6 +53,12 @@ class OrderModel {
       'order_items': orderItems.map((item) => item.toJson()).toList(),
     };
   }
+
+  // Get merchant name from the first order item
+  String get merchantName {
+    if (orderItems.isEmpty) return 'Unknown Merchant';
+    return orderItems.first.merchant.name;
+  }
 }
 
 class TransactionModel {
@@ -69,7 +75,7 @@ class TransactionModel {
   final String? note;
   final List<OrderItemModel> items;
   final UserLocationModel? userLocation;
-  final OrderModel? order;
+  final List<OrderModel> orders;
   final UserModel? user;
 
   TransactionModel({
@@ -86,7 +92,7 @@ class TransactionModel {
     this.note,
     required this.items,
     this.userLocation,
-    this.order,
+    required this.orders,
     this.user,
   });
 
@@ -111,10 +117,15 @@ class TransactionModel {
         userLocation = UserLocationModel.fromJson(transactionData['user_location']);
       }
 
-      // Parse order with new structure
-      OrderModel? order;
-      if (transactionData['order'] != null) {
-        order = OrderModel.fromJson(transactionData['order']);
+      // Parse orders with new structure
+      List<OrderModel> orders = [];
+      if (transactionData['orders'] != null) {
+        orders = (transactionData['orders'] as List)
+            .map((order) => OrderModel.fromJson(order))
+            .toList();
+      } else if (transactionData['order'] != null) {
+        // Backward compatibility: if single order, wrap in list
+        orders = [OrderModel.fromJson(transactionData['order'])];
       }
 
       // Parse user
@@ -152,7 +163,7 @@ class TransactionModel {
         totalPrice: totalPrice,
         shippingPrice: shippingPrice,
         paymentMethod: transactionData['payment_method']?.toString() ?? 'MANUAL',
-        status: transactionData['status']?.toString() ?? order?.orderStatus ?? 'PENDING',
+        status: transactionData['status']?.toString() ?? 'PENDING',
         paymentStatus: transactionData['payment_status']?.toString() ?? 'PENDING',
         createdAt: transactionData['created_at'] != null
             ? DateTime.tryParse(transactionData['created_at'].toString())
@@ -160,7 +171,7 @@ class TransactionModel {
         note: transactionData['note']?.toString(),
         items: orderItems,
         userLocation: userLocation,
-        order: order,
+        orders: orders,
         user: user,
       );
     } catch (e, stackTrace) {
@@ -208,7 +219,7 @@ class TransactionModel {
       'note': note,
       'items': items.map((item) => item.toJson()).toList(),
       'user_location': userLocation?.toJson(),
-      'order': order?.toJson(),
+      'orders': orders.map((order) => order.toJson()).toList(),
       'user': user?.toJson(),
     };
   }
@@ -263,7 +274,7 @@ class TransactionModel {
     String? note,
     List<OrderItemModel>? items,
     UserLocationModel? userLocation,
-    OrderModel? order,
+    List<OrderModel>? orders,
     UserModel? user,
   }) {
     return TransactionModel(
@@ -280,7 +291,7 @@ class TransactionModel {
       note: note ?? this.note,
       items: items ?? this.items,
       userLocation: userLocation ?? this.userLocation,
-      order: order ?? this.order,
+      orders: orders ?? this.orders,
       user: user ?? this.user,
     );
   }

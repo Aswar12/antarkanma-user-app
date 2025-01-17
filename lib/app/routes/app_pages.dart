@@ -20,6 +20,8 @@ import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:antarkanma/app/modules/user/views/edit_profile_view.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/middleware/auth_middleware.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/controllers/auth_controller.dart';
 
 abstract class Routes {
   // Common routes
@@ -129,12 +131,19 @@ class AppPages {
         GetPage(
           name: '/checkout',
           page: () => CheckoutPage(),
-          binding: UserBinding(),
+          binding: BindingsBuilder(() {
+            // Ensure core services are available
+            if (!Get.isRegistered<AuthService>()) {
+              Get.put(AuthService(), permanent: true);
+            }
+            if (!Get.isRegistered<AuthController>()) {
+              Get.put(AuthController(), permanent: true);
+            }
+          }),
         ),
         GetPage(
           name: '/edit-profile',
           page: () => const EditProfileView(),
-          binding: UserBinding(),
         ),
       ],
     ),

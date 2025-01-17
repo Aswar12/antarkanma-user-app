@@ -154,7 +154,7 @@ class _OrderPageState extends State<OrderPage>
               width: Dimenssions.width40,
               height: 4,
               decoration: BoxDecoration(
-                color: backgroundColor3.withValues(alpha: 128),
+                color: backgroundColor3.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(Dimenssions.radius4),
               ),
             ),
@@ -188,12 +188,11 @@ class _OrderPageState extends State<OrderPage>
                             ),
                         ],
                       ),
-                      OrderStatusBadge(status: transaction.order!.orderStatus),
+                      OrderStatusBadge(status: transaction.status),
                     ],
                   ),
                   SizedBox(height: Dimenssions.height15),
-                  Divider(
-                      height: 1, color: backgroundColor3.withValues(alpha: 51)),
+                  Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
                 ],
               ),
             ),
@@ -206,21 +205,20 @@ class _OrderPageState extends State<OrderPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Product List
+                      // Orders List
                       Text(
-                        'Daftar Produk',
+                        'Daftar Pesanan',
                         style: primaryTextStyle.copyWith(
                           fontSize: Dimenssions.font14,
                           fontWeight: semiBold,
                         ),
                       ),
                       SizedBox(height: Dimenssions.height8),
-                      ...transaction.items
-                          .map((item) => _buildDetailProductItem(item)),
+                      ...transaction.orders
+                          .map((order) => _buildOrderDetails(order)),
                       SizedBox(height: Dimenssions.height15),
                       Divider(
-                          height: 1,
-                          color: backgroundColor3.withValues(alpha: 51)),
+                          height: 1, color: backgroundColor3.withOpacity(0.2)),
                       SizedBox(height: Dimenssions.height15),
 
                       // Shipping Address
@@ -236,7 +234,7 @@ class _OrderPageState extends State<OrderPage>
                         Container(
                           padding: EdgeInsets.all(Dimenssions.height12),
                           decoration: BoxDecoration(
-                            color: backgroundColor3.withValues(alpha: 13),
+                            color: backgroundColor3.withOpacity(0.05),
                             borderRadius:
                                 BorderRadius.circular(Dimenssions.radius8),
                           ),
@@ -262,7 +260,7 @@ class _OrderPageState extends State<OrderPage>
                         SizedBox(height: Dimenssions.height15),
                         Divider(
                             height: 1,
-                            color: backgroundColor3.withValues(alpha: 51)),
+                            color: backgroundColor3.withOpacity(0.2)),
                         SizedBox(height: Dimenssions.height15),
                       ],
 
@@ -278,7 +276,7 @@ class _OrderPageState extends State<OrderPage>
                       Container(
                         padding: EdgeInsets.all(Dimenssions.height12),
                         decoration: BoxDecoration(
-                          color: backgroundColor3.withValues(alpha: 13),
+                          color: backgroundColor3.withOpacity(0.05),
                           borderRadius:
                               BorderRadius.circular(Dimenssions.radius8),
                         ),
@@ -296,7 +294,7 @@ class _OrderPageState extends State<OrderPage>
                             SizedBox(height: Dimenssions.height8),
                             Divider(
                                 height: 1,
-                                color: backgroundColor3.withValues(alpha: 51)),
+                                color: backgroundColor3.withOpacity(0.2)),
                             SizedBox(height: Dimenssions.height8),
                             _buildPaymentRow(
                               'Total Pembayaran',
@@ -313,7 +311,7 @@ class _OrderPageState extends State<OrderPage>
               ),
             ),
             // Cancel Button at Bottom
-            if (transaction.order!.orderStatus.toUpperCase() == 'PENDING') ...[
+            if (transaction.status.toUpperCase() == 'PENDING') ...[
               Padding(
                 padding: EdgeInsets.all(Dimenssions.height15),
                 child: SizedBox(
@@ -321,7 +319,7 @@ class _OrderPageState extends State<OrderPage>
                   child: TextButton(
                     onPressed: () => _showCancelDialog(transaction),
                     style: TextButton.styleFrom(
-                      backgroundColor: alertColor.withValues(alpha: 26),
+                      backgroundColor: alertColor.withOpacity(0.1),
                       padding: EdgeInsets.symmetric(
                         vertical: Dimenssions.height12,
                       ),
@@ -348,6 +346,35 @@ class _OrderPageState extends State<OrderPage>
       ),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+    );
+  }
+
+  Widget _buildOrderDetails(OrderModel order) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Merchant: ${order.merchantName}',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font14,
+                fontWeight: medium,
+              ),
+            ),
+            OrderStatusBadge(status: order.orderStatus),
+          ],
+        ),
+        SizedBox(height: Dimenssions.height8),
+        ...order.orderItems.map((item) => _buildDetailProductItem(item)),
+        SizedBox(height: Dimenssions.height12),
+        Divider(
+          height: 1,
+          color: backgroundColor3.withOpacity(0.2),
+        ),
+        SizedBox(height: Dimenssions.height12),
+      ],
     );
   }
 
@@ -432,7 +459,7 @@ class _OrderPageState extends State<OrderPage>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Dimenssions.radius8),
               border: Border.all(
-                color: backgroundColor3.withValues(alpha: 51),
+                color: backgroundColor3.withOpacity(0.2),
                 width: 1,
               ),
             ),
@@ -442,7 +469,7 @@ class _OrderPageState extends State<OrderPage>
                 item.product.firstImageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  color: backgroundColor3.withValues(alpha: 26),
+                  color: backgroundColor3.withOpacity(0.1),
                   child: Icon(
                     Icons.image_not_supported_outlined,
                     color: secondaryTextColor,

@@ -15,12 +15,12 @@ class OrderStatusBadge extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: Dimenssions.width10,
-        vertical: Dimenssions.height5,
+        horizontal: Dimenssions.width8,
+        vertical: Dimenssions.height4,
       ),
       decoration: BoxDecoration(
         color: statusInfo.color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        borderRadius: BorderRadius.circular(Dimenssions.radius12),
         border: Border.all(
           color: statusInfo.color.withOpacity(0.5),
           width: 1,
@@ -32,7 +32,7 @@ class OrderStatusBadge extends StatelessWidget {
           if (statusInfo.icon != null) ...[
             Icon(
               statusInfo.icon,
-              size: Dimenssions.font14,
+              size: Dimenssions.font12,
               color: statusInfo.color,
             ),
             SizedBox(width: Dimenssions.width4),
@@ -41,8 +41,8 @@ class OrderStatusBadge extends StatelessWidget {
             statusInfo.text,
             style: primaryTextStyle.copyWith(
               color: statusInfo.color,
-              fontSize: Dimenssions.font12,
-              fontWeight: semiBold,
+              fontSize: 11,
+              fontWeight: medium,
             ),
           ),
         ],
@@ -55,13 +55,13 @@ class OrderStatusBadge extends StatelessWidget {
       case 'PENDING':
         return StatusInfo(
           color: priceColor,
-          text: 'Menunggu Konfirmasi',
+          text: 'Menunggu',
           icon: Icons.hourglass_empty,
         );
       case 'PROCESSING':
         return StatusInfo(
           color: logoColorSecondary,
-          text: 'Sedang Diproses',
+          text: 'Diproses',
           icon: Icons.sync,
         );
       case 'READYTOPICKUP':
@@ -74,7 +74,7 @@ class OrderStatusBadge extends StatelessWidget {
       case 'ON_DELIVERY':
         return StatusInfo(
           color: Colors.blue,
-          text: 'Dalam Pengiriman',
+          text: 'Dikirim',
           icon: Icons.local_shipping_outlined,
         );
       case 'DELIVERED':
@@ -92,7 +92,7 @@ class OrderStatusBadge extends StatelessWidget {
       case 'CANCELED':
         return StatusInfo(
           color: alertColor,
-          text: 'Dibatalkan',
+          text: 'Batal',
           icon: Icons.highlight_off,
         );
       default:

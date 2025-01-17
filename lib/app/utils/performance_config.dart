@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 
@@ -16,9 +17,18 @@ class PerformanceConfig {
       debugPrintRebuildDirtyWidgets = false;
       debugPrintLayouts = false;
       debugProfileBuildsEnabled = false;
-      // Keep debug prints enabled for development
+      
+      // Disable system channel logging
+      SystemChannels.lifecycle.setMessageHandler(null);
+      
+      // Keep debug prints enabled for development but filter out motion events
       debugPrint = (String? message, {int? wrapWidth}) {
-        print(message);
+        if (message != null && 
+            !message.contains('MotionEvent') && 
+            !message.contains('ViewRootImpl') &&
+            !message.contains('dispatchPointerEvent')) {
+          print(message);
+        }
       };
     }
 
@@ -26,8 +36,18 @@ class PerformanceConfig {
     PaintingBinding.instance.imageCache.maximumSize = 50; // Reduce from default 1000
     PaintingBinding.instance.imageCache.maximumSizeBytes = 20 << 20; // 20 MB
 
-    // Enable GetX logging in debug
+    // Enable GetX logging in debug but filter out unnecessary logs
     Get.isLogEnable = true;
+    Get.config(
+      enableLog: true,
+      logWriterCallback: (String text, {bool isError = false}) {
+        if (!text.contains('MotionEvent') && 
+            !text.contains('ViewRootImpl') &&
+            !text.contains('dispatchPointerEvent')) {
+          debugPrint(text);
+        }
+      },
+    );
   }
 
   static Future<void> clearMemory() async {

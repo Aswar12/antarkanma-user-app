@@ -23,10 +23,16 @@ class UserBinding extends Bindings {
   void dependencies() {
     print('Initializing UserBinding dependencies...');
     
-    // Required Services for HomePageController
+    // Initialize core services first
     if (!Get.isRegistered<AuthService>()) {
       print('Initializing AuthService...');
       Get.put(AuthService(), permanent: true);
+    }
+
+    // Initialize AuthController after AuthService
+    if (!Get.isRegistered<AuthController>()) {
+      print('Initializing AuthController...');
+      Get.put(AuthController(), permanent: true);
     }
     
     if (!Get.isRegistered<CategoryService>()) {
@@ -38,6 +44,29 @@ class UserBinding extends Bindings {
       print('Initializing ProductService...');
       Get.put(ProductService(), permanent: true);
     }
+
+    // Initialize location services
+    print('Initializing Location Services...');
+    Get.lazyPut<UserLocationService>(
+      () => UserLocationService(),
+      fenix: true,
+    );
+
+    Get.lazyPut<UserLocationController>(
+      () => UserLocationController(
+        locationService: Get.find<UserLocationService>(),
+      ),
+      fenix: true,
+    );
+
+    // Initialize CheckoutController with its dependencies
+    Get.lazyPut<CheckoutController>(
+      () => CheckoutController(
+        userLocationController: Get.find<UserLocationController>(),
+        authController: Get.find<AuthController>(),
+      ),
+      fenix: true,
+    );
 
     // Main Controllers
     Get.lazyPut<UserController>(() => UserController());
@@ -66,31 +95,12 @@ class UserBinding extends Bindings {
       fenix: true,
     );
 
-    // Location Related Dependencies
-    print('Initializing Location Services...');
-    Get.lazyPut<UserLocationService>(
-      () => UserLocationService(),
-      fenix: true,
-    );
     Get.lazyPut<MapPickerController>(() => MapPickerController());
-    Get.lazyPut<UserLocationController>(
-      () => UserLocationController(
-        locationService: Get.find<UserLocationService>(),
-      ),
-      fenix: true,
-    );
 
     // Transaction and Order Related Dependencies
     print('Initializing Transaction Services...');
     Get.lazyPut(() => TransactionService(), fenix: true);
     Get.lazyPut(() => OrderController(), fenix: true);
-
-    Get.lazyPut<CheckoutController>(
-      () => CheckoutController(
-        userLocationController: Get.find<UserLocationController>(),
-        authController: Get.find<AuthController>(),
-      ),
-    );
 
     // Additional Feature Controllers
     _initializeFeatureControllers();

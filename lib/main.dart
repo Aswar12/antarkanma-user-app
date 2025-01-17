@@ -1,5 +1,6 @@
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -20,6 +21,15 @@ Future<void> main() async {
   // Start periodic memory cleanup
   PerformanceConfig.startPeriodicCleanup();
 
+  // Optimize system UI overlays
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+    ),
+  );
+
+ 
+
   // Initialize Firebase with performance settings
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -36,6 +46,8 @@ Future<void> main() async {
       'Antarkanma Notifications',
       description: 'Notifications for Antarkanma app',
       importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
     );
 
     await flutterLocalNotificationsPlugin
@@ -65,7 +77,13 @@ class MyApp extends StatelessWidget {
       defaultTransition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 200),
       popGesture: false,
-      enableLog: true, // Enable GetX logs for debugging
+      enableLog: false, // Disable GetX logs in production
+      logWriterCallback: (String text, {bool isError = false}) {
+        // Only log errors in production
+        if (isError) {
+          debugPrint('ERROR: $text');
+        }
+      },
     );
   }
 }

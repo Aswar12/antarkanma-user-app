@@ -1,7 +1,6 @@
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:get/get.dart';
@@ -13,6 +12,7 @@ import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'user_location_controller.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
@@ -148,7 +148,7 @@ class CheckoutController extends GetxController {
   }
 
   void _handleInitializationError(dynamic error) {
-    print('Error initializing checkout: $error');
+    debugPrint('Error initializing checkout: $error');
     showCustomSnackbar(
       title: 'Error',
       message: 'Terjadi kesalahan saat memuat data checkout',
@@ -174,7 +174,7 @@ class CheckoutController extends GetxController {
 
   Future<void> processCheckout() async {
     if (isProcessingCheckout.value) {
-      print('Checkout already in progress, ignoring duplicate request');
+      debugPrint('Checkout already in progress, ignoring duplicate request');
       return;
     }
 
@@ -182,7 +182,7 @@ class CheckoutController extends GetxController {
     isLoading.value = true;
 
     try {
-      print('Order Items before checkout: $orderItems'); // Debug statement
+      debugPrint('Order Items before checkout: ${orderItems.length}');
 
       if (!_validateCheckoutData()) {
         isLoading.value = false;
@@ -194,43 +194,31 @@ class CheckoutController extends GetxController {
       
       // Create a single transaction with all items
       final Map<String, dynamic> transactionPayload = {
-        'user_location_id': selectedLocation.value!.id,
+        'user_location_id': selectedLocation.value?.id,
         'total_price': subtotal.value,
         'shipping_price': deliveryFee.value,
-        'payment_method': _mapPaymentMethod(selectedPaymentMethod.value!),
+        'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
         'items': orderItems.map((item) => {
           'product_id': item.product.id,
-          'product': {
-            'id': item.product.id,
-            'name': item.product.name,
-            'description': item.product.description,
-            'price': item.product.price,
-            'galleries': item.product.galleries,
-            'category': item.product.category.toJson(),
-          },
+          'product': item.product.toJson(),
           'quantity': item.quantity,
           'price': item.price,
-          'merchant': {
-            'id': item.merchant.id,
-            'name': item.merchant.name,
-            'address': item.merchant.address,
-            'phone_number': item.merchant.phoneNumber,
-          },
+          'merchant': item.merchant.toJson(),
         }).toList(),
       };
 
-      print('Sending transaction payload: $transactionPayload');
+      debugPrint('Sending transaction payload');
 
       // Create single transaction
       final createdTransaction = await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
-        print('Transaction created successfully: ${createdTransaction.id}');
+        debugPrint('Transaction created successfully: ${createdTransaction.id}');
         _clearCart();
         _navigateToSuccessPage(createdTransaction);
         Get.find<OrderController>().setTransactionData(createdTransaction);
       } else {
-        print('Failed to create transaction');
+        debugPrint('Failed to create transaction');
         showCustomSnackbar(
           title: 'Error',
           message: 'Gagal membuat transaksi',
@@ -275,7 +263,7 @@ class CheckoutController extends GetxController {
     }
 
     // Validate merchant IDs
-    final invalidItems = orderItems.where((item) => item.merchant.id <= 0);
+    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -312,7 +300,7 @@ class CheckoutController extends GetxController {
       'allTransactions': [transaction],
       'orderItems': orderItems.toList(),
       'total': total.value,
-      'deliveryAddress': selectedLocation.value!,
+      'deliveryAddress': selectedLocation.value,
     });
 
     // Set the transaction in OrderController
@@ -320,7 +308,7 @@ class CheckoutController extends GetxController {
   }
 
   void _handleCheckoutError(dynamic error) {
-    print('Checkout error: $error');
+    debugPrint('Checkout error: $error');
     String errorMessage = _getErrorMessage(error);
     showCustomSnackbar(
       title: 'Error',
@@ -339,7 +327,7 @@ class CheckoutController extends GetxController {
     try {
       Get.find<CartController>().clearCart();
     } catch (e) {
-      print('Error clearing cart: $e');
+      debugPrint('Error clearing cart: $e');
     }
   }
 
