@@ -72,8 +72,8 @@ class _SplashPageState extends State<SplashPage>
                     opacity: _opacityAnimation.value,
                     child: Image.asset(
                       'assets/Logo_AntarkanmaNoBg.png',
-                      width: 300,
-                      height: 300,
+                      width: 200,
+                      height: 200,
                       fit: BoxFit.contain,
                     ),
                   ),
