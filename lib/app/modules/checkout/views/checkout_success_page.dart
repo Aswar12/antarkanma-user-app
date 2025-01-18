@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
@@ -105,18 +107,176 @@ class CheckoutSuccessPage extends StatelessWidget {
     );
   }
 
+  Widget _buildOrderItems(OrderModel order) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Merchant header with status
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: backgroundColor3.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.store,
+                size: 16,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  order.merchantName,
+                  style: primaryTextStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: order.orderStatus.toUpperCase() == 'PENDING'
+                      ? priceColor.withOpacity(0.1)
+                      : logoColorSecondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _getOrderStatusDisplay(order.orderStatus),
+                  style: primaryTextStyle.copyWith(
+                    color: order.orderStatus.toUpperCase() == 'PENDING'
+                        ? priceColor
+                        : logoColorSecondary,
+                    fontWeight: medium,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: order.orderItems.length,
+          separatorBuilder: (context, index) => const Divider(height: 16),
+          itemBuilder: (context, index) {
+            final item = order.orderItems[index];
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    item.product.firstImageUrl,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey[300],
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.product.name,
+                        style: primaryTextStyle.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${item.quantity}x ${item.formattedPrice}',
+                            style: primaryTextStyle.copyWith(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            item.formattedTotalPrice,
+                            style: primaryTextStyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: logoColorSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: backgroundColor3.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Pesanan',
+                style: primaryTextStyle.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                style: primaryTextStyle.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: logoColorSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getOrderStatusDisplay(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return 'Menunggu Konfirmasi';
+      case 'ACCEPTED':
+        return 'Diterima';
+      case 'PROCESSING':
+        return 'Sedang Diproses';
+      case 'READY_FOR_PICKUP':
+        return 'Siap Diambil';
+      case 'COMPLETED':
+        return 'Selesai';
+      case 'CANCELED':
+        return 'Dibatalkan';
+      default:
+        return status;
+    }
+  }
+
   Widget _buildTransactionCard(
       TransactionModel transaction, UserLocationModel deliveryAddress) {
-    String? merchantName;
-    try {
-      if (transaction.items.isNotEmpty &&
-          transaction.items.first.merchant != null) {
-        merchantName = transaction.items.first.merchant.name;
-      }
-    } catch (e) {
-      debugPrint('Error getting merchant name: $e');
-    }
-
     return Card(
       color: backgroundColor1,
       child: Padding(
@@ -136,90 +296,42 @@ class CheckoutSuccessPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: Dimenssions.width10),
-                Text(
-                  transaction.statusDisplay,
-                  style: primaryTextStyle.copyWith(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
                     color: transaction.status.toUpperCase() == 'PENDING'
-                        ? priceColor
-                        : logoColorSecondary,
-                    fontWeight: medium,
+                        ? priceColor.withOpacity(0.1)
+                        : logoColorSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    transaction.statusDisplay,
+                    style: primaryTextStyle.copyWith(
+                      color: transaction.status.toUpperCase() == 'PENDING'
+                          ? priceColor
+                          : logoColorSecondary,
+                      fontWeight: medium,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: Dimenssions.height10),
-            if (merchantName != null) ...[
-              Text(
-                'Merchant: $merchantName',
-                style: secondaryTextStyle,
-              ),
-              SizedBox(height: Dimenssions.height10),
-            ],
+            SizedBox(height: Dimenssions.height15),
+            // Orders List
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: transaction.orders.length,
+              separatorBuilder: (context, index) => const Divider(height: 24),
+              itemBuilder: (context, index) => _buildOrderItems(transaction.orders[index]),
+            ),
+            const SizedBox(height: 16),
             _buildOrderDetail(
               'Total Pembayaran',
               transaction.formattedGrandTotal,
               logoColorSecondary,
             ),
-            // Display product details
-            for (var item in transaction.items) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item.product.firstImageUrl,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey[300],
-                          child: Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.product.name,
-                            style: primaryTextStyle.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${item.quantity}x ${item.formattedPrice}',
-                                style: primaryTextStyle,
-                              ),
-                              Text(
-                                item.formattedTotalPrice,
-                                style: primaryTextStyle.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -228,23 +340,39 @@ class CheckoutSuccessPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('\n=== CheckoutSuccessPage Build ===');
+    debugPrint('Arguments: ${Get.arguments}');
+
     // Check arguments before building UI
     if (Get.arguments == null) {
+      debugPrint('Error: Arguments are null');
       _showErrorAndNavigate('Data transaksi tidak ditemukan');
       return const SizedBox.shrink();
     }
 
     final args = Get.arguments as Map<String, dynamic>;
+    debugPrint('Arguments content: $args');
+
     final List<TransactionModel> allTransactions =
         args['allTransactions'] ?? [];
     final List<OrderItemModel>? orderItems = args['orderItems'];
     final double? total = args['total'];
     final UserLocationModel? deliveryAddress = args['deliveryAddress'];
 
+    debugPrint('Transactions count: ${allTransactions.length}');
+    debugPrint('Order items count: ${orderItems?.length}');
+    debugPrint('Total: $total');
+    debugPrint('Delivery address: ${deliveryAddress?.fullAddress}');
+
     if (allTransactions.isEmpty ||
         orderItems == null ||
         total == null ||
         deliveryAddress == null) {
+      debugPrint('Error: Missing required data');
+      debugPrint('Transactions empty: ${allTransactions.isEmpty}');
+      debugPrint('Order items null: ${orderItems == null}');
+      debugPrint('Total null: ${total == null}');
+      debugPrint('Delivery address null: ${deliveryAddress == null}');
       _showErrorAndNavigate('Data transaksi tidak lengkap');
       return const SizedBox.shrink();
     }

@@ -22,7 +22,7 @@ class UserBinding extends Bindings {
   @override
   void dependencies() {
     print('Initializing UserBinding dependencies...');
-    
+
     // Initialize core services first
     if (!Get.isRegistered<AuthService>()) {
       print('Initializing AuthService...');
@@ -34,12 +34,12 @@ class UserBinding extends Bindings {
       print('Initializing AuthController...');
       Get.put(AuthController(), permanent: true);
     }
-    
+
     if (!Get.isRegistered<CategoryService>()) {
       print('Initializing CategoryService...');
       Get.put(CategoryService(), permanent: true);
     }
-    
+
     if (!Get.isRegistered<ProductService>()) {
       print('Initializing ProductService...');
       Get.put(ProductService(), permanent: true);
@@ -94,7 +94,15 @@ class UserBinding extends Bindings {
       () => ProductDetailController(reviewRepository: Get.find()),
       fenix: true,
     );
+    Get.put(CartController(), permanent: true);
+    Get.put(
+        UserLocationController(
+          locationService: Get.find<UserLocationService>(),
+        ),
+        permanent: true);
 
+    // Ensure OrderController is initialized with permanent flag
+    Get.put(OrderController(), permanent: true);
     Get.lazyPut<MapPickerController>(() => MapPickerController());
 
     // Transaction and Order Related Dependencies
@@ -104,7 +112,7 @@ class UserBinding extends Bindings {
 
     // Additional Feature Controllers
     _initializeFeatureControllers();
-    
+
     print('UserBinding dependencies initialization complete');
   }
 

@@ -120,7 +120,7 @@ class ProductProvider {
       {String? token, int? rating}) async {
     try {
       Map<String, dynamic> queryParams = {};
-      if (rating != null && rating > 0) {
+      if (rating != null) {
         queryParams['rating'] = rating;
       }
 
