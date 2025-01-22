@@ -19,18 +19,73 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
   late HomePageController controller;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // Ensure HomePageController is initialized
-    if (!Get.isRegistered<HomePageController>()) {
-      controller = Get.put(HomePageController(), permanent: true);
-    } else {
-      controller = Get.find<HomePageController>();
+    controller = Get.find<HomePageController>();
+    // Ensure data is loaded when page is first created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (controller.allProducts.isEmpty) {
+        controller.loadInitialData();
+      }
+    });
+  }
+
+  Future<void> _handleRefresh() async {
+    try {
+      await controller.refreshProducts();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Gagal memuat data. Tarik ke bawah untuk mencoba lagi.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
     }
+  }
+
+  Widget _buildErrorView({required VoidCallback onRetry}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: Dimenssions.iconSize24 * 2,
+            color: Colors.red,
+          ),
+          SizedBox(height: Dimenssions.height10),
+          Text(
+            'Gagal memuat data',
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font16,
+              color: secondaryTextColor,
+            ),
+          ),
+          SizedBox(height: Dimenssions.height10),
+          ElevatedButton(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: logoColorSecondary,
+            ),
+            child: Text(
+              'Coba Lagi',
+              style: primaryTextStyle.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSearchBar() {
@@ -108,6 +163,16 @@ class _HomePageState extends State<HomePage> {
                     color: secondaryTextColor,
                   ),
                 ),
+                SizedBox(height: Dimenssions.height10),
+                TextButton(
+                  onPressed: () => controller.loadPopularProducts(),
+                  child: Text(
+                    'Muat Ulang',
+                    style: primaryTextStyle.copyWith(
+                      color: logoColorSecondary,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -175,6 +240,17 @@ class _HomePageState extends State<HomePage> {
               fontWeight: semiBold,
             ),
           ),
+          if (!controller.isLoading.value && controller.allProducts.isNotEmpty)
+            TextButton(
+              onPressed: _handleRefresh,
+              child: Text(
+                'Segarkan',
+                style: primaryTextStyle.copyWith(
+                  color: logoColorSecondary,
+                  fontSize: Dimenssions.font14,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -207,6 +283,18 @@ class _HomePageState extends State<HomePage> {
                       color: secondaryTextColor,
                     ),
                   ),
+                  if (controller.searchQuery.isEmpty) ...[
+                    SizedBox(height: Dimenssions.height10),
+                    TextButton(
+                      onPressed: () => controller.loadAllProducts(),
+                      child: Text(
+                        'Muat Ulang',
+                        style: primaryTextStyle.copyWith(
+                          color: logoColorSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -226,7 +314,9 @@ class _HomePageState extends State<HomePage> {
               (context, index) {
                 final product = controller.filteredProducts[index];
 
-                if (index >= 6 && !controller.isLoadingMore.value) {
+                if (index >= controller.filteredProducts.length - 3 && 
+                    !controller.isLoadingMore.value && 
+                    controller.hasMoreData.value) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     controller.loadMoreProducts();
                   });
@@ -258,6 +348,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     return Obx(() {
       if (controller.isLoading.value && controller.searchQuery.isEmpty) {
         return SafeArea(
@@ -275,7 +367,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: backgroundColor1,
         body: SafeArea(
           child: RefreshIndicator(
-            onRefresh: controller.refreshProducts,
+            onRefresh: _handleRefresh,
             color: logoColorSecondary,
             child: CustomScrollView(
               controller: controller.scrollController,

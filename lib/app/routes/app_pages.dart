@@ -1,5 +1,5 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
-import 'package:antarkanma/app/modules/auth/auth_binding.dart';
+import 'package:antarkanma/app/modules/auth/bindings/auth_binding.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
 import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
 import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
@@ -57,6 +57,7 @@ class AppPages {
     GetPage(
       name: Routes.splash,
       page: () => SplashPage(),
+      binding: AuthBinding(),
     ),
     GetPage(
       name: Routes.login,
@@ -72,9 +73,8 @@ class AppPages {
       name: Routes.cart,
       page: () => const CartPage(),
       binding: BindingsBuilder(() {
-        if (!Get.isRegistered<CartController>()) {
-          Get.put(CartController(), permanent: true);
-        }
+        Get.put(CartController(), permanent: true);
+        Get.put(AuthController(), permanent: true);
       }),
     ),
     GetPage(
@@ -90,7 +90,10 @@ class AppPages {
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
-      binding: UserBinding(),
+      bindings: [
+        AuthBinding(),
+        UserBinding(),
+      ],
       children: [
         GetPage(
           name: '/profile',

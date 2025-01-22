@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 import '../controllers/user_main_controller.dart';
+import '../controllers/homepage_controller.dart';
 import '../modules/splash/controllers/splash_controller.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
@@ -39,10 +40,7 @@ class InitialBinding extends Bindings {
     debugPrint('Initializing ProductService...');
     Get.put(ProductService(), permanent: true);
 
-    // Controllers
-    debugPrint('Initializing SplashController...');
-    Get.put(SplashController(), permanent: true);
-
+    // Controllers - Initialize core controllers first
     debugPrint('Initializing AuthController...');
     Get.put(AuthController(), permanent: true);
 
@@ -52,8 +50,15 @@ class InitialBinding extends Bindings {
     debugPrint('Initializing UserMainController...');
     Get.put(UserMainController(), permanent: true);
 
-    // Note: HomePageController is now initialized by UserMainController
-    // only after successful authentication as a regular user
+    // Initialize HomePageController after its dependencies
+    debugPrint('Initializing HomePageController...');
+    if (!Get.isRegistered<HomePageController>()) {
+      Get.put(HomePageController(), permanent: true);
+    }
+
+    // Initialize SplashController last since it depends on other controllers
+    debugPrint('Initializing SplashController...');
+    Get.put(SplashController(), permanent: true);
 
     debugPrint('Dependencies initialization complete');
   }

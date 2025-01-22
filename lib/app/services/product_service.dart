@@ -9,6 +9,7 @@ class ProductService extends GetxService {
   final dio.Dio _dio = dio.Dio();
   final String baseUrl = Config.baseUrl;
   final RxList<ProductModel> _localProducts = <ProductModel>[].obs;
+  static const int maxRetries = 3;
 
   ProductService() {
     _setupBaseOptions();
@@ -28,29 +29,36 @@ class ProductService extends GetxService {
     _dio.interceptors.add(
       dio.InterceptorsWrapper(
         onRequest: (options, handler) {
+          debugPrint('🌐 Request URL: ${options.uri}');
+          debugPrint('📝 Request Query Parameters: ${options.queryParameters}');
+          
+          // Add default headers
           options.headers.addAll({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           });
-          debugPrint('🌐 Request URL: ${options.uri}');
-          debugPrint('📝 Request Query Parameters: ${options.queryParameters}');
+          
           return handler.next(options);
         },
         onResponse: (response, handler) {
           debugPrint('✅ Response Status Code: ${response.statusCode}');
+          debugPrint('✅ Response Data: ${response.data}');
+          
           if (response.data is Map) {
             final data = response.data as Map<String, dynamic>;
             if (data['meta'] != null) {
-              final meta = data['meta'] as Map<String, dynamic>;
-              debugPrint('📊 Response Meta: $meta');
+              debugPrint('📊 Response Meta: ${data['meta']}');
             }
             if (data['data'] != null) {
-              final dataSection = data['data'] as Map<String, dynamic>;
-              debugPrint('📊 Current Page: ${dataSection['current_page']}');
-              debugPrint('📊 Last Page: ${dataSection['last_page']}');
-              debugPrint('📊 Total Items: ${dataSection['total']}');
-              final items = dataSection['data'] as List;
-              debugPrint('📊 Items in Current Page: ${items.length}');
+              final dataSection = data['data'];
+              if (dataSection is Map) {
+                debugPrint('📊 Current Page: ${dataSection['current_page']}');
+                debugPrint('📊 Last Page: ${dataSection['last_page']}');
+                debugPrint('📊 Total Items: ${dataSection['total']}');
+                if (dataSection['data'] is List) {
+                  debugPrint('📊 Items in Current Page: ${(dataSection['data'] as List).length}');
+                }
+              }
             }
           }
           return handler.next(response);
@@ -61,24 +69,39 @@ class ProductService extends GetxService {
           debugPrint('   Error Data: ${error.response?.data}');
           debugPrint('   Request URL: ${error.requestOptions.uri}');
           debugPrint('   Query Params: ${error.requestOptions.queryParameters}');
-          _handleError(error);
           return handler.next(error);
         },
       ),
     );
   }
 
-  // Method to add product to local storage
+  Future<T> _retryRequest<T>(Future<T> Function() request) async {
+    int attempts = 0;
+    dio.DioException? lastError;
+
+    while (attempts < maxRetries) {
+      try {
+        return await request();
+      } on dio.DioException catch (e) {
+        lastError = e;
+        attempts++;
+        debugPrint('Attempt $attempts failed. Retrying...');
+        await Future.delayed(Duration(seconds: attempts)); // Exponential backoff
+      }
+    }
+
+    debugPrint('All retry attempts failed');
+    throw lastError!;
+  }
+
   void addProductToLocal(ProductModel product) {
     if (!_localProducts.contains(product)) {
       _localProducts.add(product);
     }
   }
 
-  // Method to get local products
   List<ProductModel> get localProducts => _localProducts.toList();
 
-  // Method to clear local products
   void clearLocalProducts() {
     _localProducts.clear();
   }
@@ -105,7 +128,6 @@ class ProductService extends GetxService {
       
       if (query != null && query.isNotEmpty) {
         queryParams['name'] = query;
-        debugPrint('🔍 Adding search query: $query');
       }
       if (description != null) queryParams['description'] = description;
       if (tags != null && tags.isNotEmpty) queryParams['tags'] = tags.join(',');
@@ -119,40 +141,50 @@ class ProductService extends GetxService {
       debugPrint('📤 Sending request to /products');
       debugPrint('📋 Query parameters: $queryParams');
 
-      final response = await _dio.get(
-        '/products',
-        queryParameters: queryParams,
-        options: token != null ? _getAuthOptions(token) : null,
-      );
+      return await _retryRequest(() async {
+        final response = await _dio.get(
+          '/products',
+          queryParameters: queryParams,
+          options: token != null ? _getAuthOptions(token) : null,
+        );
 
-      debugPrint('📥 Response received');
-      debugPrint('📊 Status code: ${response.statusCode}');
-      
-      return PaginatedResponse<ProductModel>.fromJson(
-        response.data,
-        (json) => ProductModel.fromJson(json as Map<String, dynamic>),
-      );
+        if (response.statusCode == 200 && response.data != null) {
+          debugPrint('📥 Response received successfully');
+          return PaginatedResponse<ProductModel>.fromJson(
+            response.data,
+            (json) => ProductModel.fromJson(json as Map<String, dynamic>),
+          );
+        } else {
+          throw dio.DioException(
+            requestOptions: response.requestOptions,
+            response: response,
+            error: 'Invalid response format',
+          );
+        }
+      });
     } catch (e) {
       debugPrint('❌ Error fetching products: $e');
-      throw Exception('Failed to fetch products: $e');
+      rethrow;
     }
   }
 
   Future<ProductModel> getProductById(int id, {String? token}) async {
     try {
-      final response = await _dio.get(
-        '/products/$id',
-        options: token != null ? _getAuthOptions(token) : null,
-      );
-      
-      if (response.data != null && 
-          response.data['data'] != null) {
-        return ProductModel.fromJson(response.data['data']);
-      }
-      throw Exception('Product data not found');
+      return await _retryRequest(() async {
+        final response = await _dio.get(
+          '/products/$id',
+          options: token != null ? _getAuthOptions(token) : null,
+        );
+        
+        if (response.data != null && 
+            response.data['data'] != null) {
+          return ProductModel.fromJson(response.data['data']);
+        }
+        throw Exception('Product data not found');
+      });
     } catch (e) {
       debugPrint('Error fetching product: $e');
-      throw Exception('Failed to fetch product: $e');
+      rethrow;
     }
   }
 
@@ -171,54 +203,27 @@ class ProductService extends GetxService {
       };
       if (cursor != null) queryParams['cursor'] = cursor;
 
-      final response = await _dio.get(
-        '/products',
-        queryParameters: queryParams,
-        options: token != null ? _getAuthOptions(token) : null,
-      );
+      return await _retryRequest(() async {
+        final response = await _dio.get(
+          '/products',
+          queryParameters: queryParams,
+          options: token != null ? _getAuthOptions(token) : null,
+        );
 
-      return PaginatedResponse<ProductModel>.fromJson(
-        response.data,
-        (json) => ProductModel.fromJson(json as Map<String, dynamic>),
-      );
+        return PaginatedResponse<ProductModel>.fromJson(
+          response.data,
+          (json) => ProductModel.fromJson(json as Map<String, dynamic>),
+        );
+      });
     } catch (e) {
       debugPrint('Error fetching products by category: $e');
-      throw Exception('Failed to fetch products by category: $e');
+      rethrow;
     }
   }
 
   Future<void> clearLocalStorage() async {
-    // Clear both API cache and local products
     clearLocalProducts();
-    debugPrint('Clearing local storage...');
-  }
-
-  void _handleError(dio.DioException error) {
-    String message;
-    debugPrint('🚫 API Error Response: ${error.response?.data}');
-    
-    if (error.response?.data is Map && error.response?.data['meta'] != null) {
-      message = error.response?.data['meta']['message'] ?? 'An error occurred';
-    } else {
-      switch (error.response?.statusCode) {
-        case 401:
-          message = 'Unauthorized access. Please log in again.';
-          break;
-        case 403:
-          message = 'You don\'t have permission to perform this action.';
-          break;
-        case 404:
-          message = 'Product not found.';
-          break;
-        case 422:
-          final errors = error.response?.data['errors'];
-          message = errors != null ? errors.toString() : 'Validation error occurred';
-          break;
-        default:
-          message = error.response?.data?['message'] ?? 'An error occurred';
-      }
-    }
-    throw Exception(message);
+    debugPrint('Local storage cleared');
   }
 
   dio.Options _getAuthOptions(String token) {

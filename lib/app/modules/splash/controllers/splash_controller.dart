@@ -12,6 +12,7 @@ class SplashController extends GetxController {
   final ProductService _productService = Get.find<ProductService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
   final StorageService _storageService = StorageService.instance;
+  final HomePageController _homeController = Get.find<HomePageController>();
   
   final RxBool _isLoading = true.obs;
   final RxString _loadingText = 'Mempersiapkan aplikasi...'.obs;
@@ -27,27 +28,53 @@ class SplashController extends GetxController {
 
   Future<void> _initializeApp() async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      // Start loading data and checking auth in parallel
+      await Future.wait([
+        _loadInitialData(),
+        _checkAuthentication(),
+      ], eagerError: false); // Set to false to continue even if one fails
 
-      // Load products first regardless of auth status
+      // Wait a minimum of 2 seconds for splash screen
+      await Future.delayed(const Duration(seconds: 2));
+      
+      if (_authService.isLoggedIn.value) {
+        Get.offAllNamed(Routes.userMainPage);
+      } else {
+        Get.offAllNamed(Routes.login);
+      }
+    } catch (e) {
+      print('Error in splash controller: $e');
+      // Even if there's an error, proceed to login
+      Get.offAllNamed(Routes.login);
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
       _loadingText.value = 'Memuat data kategori...';
       await _categoryService.getCategories();
 
       _loadingText.value = 'Memuat data produk...';
-      final homeController = Get.find<HomePageController>();
-      await homeController.loadPopularProducts();
-      await homeController.loadAllProducts();
+      await _homeController.loadInitialData();
 
-      if (homeController.popularProducts.isEmpty) {
-        print('Warning: No popular products loaded');
+      if (_homeController.popularProducts.isEmpty) {
         _loadingText.value = 'Mencoba memuat ulang data produk...';
-        await homeController.refreshProducts(showMessage: false);
+        await _homeController.refreshProducts(showMessage: false);
       }
+    } catch (e) {
+      print('Error loading initial data: $e');
+      // Continue execution even if data loading fails
+      // The user can refresh later if needed
+    }
+  }
 
-      // Now check authentication
+  Future<void> _checkAuthentication() async {
+    try {
       _loadingText.value = 'Memeriksa status login...';
       
-      // First check if remember me is enabled
+      // Check remember me first
       if (_storageService.getRememberMe()) {
         final credentials = _storageService.getSavedCredentials();
         if (credentials != null) {
@@ -61,41 +88,27 @@ class SplashController extends GetxController {
           
           if (success) {
             print('Auto-login successful');
-            _isLoading.value = false;
-            await Future.delayed(const Duration(seconds: 1));
-            Get.offAllNamed(Routes.userMainPage);
             return;
           }
         }
       }
 
-      // If auto-login failed or not enabled, check for valid token
+      // If auto-login failed, check token
       final token = _storageService.getToken();
       final userData = _storageService.getUser();
       
       if (token != null && userData != null) {
-        // Try to verify token
         final isValid = await _authService.verifyToken(token);
         if (isValid) {
           _loadingText.value = 'Memuat data user...';
           _authService.currentUser.value = UserModel.fromJson(userData);
           _authService.isLoggedIn.value = true;
-          _isLoading.value = false;
-          await Future.delayed(const Duration(seconds: 1));
-          Get.offAllNamed(Routes.userMainPage);
-          return;
         }
       }
-
-      // If we reach here, no valid auth was found
-      await Future.delayed(const Duration(seconds: 2));
-      Get.offAllNamed(Routes.login);
-      
     } catch (e) {
-      print('Error in splash controller: $e');
-      Get.offAllNamed(Routes.login);
-    } finally {
-      _isLoading.value = false;
+      print('Error checking authentication: $e');
+      // Continue execution even if auth check fails
+      // User will be redirected to login
     }
   }
 }

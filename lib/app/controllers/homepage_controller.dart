@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
-import 'package:antarkanma/app/data/models/paginated_response.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
@@ -37,6 +36,8 @@ class HomePageController extends GetxController {
   int _currentPage = 1;
   int _lastPage = 1;
   int _totalItems = 0;
+  int _retryAttempts = 0;
+  static const int maxRetries = 3;
 
   @override
   void onInit() {
@@ -44,13 +45,6 @@ class HomePageController extends GetxController {
     debugPrint('HomePageController: onInit');
     searchFocusNode.addListener(_onSearchFocusChange);
     scrollController.addListener(_scrollListener);
-
-    if (_authService.isLoggedIn.value &&
-        _authService.currentUser.value?.role == 'USER') {
-      loadInitialData();
-    } else {
-      isLoading.value = false;
-    }
     _setupSearchListener();
   }
 
@@ -114,6 +108,7 @@ class HomePageController extends GetxController {
       _lastPage = paginatedResponse.lastPage;
       _totalItems = paginatedResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
+      _retryAttempts = 0; // Reset retry counter on success
 
       debugPrint('Loaded page $_currentPage of $_lastPage');
       debugPrint('Total products loaded: ${allProducts.length} of $_totalItems');
@@ -121,6 +116,13 @@ class HomePageController extends GetxController {
 
     } catch (e) {
       debugPrint('Error loading products: $e');
+      if (_retryAttempts < maxRetries) {
+        _retryAttempts++;
+        debugPrint('Retrying... Attempt $_retryAttempts of $maxRetries');
+        await Future.delayed(Duration(seconds: _retryAttempts));
+        return loadAllProducts();
+      }
+      rethrow;
     } finally {
       isLoadingMore.value = false;
     }
@@ -164,6 +166,7 @@ class HomePageController extends GetxController {
 
     } catch (e) {
       debugPrint('Error performing search: $e');
+      rethrow;
     } finally {
       isLoadingMore.value = false;
     }
@@ -176,6 +179,7 @@ class HomePageController extends GetxController {
 
     _isLoadingPopular = true;
     _popularProductsCompleter = Completer<void>();
+    _retryAttempts = 0;
 
     try {
       final paginatedResponse = await productService.getAllProducts(
@@ -184,9 +188,20 @@ class HomePageController extends GetxController {
 
       popularProducts.assignAll(paginatedResponse.data);
       _popularProductsCompleter?.complete();
+      _retryAttempts = 0; // Reset retry counter on success
     } catch (e) {
       debugPrint('Error loading popular products: $e');
+      if (_retryAttempts < maxRetries) {
+        _retryAttempts++;
+        debugPrint('Retrying popular products... Attempt $_retryAttempts of $maxRetries');
+        await Future.delayed(Duration(seconds: _retryAttempts));
+        _popularProductsCompleter?.completeError(e);
+        _popularProductsCompleter = null;
+        _isLoadingPopular = false;
+        return loadPopularProducts();
+      }
       _popularProductsCompleter?.completeError(e);
+      rethrow;
     } finally {
       _isLoadingPopular = false;
       _popularProductsCompleter = null;
@@ -218,6 +233,7 @@ class HomePageController extends GetxController {
 
     try {
       isRefreshing.value = true;
+      _retryAttempts = 0;
 
       // Clear all cached data
       await productService.clearLocalStorage();
@@ -250,14 +266,17 @@ class HomePageController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error refreshing products: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memperbarui data',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
+      if (showMessage) {
+        Get.snackbar(
+          'Error',
+          'Gagal memperbarui data',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      }
+      rethrow;
     } finally {
       isRefreshing.value = false;
       isLoading.value = false;
@@ -270,6 +289,7 @@ class HomePageController extends GetxController {
       _currentPage = 1;
       _lastPage = 1;
       hasMoreData.value = true;
+      _retryAttempts = 0;
 
       await Future.wait([
         _categoryService.getCategories(),
@@ -280,6 +300,13 @@ class HomePageController extends GetxController {
       selectedCategory.value = "Semua";
     } catch (e) {
       debugPrint('Error loading initial data: $e');
+      if (_retryAttempts < maxRetries) {
+        _retryAttempts++;
+        debugPrint('Retrying initial data load... Attempt $_retryAttempts of $maxRetries');
+        await Future.delayed(Duration(seconds: _retryAttempts));
+        return loadInitialData();
+      }
+      rethrow;
     } finally {
       isLoading.value = false;
     }

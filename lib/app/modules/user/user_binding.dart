@@ -84,9 +84,18 @@ class UserBinding extends Bindings {
     print('Initializing ReviewRepository...');
     Get.lazyPut(() => ReviewRepository(provider: Get.find()), fenix: true);
 
-    // Initialize HomePageController after its dependencies
-    print('Initializing HomePageController...');
-    Get.put(HomePageController(), permanent: true);
+    // Initialize HomePageController if not already initialized
+    if (!Get.isRegistered<HomePageController>()) {
+      print('Initializing HomePageController...');
+      Get.put(HomePageController(), permanent: true);
+    } else {
+      print('HomePageController already initialized');
+      // Ensure data is loaded
+      final homeController = Get.find<HomePageController>();
+      if (homeController.allProducts.isEmpty) {
+        homeController.loadInitialData();
+      }
+    }
 
     // Product Detail Controller
     print('Initializing ProductDetailController...');
@@ -94,21 +103,31 @@ class UserBinding extends Bindings {
       () => ProductDetailController(reviewRepository: Get.find()),
       fenix: true,
     );
-    Get.put(CartController(), permanent: true);
-    Get.put(
-        UserLocationController(
-          locationService: Get.find<UserLocationService>(),
-        ),
-        permanent: true);
 
-    // Ensure OrderController is initialized with permanent flag
-    Get.put(OrderController(), permanent: true);
+    // Ensure CartController is initialized
+    if (!Get.isRegistered<CartController>()) {
+      Get.put(CartController(), permanent: true);
+    }
+
+    // Initialize UserLocationController if not already initialized
+    if (!Get.isRegistered<UserLocationController>()) {
+      Get.put(
+          UserLocationController(
+            locationService: Get.find<UserLocationService>(),
+          ),
+          permanent: true);
+    }
+
+    // Ensure OrderController is initialized
+    if (!Get.isRegistered<OrderController>()) {
+      Get.put(OrderController(), permanent: true);
+    }
+
     Get.lazyPut<MapPickerController>(() => MapPickerController());
 
     // Transaction and Order Related Dependencies
     print('Initializing Transaction Services...');
     Get.lazyPut(() => TransactionService(), fenix: true);
-    Get.lazyPut(() => OrderController(), fenix: true);
 
     // Additional Feature Controllers
     _initializeFeatureControllers();
