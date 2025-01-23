@@ -175,6 +175,25 @@ class ProductModel {
         };
       }
 
+      // Handle reviews_avg_rating field
+      String? getAverageRating(Map<String, dynamic> json) {
+        if (json.containsKey('reviews_avg_rating')) {
+          return json['reviews_avg_rating'].toString();
+        }
+        return json['average_rating']?.toString();
+      }
+
+      // Handle reviews_count field
+      int? getTotalReviews(Map<String, dynamic> json) {
+        if (json.containsKey('reviews_count')) {
+          final count = json['reviews_count'];
+          return count is int ? count : int.tryParse(count.toString());
+        }
+        return json['total_reviews'] is int 
+            ? json['total_reviews'] 
+            : int.tryParse(json['total_reviews'].toString());
+      }
+
       final product = ProductModel(
         id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
         name: json['name']?.toString() ?? '',
@@ -202,10 +221,8 @@ class ProductModel {
         updatedAt: json['updated_at'] != null
             ? DateTime.tryParse(json['updated_at'].toString())
             : null,
-        averageRatingRaw: json['average_rating']?.toString(),
-        totalReviewsRaw: json['total_reviews'] is int 
-            ? json['total_reviews'] 
-            : int.tryParse(json['total_reviews'].toString()) ?? 0,
+        averageRatingRaw: getAverageRating(json),
+        totalReviewsRaw: getTotalReviews(json),
         ratingInfo: parseRatingInfo(json['rating_info']),
       );
 

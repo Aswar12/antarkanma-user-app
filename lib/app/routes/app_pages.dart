@@ -22,6 +22,8 @@ import 'package:get/get.dart';
 import 'package:antarkanma/app/middleware/auth_middleware.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
+import 'package:antarkanma/app/controllers/checkout_controller.dart';
+import 'package:antarkanma/app/controllers/user_location_controller.dart';
 
 abstract class Routes {
   // Common routes
@@ -135,13 +137,26 @@ class AppPages {
           name: '/checkout',
           page: () => CheckoutPage(),
           binding: BindingsBuilder(() {
-            // Ensure core services are available
+            // Ensure core services and controllers are available
             if (!Get.isRegistered<AuthService>()) {
               Get.put(AuthService(), permanent: true);
             }
             if (!Get.isRegistered<AuthController>()) {
               Get.put(AuthController(), permanent: true);
             }
+            if (!Get.isRegistered<CartController>()) {
+              Get.put(CartController(), permanent: true);
+            }
+            if (!Get.isRegistered<UserLocationController>()) {
+              Get.put(UserLocationController(
+                locationService: Get.find(),
+              ), permanent: true);
+            }
+            // Initialize CheckoutController
+            Get.put(CheckoutController(
+              userLocationController: Get.find(),
+              authController: Get.find(),
+            ));
           }),
         ),
         GetPage(

@@ -58,7 +58,7 @@ class AddressSelectionPage extends StatelessWidget {
                             size: Dimenssions.height22,
                           ),
                         ),
-                        onPressed: () => Get.toNamed('/main/add-address'),
+                        onPressed: () => Get.toNamed('/usermain/add-address'),
                       ),
                     ),
                   ],

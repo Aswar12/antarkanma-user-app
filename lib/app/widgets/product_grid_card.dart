@@ -20,7 +20,7 @@ class ProductGridCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.45, // Adjusted width
+        width: MediaQuery.of(context).size.width * 0.45,
         decoration: BoxDecoration(
           color: backgroundColor2,
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
@@ -48,7 +48,7 @@ class ProductGridCard extends StatelessWidget {
                       topRight: Radius.circular(Dimenssions.radius15),
                     ),
                     child: Hero(
-                      tag: 'product-grid-${product.id}', // Ensure unique tag
+                      tag: 'product-grid-${product.id}',
                       child: product.galleries.isNotEmpty &&
                               product.imageUrls[0].isNotEmpty
                           ? CachedImageView(
@@ -152,13 +152,21 @@ class ProductGridCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: Dimenssions.height4),
-                        // Rating
-                        StarRating(
-                          rating: product.ratingInfo != null
-                              ? (product.ratingInfo!['average_rating'] as num)
-                                  .toDouble()
-                              : product.averageRating,
-                          size: Dimenssions.iconSize16,
+                        // Rating and Reviews Count
+                        Row(
+                          children: [
+                            StarRating(
+                              rating: product.averageRating,
+                              size: Dimenssions.iconSize16,
+                            ),
+                            SizedBox(width: Dimenssions.width4),
+                            Text(
+                              '(${product.totalReviews} ulasan)',
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font12,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

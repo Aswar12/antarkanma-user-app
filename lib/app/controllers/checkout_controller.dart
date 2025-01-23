@@ -17,11 +17,12 @@ import 'package:flutter/foundation.dart';
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
   final AuthController authController;
+  final CartController cartController;
 
   CheckoutController({
     required this.userLocationController,
     required this.authController,
-  });
+  }) : cartController = Get.find<CartController>(); // Ensure CartController is initialized
 
   // Observable properties
   final isLoading = false.obs;

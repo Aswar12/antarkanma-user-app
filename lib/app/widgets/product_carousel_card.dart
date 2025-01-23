@@ -158,7 +158,7 @@ class ProductCarouselCard extends StatelessWidget {
                             ),
                             SizedBox(height: Dimenssions.height2),
                             Text(
-                              '${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews} reviews',
+                              '${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews} ulasan',
                               style: primaryTextStyle.copyWith(
                                 color: backgroundColor1.withOpacity(0.8),
                                 fontSize: Dimenssions.font12,

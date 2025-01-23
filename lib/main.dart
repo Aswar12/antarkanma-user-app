@@ -28,8 +28,6 @@ Future<void> main() async {
     ),
   );
 
- 
-
   // Initialize Firebase with performance settings
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -51,8 +49,7 @@ Future<void> main() async {
     );
 
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   }
 

@@ -75,7 +75,7 @@ class ProfilePage extends GetView<AuthController> {
               children: [
                 // Profile Image
                 GestureDetector(
-                  onTap: () => Get.toNamed('/main/edit-profile'),
+                  onTap: () => Get.toNamed('/usermain/edit-profile'),
                   child: Container(
                     margin: EdgeInsets.only(top: Dimenssions.height30),
                     child: Stack(

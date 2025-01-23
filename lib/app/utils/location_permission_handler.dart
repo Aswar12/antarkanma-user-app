@@ -9,11 +9,11 @@ class LocationPermissionHandler {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Cek apakah layanan lokasi aktif
+    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Tampilkan dialog untuk mengaktifkan layanan lokasi
-      bool? openSettings = await Get.dialog(
+      // Show dialog to enable location services
+      bool? openSettings = await Get.dialog<bool>(
         AlertDialog(
           title: const Text('Layanan Lokasi Nonaktif'),
           content: const Text(
@@ -30,36 +30,37 @@ class LocationPermissionHandler {
             ),
           ],
         ),
+        barrierDismissible: false,
       );
 
       if (openSettings == true) {
         await Geolocator.openLocationSettings();
+        // Check again after returning from settings
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          return false;
+        }
+      } else {
+        return false;
       }
-      return false;
     }
 
-    // Cek dan minta izin lokasi
+    // Check and request location permission
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        Get.snackbar(
-          'Izin Ditolak',
-          'Izin lokasi diperlukan untuk menggunakan fitur ini',
-          snackPosition: SnackPosition.BOTTOM,
-        );
         return false;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      // Tampilkan dialog untuk membuka pengaturan aplikasi
-      bool? openAppSettings = await Get.dialog(
+      // Show dialog to open app settings
+      bool? openAppSettings = await Get.dialog<bool>(
         AlertDialog(
           title: const Text('Izin Lokasi Diperlukan'),
-          content:
-              const Text('Izin lokasi diperlukan untuk menggunakan fitur ini. '
-                  'Buka pengaturan aplikasi untuk mengaktifkan izin lokasi?'),
+          content: const Text('Izin lokasi diperlukan untuk menggunakan fitur ini. '
+              'Buka pengaturan aplikasi untuk mengaktifkan izin lokasi?'),
           actions: [
             TextButton(
               onPressed: () => Get.back(result: false),
@@ -71,12 +72,19 @@ class LocationPermissionHandler {
             ),
           ],
         ),
+        barrierDismissible: false,
       );
 
       if (openAppSettings == true) {
-        openAppSettings;
+        await Geolocator.openAppSettings();
+        // Check again after returning from settings
+        permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.deniedForever) {
+          return false;
+        }
+      } else {
+        return false;
       }
-      return false;
     }
 
     return true;
@@ -85,7 +93,7 @@ class LocationPermissionHandler {
   static Future<bool> checkAndRequestLocationService() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      bool? result = await Get.dialog(
+      bool? result = await Get.dialog<bool>(
         AlertDialog(
           title: const Text('Aktifkan Layanan Lokasi'),
           content: const Text(
@@ -102,11 +110,12 @@ class LocationPermissionHandler {
             ),
           ],
         ),
+        barrierDismissible: false,
       );
 
       if (result == true) {
         await Geolocator.openLocationSettings();
-        // Cek lagi setelah user kembali dari pengaturan
+        // Check again after user returns from settings
         return await Geolocator.isLocationServiceEnabled();
       }
       return false;

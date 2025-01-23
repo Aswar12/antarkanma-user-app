@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_print
 
 import 'dart:async';
-import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
@@ -9,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../utils/location_permission_handler.dart';
+import '../controllers/cart_controller.dart';
 
 class MapPickerController extends GetxController {
   final selectedLocation = const LatLng(-4.6275392, 119.5871827).obs;
@@ -33,22 +33,6 @@ class MapPickerController extends GetxController {
     _locationTimer?.cancel();
     mapController.value.dispose();
     super.onClose();
-  }
-
-  void _showSnackbar({
-    required String title,
-    required String message,
-    required bool isError,
-  }) {
-    if (!_disposed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showCustomSnackbar(
-          title: title,
-          message: message,
-          isError: isError,
-        );
-      });
-    }
   }
 
   Future<void> _initializeLocation() async {
@@ -94,65 +78,27 @@ class MapPickerController extends GetxController {
 
       bool hasPermission =
           await LocationPermissionHandler.handleLocationPermission();
-      if (!hasPermission || _disposed) {
-        _showSnackbar(
-          title: 'Peringatan',
-          message: 'Izin lokasi diperlukan untuk menggunakan fitur ini',
-          isError: true,
-        );
-        return;
-      }
+      if (!hasPermission || _disposed) return;
 
       bool serviceEnabled =
           await LocationPermissionHandler.checkAndRequestLocationService();
-      if (!serviceEnabled || _disposed) {
-        _showSnackbar(
-          title: 'Peringatan',
-          message: 'Layanan lokasi perlu diaktifkan',
-          isError: true,
-        );
-        return;
-      }
+      if (!serviceEnabled || _disposed) return;
 
       Position? position = await _getPositionWithTimeout();
-      if (_disposed) return;
-
-      if (position == null) {
-        _showSnackbar(
-          title: 'Error',
-          message: 'Tidak dapat mendapatkan lokasi saat ini',
-          isError: true,
-        );
-        return;
-      }
+      if (_disposed || position == null) return;
 
       final newLocation = LatLng(position.latitude, position.longitude);
       await updateLocation(newLocation);
 
-      if (_disposed) return;
-
-      try {
-        mapController.value.move(newLocation, 15);
-        _showSnackbar(
-          title: 'Sukses',
-          message: 'Lokasi berhasil diperbarui',
-          isError: false,
-        );
-      } catch (e) {
-        print('Error moving map: $e');
+      if (!_disposed) {
+        try {
+          mapController.value.move(newLocation, 15);
+        } catch (e) {
+          print('Error moving map: $e');
+        }
       }
     } catch (e) {
-      if (!_disposed) {
-        String errorMessage = 'Gagal mendapatkan lokasi';
-        if (e is TimeoutException) {
-          errorMessage = 'Waktu mendapatkan lokasi habis. Silakan coba lagi';
-        }
-        _showSnackbar(
-          title: 'Error',
-          message: errorMessage,
-          isError: true,
-        );
-      }
+      print('Error getting location: $e');
     } finally {
       if (!_disposed) {
         _safeUpdate(() => isLoading.value = false);
@@ -167,14 +113,7 @@ class MapPickerController extends GetxController {
       _safeUpdate(() => selectedLocation.value = newLocation);
       await getAddressFromLatLng(newLocation);
     } catch (e) {
-      if (!_disposed) {
-        print('Error updating location: $e');
-        _showSnackbar(
-          title: 'Error',
-          message: 'Gagal memperbarui lokasi',
-          isError: true,
-        );
-      }
+      print('Error updating location: $e');
     }
   }
 
@@ -211,7 +150,6 @@ class MapPickerController extends GetxController {
       if (!_disposed) {
         _safeUpdate(
             () => currentAddress.value = 'Tidak dapat mendapatkan alamat');
-        print('Error getting address: $e');
       }
     }
   }
@@ -219,26 +157,25 @@ class MapPickerController extends GetxController {
   void confirmLocation() {
     if (_disposed) return;
 
-    if (Get.isRegistered<MapPickerController>()) {
-      Get.back(result: {
-        'location': selectedLocation.value,
-        'address': currentAddress.value,
-      });
-    } else {
-      Navigator.pop(Get.context!, {
-        'location': selectedLocation.value,
-        'address': currentAddress.value,
-      });
+    final result = {
+      'location': selectedLocation.value,
+      'address': currentAddress.value,
+    };
+
+    try {
+      Get.back(result: result);
+    } catch (e) {
+      print('Error in confirmLocation: $e');
+      if (Get.context != null) {
+        Navigator.of(Get.context!).pop(result);
+      }
     }
   }
 
   void initializeMap() {
-    // Inisialisasi peta dengan lokasi default atau lokasi terakhir yang diketahui
     selectedLocation.value =
-        const LatLng(-4.6275392, 119.5871827); // Contoh koordinat default
+        const LatLng(-4.6275392, 119.5871827); // Default coordinates
     mapController.value.move(selectedLocation.value, 15.0);
-
-    // Kemudian coba dapatkan lokasi saat ini
     getCurrentLocation();
   }
 

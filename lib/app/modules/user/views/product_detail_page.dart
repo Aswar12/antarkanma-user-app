@@ -28,11 +28,17 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   late ProductDetailController controller;
+  late CartController cartController;
 
   @override
   void initState() {
     super.initState();
     controller = Get.find<ProductDetailController>();
+    // Initialize CartController if not already initialized
+    if (!Get.isRegistered<CartController>()) {
+      Get.put(CartController());
+    }
+    cartController = Get.find<CartController>();
     _initializeDateFormatting();
     final product = Get.arguments as ProductModel;
     controller.setProduct(product);
@@ -47,7 +53,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       final merchant = controller.product.value.merchant;
       if (merchant == null) return;
 
-      final cartController = Get.find<CartController>();
       cartController.addToCart(
         controller.product.value,
         controller.quantity.value,
@@ -59,7 +64,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         title: 'Error',
         message: 'Terjadi kesalahan saat menambahkan ke keranjang',
         backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
       );
     }
   }
@@ -76,7 +80,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           title: 'Error',
           message: 'Data merchant tidak valid',
           backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
         );
         return;
       }
@@ -101,7 +104,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         title: 'Error',
         message: 'Terjadi kesalahan saat memproses pembelian',
         backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
       );
     }
   }
@@ -133,7 +135,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                _buildSliverAppBar(),
+                _buildSliverAppBar(context),
                 SliverPadding(
                   padding: EdgeInsets.zero,
                   sliver: SliverList(
@@ -178,9 +180,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: MediaQuery.of(Get.context!).size.width,
+      expandedHeight: MediaQuery.of(context).size.width,
       floating: false,
       pinned: true,
       backgroundColor: backgroundColor1,
@@ -192,14 +194,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         backgroundColor: backgroundColor1,
       ),
       actions: [
-        Obx(() {
-          final cartController = Get.find<CartController>();
-          return CartButton(
-            itemCount: cartController.itemCount,
-            onPressed: _navigateToCart,
-            backgroundColor: backgroundColor1,
-          );
-        }),
+        Obx(() => CartButton(
+              itemCount: cartController.itemCount,
+              onPressed: _navigateToCart,
+              backgroundColor: backgroundColor1,
+            )),
       ],
       flexibleSpace: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {

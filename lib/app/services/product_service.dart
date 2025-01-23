@@ -31,19 +31,19 @@ class ProductService extends GetxService {
         onRequest: (options, handler) {
           debugPrint('🌐 Request URL: ${options.uri}');
           debugPrint('📝 Request Query Parameters: ${options.queryParameters}');
-          
+
           // Add default headers
           options.headers.addAll({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           });
-          
+
           return handler.next(options);
         },
         onResponse: (response, handler) {
           debugPrint('✅ Response Status Code: ${response.statusCode}');
           debugPrint('✅ Response Data: ${response.data}');
-          
+
           if (response.data is Map) {
             final data = response.data as Map<String, dynamic>;
             if (data['meta'] != null) {
@@ -56,7 +56,8 @@ class ProductService extends GetxService {
                 debugPrint('📊 Last Page: ${dataSection['last_page']}');
                 debugPrint('📊 Total Items: ${dataSection['total']}');
                 if (dataSection['data'] is List) {
-                  debugPrint('📊 Items in Current Page: ${(dataSection['data'] as List).length}');
+                  debugPrint(
+                      '📊 Items in Current Page: ${(dataSection['data'] as List).length}');
                 }
               }
             }
@@ -68,7 +69,8 @@ class ProductService extends GetxService {
           debugPrint('   Status Code: ${error.response?.statusCode}');
           debugPrint('   Error Data: ${error.response?.data}');
           debugPrint('   Request URL: ${error.requestOptions.uri}');
-          debugPrint('   Query Params: ${error.requestOptions.queryParameters}');
+          debugPrint(
+              '   Query Params: ${error.requestOptions.queryParameters}');
           return handler.next(error);
         },
       ),
@@ -86,7 +88,8 @@ class ProductService extends GetxService {
         lastError = e;
         attempts++;
         debugPrint('Attempt $attempts failed. Retrying...');
-        await Future.delayed(Duration(seconds: attempts)); // Exponential backoff
+        await Future.delayed(
+            Duration(seconds: attempts)); // Exponential backoff
       }
     }
 
@@ -123,9 +126,8 @@ class ProductService extends GetxService {
     try {
       Map<String, dynamic> queryParams = {
         'page': page ?? 1,
-        'per_page': pageSize,
       };
-      
+
       if (query != null && query.isNotEmpty) {
         queryParams['name'] = query;
       }
@@ -175,9 +177,8 @@ class ProductService extends GetxService {
           '/products/$id',
           options: token != null ? _getAuthOptions(token) : null,
         );
-        
-        if (response.data != null && 
-            response.data['data'] != null) {
+
+        if (response.data != null && response.data['data'] != null) {
           return ProductModel.fromJson(response.data['data']);
         }
         throw Exception('Product data not found');

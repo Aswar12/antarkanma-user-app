@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:antarkanma/app/controllers/map_picker_controller.dart';
-import 'package:antarkanma/theme.dart'; // Ensure theme.dart is imported
+import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
@@ -13,13 +13,14 @@ class MapPickerView extends StatefulWidget {
   State<MapPickerView> createState() => _MapPickerViewState();
 }
 
-class _MapPickerViewState extends State<MapPickerView> {
+class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserver {
   late final MapPickerController controller;
 
   @override
   void initState() {
     super.initState();
     controller = Get.put(MapPickerController());
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.initializeMap();
     });
@@ -27,8 +28,17 @@ class _MapPickerViewState extends State<MapPickerView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     Get.delete<MapPickerController>();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Re-check location permission when app is resumed
+      controller.getCurrentLocation();
+    }
   }
 
   AppBar _buildAppBar() {
@@ -55,8 +65,6 @@ class _MapPickerViewState extends State<MapPickerView> {
           ),
           onPressed: () {
             controller.getCurrentLocation();
-            // Center the map on the user's current location
-            controller.updateLocation(controller.currentLocation);
           },
           tooltip: 'Lokasi Saat Ini',
         ),
@@ -160,7 +168,7 @@ class _MapPickerViewState extends State<MapPickerView> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: backgroundColor1,
         borderRadius: BorderRadius.circular(Dimenssions.radius15),
         boxShadow: [
           BoxShadow(
@@ -188,7 +196,7 @@ class _MapPickerViewState extends State<MapPickerView> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: primaryTextStyle.copyWith(
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -196,7 +204,7 @@ class _MapPickerViewState extends State<MapPickerView> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 14),
+          style: primaryTextStyle.copyWith(fontSize: 14),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),

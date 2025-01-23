@@ -1,5 +1,5 @@
 class Config {
-  static String baseUrl = 'https://fortufitness.my.id/api';
+  static String baseUrl = 'https://antarkanmaa.my.id/api';
   static const int receiveTimeout = 15000;
   static const int connectTimeout = 15000;
 

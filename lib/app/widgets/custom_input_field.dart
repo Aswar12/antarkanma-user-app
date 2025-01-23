@@ -11,6 +11,7 @@ class CustomInputField extends StatefulWidget {
   final bool initialObscureText;
   final dynamic icon;
   final bool showVisibilityToggle;
+  final bool readOnly;
 
   const CustomInputField({
     super.key,
@@ -21,6 +22,7 @@ class CustomInputField extends StatefulWidget {
     this.initialObscureText = false,
     required this.icon,
     this.showVisibilityToggle = false,
+    this.readOnly = false,
   });
 
   @override
@@ -104,7 +106,7 @@ class _CustomInputFieldState extends State<CustomInputField> {
           Container(
             height: 50,
             decoration: BoxDecoration(
-              color: backgroundColor2,
+              color: widget.readOnly ? backgroundColor2.withOpacity(0.7) : backgroundColor2,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: (_isFocused || _hasText)
@@ -130,6 +132,7 @@ class _CustomInputFieldState extends State<CustomInputField> {
                       obscureText: _obscureText,
                       controller: widget.controller,
                       validator: widget.validator,
+                      readOnly: widget.readOnly,
                       decoration: InputDecoration(
                         hintText: widget.hintText,
                         hintStyle: subtitleTextStyle,
