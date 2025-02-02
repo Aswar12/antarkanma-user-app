@@ -3,8 +3,6 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 

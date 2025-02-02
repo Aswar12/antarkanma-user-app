@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/product_service.dart';
 import '../../../services/category_service.dart';
@@ -6,6 +8,7 @@ import '../../../services/storage_service.dart';
 import '../../../routes/app_pages.dart';
 import '../../../controllers/homepage_controller.dart';
 import '../../../data/models/user_model.dart';
+import '../../../utils/location_permission_handler.dart';
 
 class SplashController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -28,6 +31,9 @@ class SplashController extends GetxController {
 
   Future<void> _initializeApp() async {
     try {
+      // Request permissions first
+      await _requestInitialPermissions();
+
       // Start loading data and checking auth in parallel
       await Future.wait([
         _loadInitialData(),
@@ -48,6 +54,71 @@ class SplashController extends GetxController {
       Get.offAllNamed(Routes.login);
     } finally {
       _isLoading.value = false;
+    }
+  }
+
+  Future<void> _requestInitialPermissions() async {
+    try {
+      _loadingText.value = 'Memeriksa izin aplikasi...';
+
+      // Request location permission
+      await LocationPermissionHandler.handleLocationPermission();
+      
+      // Request other permissions
+      await _requestDataPermissions();
+
+    } catch (e) {
+      print('Error requesting permissions: $e');
+    }
+  }
+
+  Future<void> _requestDataPermissions() async {
+    // Request storage permission
+    if (await Permission.storage.status.isDenied) {
+      _loadingText.value = 'Meminta izin akses penyimpanan...';
+      await Permission.storage.request();
+    }
+
+    // Request photos permission (for profile picture, etc)
+    if (await Permission.photos.status.isDenied) {
+      _loadingText.value = 'Meminta izin akses foto...';
+      await Permission.photos.request();
+    }
+
+    // Request camera permission
+    if (await Permission.camera.status.isDenied) {
+      _loadingText.value = 'Meminta izin akses kamera...';
+      await Permission.camera.request();
+    }
+
+    // If any permission is permanently denied, show settings dialog
+    if (await Permission.storage.isPermanentlyDenied ||
+        await Permission.photos.isPermanentlyDenied ||
+        await Permission.camera.isPermanentlyDenied) {
+      final bool? openSettings = await Get.dialog<bool>(
+        AlertDialog(
+          title: const Text('Izin Diperlukan'),
+          content: const Text(
+            'Beberapa izin diperlukan untuk menggunakan fitur aplikasi ini. '
+            'Buka pengaturan untuk mengaktifkan izin yang diperlukan?'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: const Text('BATAL'),
+            ),
+            TextButton(
+              onPressed: () => Get.back(result: true),
+              child: const Text('PENGATURAN'),
+            ),
+          ],
+        ),
+        barrierDismissible: false,
+      );
+
+      if (openSettings == true) {
+        await openAppSettings();
+      }
     }
   }
 

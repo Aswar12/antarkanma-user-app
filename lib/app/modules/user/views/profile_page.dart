@@ -237,7 +237,7 @@ class ProfilePage extends GetView<AuthController> {
                   height: Dimenssions.height45,
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () => Get.toNamed('/main/add-address'),
+                    onPressed: () => Get.toNamed('/usermain/add-address'),
                     style: TextButton.styleFrom(
                       backgroundColor: logoColorSecondary,
                       shape: RoundedRectangleBorder(
