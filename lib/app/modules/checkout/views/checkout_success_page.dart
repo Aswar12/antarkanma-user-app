@@ -13,7 +13,7 @@ import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:flutter/foundation.dart';
 
 class CheckoutSuccessPage extends StatelessWidget {
-  const CheckoutSuccessPage({Key? key}) : super(key: key);
+  const CheckoutSuccessPage({super.key});
 
   Future<void> _navigateToOrderPage() async {
     debugPrint('Navigating to order page...');
@@ -502,7 +502,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                           child: _buildTransactionCard(
                               transaction, deliveryAddress),
                         ))
-                    .toList(),
+                    ,
 
                 SizedBox(height: Dimenssions.height20),
 

@@ -7,11 +7,11 @@ class CurvedBottomDecoration extends StatelessWidget {
   final double radius;
 
   const CurvedBottomDecoration({
-    Key? key,
+    super.key,
     required this.height,
     this.color = Colors.white,
     this.radius = 30,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

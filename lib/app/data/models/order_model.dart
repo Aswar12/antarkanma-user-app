@@ -108,7 +108,7 @@ class OrderModel {
       userId: userId ?? this.userId,
       items: items ?? this.items,
       totalAmount: totalAmount ?? this.totalAmount,
-      orderStatus: orderStatus ?? this._orderStatus,
+      orderStatus: orderStatus ?? _orderStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       transaction: transaction ?? this.transaction,

@@ -10,8 +10,7 @@ class CartController extends GetxController {
   static const String CART_STORAGE_KEY = 'cart_items';
   static const int MAX_QUANTITY = 99;
   final storage = GetStorage();
-  final RxMap<int, List<CartItemModel>> merchantItems =
-      <int, List<CartItemModel>>{}.obs;
+  final RxMap<int, List<CartItemModel>> merchantItems = <int, List<CartItemModel>>{}.obs;
 
   @override
   void onInit() {
@@ -23,8 +22,7 @@ class CartController extends GetxController {
     try {
       final cartData = storage.read(CART_STORAGE_KEY);
       if (cartData != null) {
-        final Map<String, dynamic> decodedData =
-            Map<String, dynamic>.from(cartData);
+        final Map<String, dynamic> decodedData = Map<String, dynamic>.from(cartData);
         
         // Clear existing items
         merchantItems.clear();
@@ -43,7 +41,6 @@ class CartController extends GetxController {
             }
           } catch (e) {
             print('Error processing merchant $key: $e');
-            // Skip invalid merchant data
           }
         });
       }
@@ -52,7 +49,6 @@ class CartController extends GetxController {
       CustomSnackbarX.showError(
         message: 'Gagal memuat data keranjang',
       );
-      // Clear cart in case of error
       merchantItems.clear();
     }
   }
@@ -66,7 +62,6 @@ class CartController extends GetxController {
       if (validItems.isNotEmpty) {
         storage.write(CART_STORAGE_KEY, validItems);
       } else {
-        // If cart is empty, remove the storage key
         storage.remove(CART_STORAGE_KEY);
       }
     } catch (e) {
@@ -109,7 +104,6 @@ class CartController extends GetxController {
         return;
       }
 
-      // Initialize merchant's cart if it doesn't exist
       if (!merchantItems.containsKey(merchantId)) {
         merchantItems[merchantId] = [];
       }
@@ -136,6 +130,7 @@ class CartController extends GetxController {
           quantity: newQuantity,
           selectedVariant: existingItem.selectedVariant,
           merchant: merchant,
+          isSelected: existingItem.isSelected,
         );
       } else {
         merchantItems[merchantId]!.add(CartItemModel(
@@ -143,6 +138,7 @@ class CartController extends GetxController {
           quantity: quantity,
           selectedVariant: selectedVariant,
           merchant: merchant,
+          isSelected: true, // Set new items as selected by default
         ));
       }
 
@@ -307,6 +303,17 @@ class CartController extends GetxController {
       selected.addAll(items.where((item) => item.isSelected));
     });
     return selected;
+  }
+
+  Map<int, List<CartItemModel>> get selectedItemsByMerchant {
+    final Map<int, List<CartItemModel>> result = {};
+    merchantItems.forEach((merchantId, items) {
+      final selectedItems = items.where((item) => item.isSelected).toList();
+      if (selectedItems.isNotEmpty) {
+        result[merchantId] = selectedItems;
+      }
+    });
+    return result;
   }
 
   double get totalPrice {

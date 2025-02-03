@@ -7,10 +7,6 @@ class UserMainController extends GetxController {
   final RxBool isSearching = false.obs;
   final AuthService _authService = Get.find<AuthService>();
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
 
   void changePage(int index) {
     currentIndex.value = index;

@@ -154,7 +154,7 @@ class ProductService extends GetxService {
           debugPrint('📥 Response received successfully');
           return PaginatedResponse<ProductModel>.fromJson(
             response.data,
-            (json) => ProductModel.fromJson(json as Map<String, dynamic>),
+            (json) => ProductModel.fromJson(json),
           );
         } else {
           throw dio.DioException(
@@ -213,7 +213,7 @@ class ProductService extends GetxService {
 
         return PaginatedResponse<ProductModel>.fromJson(
           response.data,
-          (json) => ProductModel.fromJson(json as Map<String, dynamic>),
+          (json) => ProductModel.fromJson(json),
         );
       });
     } catch (e) {

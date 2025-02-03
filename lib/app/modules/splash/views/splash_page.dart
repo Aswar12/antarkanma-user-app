@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../controllers/splash_controller.dart';
 
 class SplashPage extends StatefulWidget {
-  SplashPage({Key? key}) : super(key: key);
+  const SplashPage({super.key});
 
   @override
   State<SplashPage> createState() => _SplashPageState();

@@ -6,6 +6,7 @@ import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/user_location_service.dart';
 import 'package:antarkanma/app/widgets/logout_confirmation_dialog.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -75,7 +76,7 @@ class ProfilePage extends GetView<AuthController> {
               children: [
                 // Profile Image
                 GestureDetector(
-                  onTap: () => Get.toNamed('/usermain/edit-profile'),
+                  onTap: () => Get.toNamed(Routes.userEditProfile),
                   child: Container(
                     margin: EdgeInsets.only(top: Dimenssions.height30),
                     child: Stack(
@@ -199,7 +200,7 @@ class ProfilePage extends GetView<AuthController> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () => Get.toNamed('/main/address'),
+                    onPressed: () => Get.toNamed(Routes.userAddress),
                     child: Text(
                       'Lihat Semua',
                       style: primaryTextStyle.copyWith(
@@ -237,7 +238,7 @@ class ProfilePage extends GetView<AuthController> {
                   height: Dimenssions.height45,
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () => Get.toNamed('/usermain/add-address'),
+                    onPressed: () => Get.toNamed(Routes.userAddAddress),
                     style: TextButton.styleFrom(
                       backgroundColor: logoColorSecondary,
                       shape: RoundedRectangleBorder(
@@ -286,17 +287,24 @@ class ProfilePage extends GetView<AuthController> {
             _MenuItem(
               icon: Icons.person_outline,
               title: 'Edit Profil',
-              onTap: () => Get.toNamed('/main/edit-profile'),
+              onTap: () => Get.toNamed(Routes.userEditProfile),
             ),
             _MenuItem(
               icon: Icons.shopping_bag_outlined,
               title: 'Orderan Kamu',
-              onTap: () => Get.toNamed('/orders'),
+              onTap: () => Get.toNamed(Routes.userOrder),
             ),
             _MenuItem(
               icon: Icons.headset_mic_outlined,
               title: 'Bantuan',
-              onTap: () => Get.toNamed('/help'),
+              onTap: () {
+                // TODO: Implement help page navigation when available
+                Get.snackbar(
+                  'Info',
+                  'Fitur bantuan akan segera hadir',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              },
             ),
           ]),
           SizedBox(height: Dimenssions.height20),
@@ -304,12 +312,26 @@ class ProfilePage extends GetView<AuthController> {
             _MenuItem(
               icon: Icons.privacy_tip_outlined,
               title: 'Kebijakan & Privasi',
-              onTap: () => Get.toNamed('/privacy-policy'),
+              onTap: () {
+                // TODO: Implement privacy policy page navigation when available
+                Get.snackbar(
+                  'Info',
+                  'Halaman kebijakan & privasi akan segera hadir',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              },
             ),
             _MenuItem(
               icon: Icons.description_outlined,
               title: 'Ketentuan Layanan',
-              onTap: () => Get.toNamed('/terms-of-service'),
+              onTap: () {
+                // TODO: Implement terms of service page navigation when available
+                Get.snackbar(
+                  'Info',
+                  'Halaman ketentuan layanan akan segera hadir',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              },
             ),
             _MenuItem(
               icon: Icons.star_outline,

@@ -12,14 +12,14 @@ class ProductBottomNav extends StatelessWidget {
   final bool isProductActive;
 
   const ProductBottomNav({
-    Key? key,
+    super.key,
     required this.quantity,
     required this.onDecrement,
     required this.onIncrement,
     required this.onAddToCart,
     required this.onBuyNow,
     required this.isProductActive,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

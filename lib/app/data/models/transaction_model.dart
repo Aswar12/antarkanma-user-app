@@ -99,7 +99,7 @@ class TransactionModel {
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     try {
       // Handle both old and new JSON structures
-      final transactionData = json['data'] != null ? json['data'] : json;
+      final transactionData = json['data'] ?? json;
       
       // Parse order items
       List<OrderItemModel> orderItems = [];

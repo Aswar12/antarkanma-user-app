@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:get/get.dart';
-import 'package:antarkanma/app/data/models/user_model.dart';
 
 class AuthMiddleware extends GetMiddleware {
   @override

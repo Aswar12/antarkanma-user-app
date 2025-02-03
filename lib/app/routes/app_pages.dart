@@ -1,48 +1,38 @@
-import 'package:antarkanma/app/controllers/cart_controller.dart';
-import 'package:antarkanma/app/modules/auth/bindings/auth_binding.dart';
-import 'package:antarkanma/app/modules/auth/views/sign_in_page.dart';
-import 'package:antarkanma/app/modules/auth/views/sign_up_page.dart';
-import 'package:antarkanma/app/modules/checkout/views/checkout_success_page.dart';
-import 'package:antarkanma/app/modules/splash/views/splash_page.dart';
-import 'package:antarkanma/app/modules/user/user_binding.dart';
-import 'package:antarkanma/app/modules/user/views/add_edit_address_page.dart';
-import 'package:antarkanma/app/modules/user/views/address_page.dart';
-import 'package:antarkanma/app/modules/user/views/address_selection_page.dart';
-import 'package:antarkanma/app/modules/user/views/cart_page.dart';
-import 'package:antarkanma/app/modules/user/views/chat_page.dart';
-import 'package:antarkanma/app/modules/user/views/checkout_page.dart';
-import 'package:antarkanma/app/modules/user/views/home_page.dart';
-import 'package:antarkanma/app/modules/user/views/map_picker_page.dart';
-import 'package:antarkanma/app/modules/user/views/order_page.dart';
-import 'package:antarkanma/app/modules/user/views/product_detail_page.dart';
-import 'package:antarkanma/app/modules/user/views/profile_page.dart';
-import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
-import 'package:antarkanma/app/modules/user/views/edit_profile_view.dart';
 import 'package:get/get.dart';
-import 'package:antarkanma/app/middleware/auth_middleware.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/controllers/auth_controller.dart';
-import 'package:antarkanma/app/controllers/checkout_controller.dart';
-import 'package:antarkanma/app/controllers/user_location_controller.dart';
+import '../modules/auth/bindings/auth_binding.dart';
+import '../modules/auth/views/sign_in_page.dart';
+import '../modules/auth/views/sign_up_page.dart';
+import '../modules/checkout/views/checkout_success_page.dart';
+import '../modules/splash/views/splash_page.dart';
+import '../modules/splash/bindings/splash_binding.dart';
+import '../modules/user/user_binding.dart';
+import '../modules/user/views/add_edit_address_page.dart';
+import '../modules/user/views/address_page.dart';
+import '../modules/user/views/address_selection_page.dart';
+import '../modules/user/views/cart_page.dart';
+import '../modules/user/views/chat_page.dart';
+import '../modules/user/views/checkout_page.dart';
+import '../modules/user/views/home_page.dart';
+import '../modules/user/views/map_picker_page.dart';
+import '../modules/user/views/order_page.dart';
+import '../modules/user/views/product_detail_page.dart';
+import '../modules/user/views/profile_page.dart';
+import '../modules/user/views/user_main_page.dart';
+import '../modules/user/views/edit_profile_view.dart';
+import '../modules/user/controllers/edit_profile_controller.dart';
 
 abstract class Routes {
-  // Common routes
   static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
-  static const main = '/main';
-  static const checkoutSuccess = '/checkout-success';
   static const cart = '/cart';
+  static const checkoutSuccess = '/checkout-success';
   static const productDetail = '/product-detail';
-  static const home = '/home';
-  static const orderHistory = '/order-history';
-
-  // User routes
   static const userMainPage = '/usermain';
-  static const userHome = '/usermain/home';
   static const userProfile = '/usermain/profile';
   static const userChat = '/usermain/chat';
   static const userOrder = '/usermain/order';
+  static const userHome = '/usermain/home';
   static const userAddress = '/usermain/address';
   static const userAddAddress = '/usermain/add-address';
   static const userEditAddress = '/usermain/edit-address';
@@ -59,7 +49,7 @@ class AppPages {
     GetPage(
       name: Routes.splash,
       page: () => SplashPage(),
-      binding: AuthBinding(),
+      binding: SplashBinding(),
     ),
     GetPage(
       name: Routes.login,
@@ -74,10 +64,7 @@ class AppPages {
     GetPage(
       name: Routes.cart,
       page: () => const CartPage(),
-      binding: BindingsBuilder(() {
-        Get.put(CartController(), permanent: true);
-        Get.put(AuthController(), permanent: true);
-      }),
+      binding: UserBinding(),
     ),
     GetPage(
       name: Routes.checkoutSuccess,
@@ -92,76 +79,63 @@ class AppPages {
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
-      bindings: [
-        AuthBinding(),
-        UserBinding(),
-      ],
+      binding: UserBinding(),
       children: [
         GetPage(
           name: '/profile',
           page: () => ProfilePage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/chat',
           page: () => const ChatPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/order',
           page: () => const OrderPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/home',
           page: () => const HomePage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/address',
           page: () => const AddressPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/add-address',
           page: () => AddEditAddressPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/edit-address',
           page: () => AddEditAddressPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/select-address',
           page: () => AddressSelectionPage(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/map-picker',
           page: () => const MapPickerView(),
+          binding: UserBinding(),
         ),
         GetPage(
           name: '/checkout',
           page: () => CheckoutPage(),
-          binding: BindingsBuilder(() {
-            // Ensure core services and controllers are available
-            if (!Get.isRegistered<AuthService>()) {
-              Get.put(AuthService(), permanent: true);
-            }
-            if (!Get.isRegistered<AuthController>()) {
-              Get.put(AuthController(), permanent: true);
-            }
-            if (!Get.isRegistered<CartController>()) {
-              Get.put(CartController(), permanent: true);
-            }
-            if (!Get.isRegistered<UserLocationController>()) {
-              Get.put(UserLocationController(
-                locationService: Get.find(),
-              ), permanent: true);
-            }
-            // Initialize CheckoutController
-            Get.put(CheckoutController(
-              userLocationController: Get.find(),
-              authController: Get.find(),
-            ));
-          }),
+          binding: UserBinding(),
+          preventDuplicates: false, // Allow multiple instances of checkout page
         ),
         GetPage(
           name: '/edit-profile',
           page: () => const EditProfileView(),
+          binding: UserBinding(),
         ),
       ],
     ),

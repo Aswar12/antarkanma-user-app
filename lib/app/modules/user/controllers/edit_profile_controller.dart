@@ -3,10 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:flutter/painting.dart';
 
 class EditProfileController extends GetxController {
   final AuthService authService = Get.find<AuthService>();
@@ -170,7 +168,7 @@ class EditProfileController extends GetxController {
           );
 
           // Return to main page
-          Get.offAllNamed('/main');
+          Get.offAllNamed('/usermain');
         }
       }
     } finally {

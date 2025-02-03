@@ -249,7 +249,7 @@ class _AddressFormState extends State<AddressForm> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              SizedBox(
                 height: 50,
                 width: 50,
                 child: ElevatedButton(

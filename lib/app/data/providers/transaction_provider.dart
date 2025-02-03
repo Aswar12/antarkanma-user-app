@@ -217,7 +217,7 @@ class TransactionProvider {
       }
 
       debugPrint('\n=== Transaction Provider Debug ===');
-      debugPrint('Making GET request to: ${baseUrl}/transactions');
+      debugPrint('Making GET request to: $baseUrl/transactions');
       debugPrint('Query parameters: $queryParameters');
       debugPrint('Headers: ${_dio.options.headers}');
 

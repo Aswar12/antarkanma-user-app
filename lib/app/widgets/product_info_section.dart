@@ -8,10 +8,10 @@ class ProductInfoSection extends StatelessWidget {
   final double totalPrice; // Changed from int to double
 
   const ProductInfoSection({
-    Key? key,
+    super.key,
     required this.product,
     required this.totalPrice,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

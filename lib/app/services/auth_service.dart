@@ -16,10 +16,6 @@ class AuthService extends GetxService {
   final RxBool isLoggedIn = false.obs;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
 
   // FCM token management
   Future<void> _handleFCMToken({bool register = true}) async {
@@ -263,7 +259,7 @@ class AuthService extends GetxService {
         return false;
       } catch (e) {
         print('Error during API call: $e');
-        throw e;
+        rethrow;
       }
     } catch (e) {
       print('Error in updateProfilePhoto: $e');

@@ -40,7 +40,7 @@ class ProductImageSlider extends StatelessWidget {
   /// Position of the indicator from bottom
   final double indicatorBottomPosition;
 
-  ProductImageSlider({
+  const ProductImageSlider({
     super.key,
     required this.imageUrls,
     required this.currentIndex,

@@ -2,6 +2,8 @@ import 'package:antarkanma/app/services/user_location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
+import 'package:antarkanma/app/controllers/checkout_controller.dart';
+import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/theme.dart';
 
@@ -10,6 +12,26 @@ class AddressSelectionPage extends StatelessWidget {
       Get.put(UserLocationController(locationService: UserLocationService()));
 
   AddressSelectionPage({super.key});
+
+  void _handleAddressSelection(UserLocationModel address) {
+    controller.selectLocation(address);
+    
+    // Remove existing CheckoutController if it exists
+    if (Get.isRegistered<CheckoutController>()) {
+      Get.delete<CheckoutController>();
+    }
+    
+    // Re-initialize CheckoutController with required dependencies
+    final checkoutController = Get.put(CheckoutController(
+      userLocationController: Get.find<UserLocationController>(),
+      authController: Get.find<AuthController>(),
+    ));
+    
+    // Update the selected location in the new controller
+    checkoutController.setDeliveryLocation(address);
+    
+    Get.back(result: address);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,10 +236,7 @@ class AddressSelectionPage extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            controller.selectLocation(address);
-            Get.back(result: address);
-          },
+          onTap: () => _handleAddressSelection(address),
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
           child: Container(
             padding: EdgeInsets.all(Dimenssions.height15),

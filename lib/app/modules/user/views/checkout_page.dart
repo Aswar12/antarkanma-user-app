@@ -14,7 +14,10 @@ import 'package:intl/intl.dart';
 class CheckoutPage extends GetView<CheckoutController> {
   final UserLocationController locationController = Get.find<UserLocationController>();
 
-  CheckoutPage({super.key});
+  CheckoutPage({super.key}) {
+    // Initialize the controller when the page is created
+    controller.autoSetInitialValues();
+  }
 
   Widget _buildOrderItemCard(OrderItemModel item) {
     return Card(

@@ -20,7 +20,7 @@ import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 
 class ProductDetailPage extends StatefulWidget {
-  const ProductDetailPage({Key? key}) : super(key: key);
+  const ProductDetailPage({super.key});
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -140,7 +140,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   padding: EdgeInsets.zero,
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      Container(
+                      SizedBox(
                         width: MediaQuery.of(context).size.width,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -207,7 +207,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               StretchMode.zoomBackground,
               StretchMode.blurBackground,
             ],
-            background: Container(
+            background: SizedBox(
               height: constraints.maxHeight,
               child: InteractiveViewer(
                 minScale: 1.0,

@@ -487,7 +487,7 @@ class _CartPageState extends State<CartPage> {
               ),
             ),
             GetBuilder<CartController>(
-              builder: (controller) => Container(
+              builder: (controller) => SizedBox(
                 width: 180, // Fixed width for the button
                 child: ElevatedButton(
                   onPressed: controller.selectedItemCount > 0

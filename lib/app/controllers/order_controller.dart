@@ -1,11 +1,9 @@
-import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/foundation.dart';
-import 'package:antarkanma/app/data/models/order_item_model.dart';
 
 class OrderController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();

@@ -8,11 +8,11 @@ class CartButton extends StatelessWidget {
   final Color backgroundColor;
 
   const CartButton({
-    Key? key,
+    super.key,
     required this.itemCount,
     required this.onPressed,
     this.backgroundColor = Colors.white,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

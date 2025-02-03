@@ -11,6 +11,8 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:antarkanma/app/controllers/product_detail_controller.dart';
+import 'package:antarkanma/app/data/models/product_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,6 +37,14 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
         controller.loadInitialData();
       }
     });
+  }
+
+  void navigateToProductDetail(ProductModel product) {
+    // Ensure ProductDetailController is initialized before navigation
+    if (!Get.isRegistered<ProductDetailController>()) {
+      Get.put(ProductDetailController(reviewRepository: Get.find()));
+    }
+    Get.toNamed(Routes.productDetail, arguments: product);
   }
 
   Future<void> _handleRefresh() async {
@@ -201,7 +211,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
               final product = controller.popularProducts[index];
               return ProductCarouselCard(
                 product: product,
-                onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
+                onTap: () => navigateToProductDetail(product),
               );
             },
           ),
@@ -324,7 +334,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
 
                 return ProductGridCard(
                   product: product,
-                  onTap: () => Get.toNamed(Routes.productDetail, arguments: product),
+                  onTap: () => navigateToProductDetail(product),
                 );
               },
               childCount: controller.filteredProducts.length,

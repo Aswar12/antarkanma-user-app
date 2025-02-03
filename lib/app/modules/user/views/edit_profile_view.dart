@@ -217,7 +217,7 @@ class EditProfileView extends GetView<EditProfileController> {
           icon: 'assets/phone_icon.png',
         ),
         SizedBox(height: Dimenssions.height30),
-        Container(
+        SizedBox(
           height: Dimenssions.height45,
           width: double.infinity,
           child: TextButton(

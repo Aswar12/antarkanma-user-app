@@ -10,9 +10,9 @@ class ProductReviewSection extends StatelessWidget {
   final ProductDetailController controller;
 
   const ProductReviewSection({
-    Key? key,
+    super.key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

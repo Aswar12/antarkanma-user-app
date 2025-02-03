@@ -5,7 +5,7 @@ import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/theme.dart';
 
 class CategoryWidget extends StatefulWidget {
-  const CategoryWidget({Key? key}) : super(key: key);
+  const CategoryWidget({super.key});
 
   @override
   State<CategoryWidget> createState() => _CategoryWidgetState();
@@ -119,7 +119,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                             category.name !=
                             homeController.selectedCategory.value)
                         .map((category) => _buildCategoryItem(category.name))
-                        .toList(),
+                        ,
                   ],
                 ),
               ),

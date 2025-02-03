@@ -8,7 +8,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../utils/location_permission_handler.dart';
-import '../controllers/cart_controller.dart';
 
 class MapPickerController extends GetxController {
   final selectedLocation = const LatLng(-4.6275392, 119.5871827).obs;

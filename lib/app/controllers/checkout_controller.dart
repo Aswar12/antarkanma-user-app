@@ -22,7 +22,7 @@ class CheckoutController extends GetxController {
   CheckoutController({
     required this.userLocationController,
     required this.authController,
-  }) : cartController = Get.find<CartController>(); // Ensure CartController is initialized
+  }) : cartController = Get.find<CartController>();
 
   // Observable properties
   final isLoading = false.obs;
@@ -123,26 +123,33 @@ class CheckoutController extends GetxController {
 
   void _initializeCheckout() {
     try {
-      final args = Get.arguments;
-      if (args != null && args['merchantItems'] != null) {
-        final merchantItems =
-            args['merchantItems'] as Map<int, List<CartItemModel>>;
-
-        final List<OrderItemModel> allItems = [];
-        merchantItems.forEach((merchantId, items) {
-          for (var cartItem in items) {
-            if (cartItem.merchant.id == merchantId) {
-              allItems.add(OrderItemModel.fromCartItem(
-                cartItem,
-                DateTime.now().millisecondsSinceEpoch.toString(),
-              ));
-            }
-          }
-        });
-
-        orderItems.value = allItems;
-        _calculateTotals();
+      // Get selected items from cart controller
+      final selectedItems = cartController.selectedItems;
+      
+      // Group items by merchant
+      final merchantItems = <int, List<CartItemModel>>{};
+      for (var item in selectedItems) {
+        final merchantId = item.merchant.id ?? 0;
+        if (!merchantItems.containsKey(merchantId)) {
+          merchantItems[merchantId] = [];
+        }
+        merchantItems[merchantId]!.add(item);
       }
+
+      // Convert cart items to order items
+      final List<OrderItemModel> allItems = [];
+      merchantItems.forEach((merchantId, items) {
+        for (var cartItem in items) {
+          allItems.add(OrderItemModel.fromCartItem(
+            cartItem,
+            DateTime.now().millisecondsSinceEpoch.toString(),
+          ));
+        }
+      });
+
+      orderItems.value = allItems;
+      _calculateTotals();
+      
     } catch (e) {
       _handleInitializationError(e);
     }
@@ -326,7 +333,7 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      Get.find<CartController>().clearCart();
+      cartController.clearCart();
     } catch (e) {
       debugPrint('Error clearing cart: $e');
     }
@@ -354,10 +361,5 @@ class CheckoutController extends GetxController {
     if (result != null && result is String) {
       setPaymentMethod(result);
     }
-  }
-
-  @override
-  void onClose() {
-    super.onClose();
   }
 }
