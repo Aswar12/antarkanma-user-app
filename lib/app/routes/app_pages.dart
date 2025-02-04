@@ -4,8 +4,6 @@ import '../modules/auth/views/sign_in_page.dart';
 import '../modules/auth/views/sign_up_page.dart';
 import '../modules/checkout/views/checkout_success_page.dart';
 import '../modules/splash/views/splash_page.dart';
-import '../modules/splash/bindings/splash_binding.dart';
-import '../modules/user/user_binding.dart';
 import '../modules/user/views/add_edit_address_page.dart';
 import '../modules/user/views/address_page.dart';
 import '../modules/user/views/address_selection_page.dart';
@@ -14,12 +12,15 @@ import '../modules/user/views/chat_page.dart';
 import '../modules/user/views/checkout_page.dart';
 import '../modules/user/views/home_page.dart';
 import '../modules/user/views/map_picker_page.dart';
+import '../modules/user/views/merchant_detail_page.dart';
 import '../modules/user/views/order_page.dart';
 import '../modules/user/views/product_detail_page.dart';
 import '../modules/user/views/profile_page.dart';
 import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
-import '../modules/user/controllers/edit_profile_controller.dart';
+import '../modules/splash/controllers/splash_controller.dart';
+import '../controllers/product_detail_controller.dart';
+import '../data/repositories/review_repository.dart';
 
 abstract class Routes {
   static const splash = '/splash';
@@ -28,6 +29,7 @@ abstract class Routes {
   static const cart = '/cart';
   static const checkoutSuccess = '/checkout-success';
   static const productDetail = '/product-detail';
+  static const merchantDetail = '/merchant-detail';
   static const userMainPage = '/usermain';
   static const userProfile = '/usermain/profile';
   static const userChat = '/usermain/chat';
@@ -48,8 +50,10 @@ class AppPages {
   static final routes = [
     GetPage(
       name: Routes.splash,
-      page: () => SplashPage(),
-      binding: SplashBinding(),
+      page: () => const SplashPage(),
+      binding: BindingsBuilder(() {
+        Get.put(SplashController());
+      }),
     ),
     GetPage(
       name: Routes.login,
@@ -64,78 +68,75 @@ class AppPages {
     GetPage(
       name: Routes.cart,
       page: () => const CartPage(),
-      binding: UserBinding(),
     ),
     GetPage(
       name: Routes.checkoutSuccess,
       page: () => const CheckoutSuccessPage(),
-      binding: UserBinding(),
     ),
     GetPage(
       name: Routes.productDetail,
       page: () => const ProductDetailPage(),
-      binding: UserBinding(),
+      binding: BindingsBuilder(() {
+        // Create a new controller instance for each product detail page
+        Get.put(
+          ProductDetailController(
+            reviewRepository: Get.find<ReviewRepository>(),
+          ),
+        );
+      }),
+    ),
+    GetPage(
+      name: Routes.merchantDetail,
+      page: () => const MerchantDetailPage(),
     ),
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
-      binding: UserBinding(),
       children: [
         GetPage(
           name: '/profile',
           page: () => ProfilePage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/chat',
           page: () => const ChatPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/order',
           page: () => const OrderPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/home',
           page: () => const HomePage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/address',
           page: () => const AddressPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/add-address',
           page: () => AddEditAddressPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/edit-address',
           page: () => AddEditAddressPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/select-address',
           page: () => AddressSelectionPage(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/map-picker',
           page: () => const MapPickerView(),
-          binding: UserBinding(),
         ),
         GetPage(
           name: '/checkout',
           page: () => CheckoutPage(),
-          binding: UserBinding(),
-          preventDuplicates: false, // Allow multiple instances of checkout page
+          preventDuplicates: false,
         ),
         GetPage(
           name: '/edit-profile',
           page: () => const EditProfileView(),
-          binding: UserBinding(),
         ),
       ],
     ),

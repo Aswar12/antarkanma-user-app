@@ -3,7 +3,6 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
-import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

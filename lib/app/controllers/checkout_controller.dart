@@ -12,7 +12,6 @@ import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'user_location_controller.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;

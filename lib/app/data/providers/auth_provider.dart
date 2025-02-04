@@ -105,9 +105,9 @@ class AuthProvider {
     }
   }
 
-  Future<Response> getProfile(String token) async {
+  Future<Response> getProfile(String token, {bool silent = false}) async {
     try {
-      return await _dio.get(
+      final response = await _dio.get(
         '/user/profile',
         options: Options(
           headers: {
@@ -115,8 +115,28 @@ class AuthProvider {
           },
         ),
       );
+      
+      if (response.statusCode == 200 && response.data != null) {
+        return response;
+      }
+      
+      // If not successful and not silent, throw error
+      if (!silent) {
+        throw Exception('Failed to get profile: Invalid response');
+      }
+      
+      // Return the response even if unsuccessful when in silent mode
+      return response;
     } catch (e) {
-      throw Exception('Failed to get profile: $e');
+      if (!silent) {
+        throw Exception('Failed to get profile: $e');
+      }
+      // Return a fake response in silent mode to prevent errors
+      return Response(
+        requestOptions: RequestOptions(path: '/user/profile'),
+        statusCode: 401,
+        data: {'message': 'Failed to get profile silently'},
+      );
     }
   }
 
@@ -139,7 +159,6 @@ class AuthProvider {
     );
   }
 
-  /// Login dengan email atau nomor WA
   Future<Response> login(String identifier, String password) async {
     try {
       final Map<String, dynamic> loginData = {
@@ -153,7 +172,6 @@ class AuthProvider {
     }
   }
 
-  /// Register
   Future<Response> register(Map<String, dynamic> userData) async {
     try {
       return await _dio.post(Config.register, data: userData);
@@ -162,7 +180,6 @@ class AuthProvider {
     }
   }
 
-  /// Change Password
   Future<Response> changePassword(
       String token, Map<String, dynamic> data) async {
     try {
@@ -184,7 +201,6 @@ class AuthProvider {
     }
   }
 
-  /// Get Current User
   Future<Response> getCurrentUser(String token) async {
     try {
       return await _dio.get('/auth/user', options: _getAuthOptions(token));
@@ -209,7 +225,6 @@ class AuthProvider {
     throw Exception(message);
   }
 
-  /// Helper method untuk auth header
   Options _getAuthOptions(String token) {
     return Options(
       headers: {

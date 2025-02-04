@@ -2,7 +2,6 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../controllers/auth_controller.dart';
-import '../../../constants/app_values.dart';
 import '../../../widgets/custom_input_field.dart';
 
 class SignInPage extends GetView<AuthController> {

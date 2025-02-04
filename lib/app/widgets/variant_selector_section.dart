@@ -2,7 +2,6 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 class VariantSelectorSection extends StatelessWidget {

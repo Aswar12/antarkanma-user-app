@@ -16,7 +16,6 @@ class AuthService extends GetxService {
   final RxBool isLoggedIn = false.obs;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
 
-
   // FCM token management
   Future<void> _handleFCMToken({bool register = true}) async {
     try {
@@ -67,11 +66,12 @@ class AuthService extends GetxService {
     String password, {
     bool rememberMe = false,
     bool isAutoLogin = false,
+    bool showError = true,
   }) async {
     try {
       if (!isAutoLogin) {
         final validationError = Validators.validateIdentifier(identifier);
-        if (validationError != null) {
+        if (validationError != null && showError) {
           showCustomSnackbar(
               title: 'Error', message: validationError, isError: true);
           return false;
@@ -80,7 +80,7 @@ class AuthService extends GetxService {
 
       final response = await _authProvider.login(identifier, password);
       if (response.statusCode != 200) {
-        if (!isAutoLogin) {
+        if (!isAutoLogin && showError) {
           showCustomSnackbar(
               title: 'Login Gagal',
               message: response.data['meta']['message'] ?? 'Terjadi kesalahan',
@@ -96,7 +96,7 @@ class AuthService extends GetxService {
         // Create UserModel and check role
         final user = UserModel.fromJson(userData);
         if (!user.isUser) {
-          if (!isAutoLogin) {
+          if (!isAutoLogin && showError) {
             showCustomSnackbar(
                 title: 'Login Gagal',
                 message: 'Aplikasi ini hanya untuk pengguna.',
@@ -125,18 +125,20 @@ class AuthService extends GetxService {
         // Only redirect and show snackbar if not auto-login
         if (!isAutoLogin) {
           Get.offAllNamed(Routes.userMainPage);
-          showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
+          if (showError) {
+            showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
+          }
         }
         return true;
       }
 
-      if (!isAutoLogin) {
+      if (!isAutoLogin && showError) {
         showCustomSnackbar(
             title: 'Error', message: 'Token tidak valid.', isError: true);
       }
       return false;
     } catch (e) {
-      if (!isAutoLogin) {
+      if (!isAutoLogin && showError) {
         showCustomSnackbar(
             title: 'Error',
             message: 'Gagal login: ${e.toString()}',
@@ -161,7 +163,7 @@ class AuthService extends GetxService {
         'phone_number': phoneNumber,
         'password': password,
         'password_confirmation': confirmPassword,
-        'role': UserModel.ROLE_USER, // Use constant from UserModel
+        'role': UserModel.ROLE_USER,
       };
 
       final response = await _authProvider.register(userData);
@@ -195,6 +197,34 @@ class AuthService extends GetxService {
     }
   }
 
+  Future<UserModel?> getProfile({bool showError = false}) async {
+    try {
+      final token = _storageService.getToken();
+      if (token == null) {
+        if (showError) {
+          showCustomSnackbar(
+              title: 'Error', message: 'Token tidak valid', isError: true);
+        }
+        return null;
+      }
+
+      final response = await _authProvider.getProfile(token, silent: !showError);
+      if (response.statusCode == 200 && response.data != null) {
+        final userData = response.data['data'];
+        if (userData != null) {
+          await _storageService.saveUser(userData);
+          currentUser.value = UserModel.fromJson(userData);
+          return currentUser.value;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting profile: $e');
+      return null;
+    }
+  }
+
   Future<bool> updateProfilePhoto(File photo) async {
     try {
       final token = _storageService.getToken();
@@ -204,7 +234,6 @@ class AuthService extends GetxService {
         return false;
       }
 
-      // Check file size before creating FormData (2MB limit)
       final fileSize = await photo.length();
       if (fileSize > 2 * 1024 * 1024) {
         showCustomSnackbar(
@@ -214,7 +243,6 @@ class AuthService extends GetxService {
         return false;
       }
 
-      // Check file type
       final extension = photo.path.split('.').last.toLowerCase();
       if (!['jpg', 'jpeg', 'png'].contains(extension)) {
         showCustomSnackbar(
@@ -224,7 +252,6 @@ class AuthService extends GetxService {
         return false;
       }
 
-      // Create form data with the correct field name
       final formData = FormData.fromMap({
         'photo': await MultipartFile.fromFile(
           photo.path,
@@ -233,11 +260,9 @@ class AuthService extends GetxService {
       });
 
       try {
-        final response =
-            await _authProvider.updateProfilePhoto(token, formData);
+        final response = await _authProvider.updateProfilePhoto(token, formData);
 
         if (response.statusCode == 200) {
-          // Get fresh user data
           final userResponse = await _authProvider.getProfile(token);
           if (userResponse.statusCode == 200) {
             final userData = userResponse.data['data'];
@@ -287,7 +312,6 @@ class AuthService extends GetxService {
         return false;
       }
 
-      // Validate input
       if (name.isEmpty) {
         showCustomSnackbar(
             title: 'Error', message: 'Nama tidak boleh kosong', isError: true);
@@ -320,7 +344,6 @@ class AuthService extends GetxService {
       final response = await _authProvider.updateProfile(token, updateData);
 
       if (response.statusCode == 200) {
-        // Get fresh user data
         final userResponse = await _authProvider.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
@@ -347,33 +370,6 @@ class AuthService extends GetxService {
       }
       showCustomSnackbar(title: 'Error', message: errorMessage, isError: true);
       return false;
-    }
-  }
-
-  Future<UserModel?> getProfile() async {
-    try {
-      final token = _storageService.getToken();
-      if (token == null) {
-        showCustomSnackbar(
-            title: 'Error', message: 'Token tidak valid', isError: true);
-        return null;
-      }
-
-      final response = await _authProvider.getProfile(token);
-      if (response.statusCode == 200) {
-        final userData = response.data['data'];
-        await _storageService.saveUser(userData);
-        currentUser.value = UserModel.fromJson(userData);
-        return currentUser.value;
-      }
-
-      return null;
-    } catch (e) {
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal mengambil data profil: ${e.toString()}',
-          isError: true);
-      return null;
     }
   }
 
@@ -477,7 +473,6 @@ class AuthService extends GetxService {
       final token = _storageService.getToken();
       if (token != null) {
         await _authProvider.logout(token);
-        // Unregister FCM token before logging out
         await _handleFCMToken(register: false);
       }
     } catch (e) {
@@ -490,7 +485,6 @@ class AuthService extends GetxService {
 
   Future<void> _clearAuthData({bool fullClear = false}) async {
     if (fullClear) {
-      // Clear all data except remember me settings if enabled
       if (_storageService.getRememberMe()) {
         final credentials = _storageService.getSavedCredentials();
         await _storageService.clearAll();
@@ -506,11 +500,9 @@ class AuthService extends GetxService {
       await _storageService.clearAuth();
     }
 
-    // Clear observable states
     isLoggedIn.value = false;
     currentUser.value = null;
 
-    // Clear any cached data
     await _storageService.clearOrders();
     await _storageService.clearLocationData();
   }

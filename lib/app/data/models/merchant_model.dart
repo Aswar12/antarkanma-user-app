@@ -1,71 +1,68 @@
 class MerchantModel {
   final int? id;
-  final int ownerId;
   final String name;
   final String address;
   final String phoneNumber;
-  final String? status;
+  final String status;
   final String? description;
   final String? logo;
-  final String? logoUrl;  // Added logoUrl field
+  final String? logoUrl;
   final String? openingTime;
   final String? closingTime;
   final List<String>? operatingDays;
-  final DateTime createdAt; 
-  final int? orderCount;
-  final int? productsSold;
-  final int? totalSales;
-  final int? monthlyRevenue;
-  final int? productCount;
-  final DateTime updatedAt;
+  final double? latitude;
+  final double? longitude;
+  final double? distance;
+  final int? duration;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final Map<String, dynamic>? stats;
+  final int? totalProducts; // Added for merchant list response
 
   MerchantModel({
     this.id,
-    required this.ownerId,
     required this.name,
     required this.address,
     required this.phoneNumber,
-    this.status = 'ACTIVE',
+    this.status = 'active',
     this.description,
     this.logo,
-    this.logoUrl,  // Added to constructor
-    required this.createdAt,
-    this.productCount,
-    required this.updatedAt,
+    this.logoUrl,
     this.openingTime,
     this.closingTime,
     this.operatingDays,
-    this.orderCount,
-    this.productsSold,
-    this.totalSales,
-    this.monthlyRevenue,
+    this.latitude,
+    this.longitude,
+    this.distance,
+    this.duration,
+    this.createdAt,
+    this.updatedAt,
+    this.stats,
+    this.totalProducts,
   });
+
+  int get productCount {
+    // First check totalProducts (from merchant list)
+    if (totalProducts != null) return totalProducts!;
+    
+    // Then check stats.product_count (from merchant detail)
+    if (stats != null) {
+      var count = stats!['product_count'];
+      if (count == null) return 0;
+      if (count is int) return count;
+      if (count is String) {
+        return int.tryParse(count) ?? 0;
+      }
+    }
+    return 0;
+  }
+  
+  int get totalOrders => stats?['total_orders'] ?? 0;
+  double get totalSales => (stats?['total_sales'] ?? 0.0).toDouble();
 
   factory MerchantModel.fromJson(Map<String, dynamic> json) {
     try {
-      int? parseInt(dynamic value) {
-        if (value == null) return null;
-        if (value is int) return value == 0 ? null : value;
-        if (value is double) return value.toInt();  // Handle double values
-        if (value is String) {
-          try {
-            // First try parsing as double, then convert to int
-            final doubleValue = double.parse(value);
-            return doubleValue.toInt();
-          } catch (e) {
-            try {
-              // If double parsing fails, try direct int parsing
-              final parsed = int.parse(value);
-              return parsed == 0 ? null : parsed;
-            } catch (e) {
-              print('Error parsing $value to int: $e');
-              return null;
-            }
-          }
-        }
-        return null;
-      }
-
+      // Parse operating days
       List<String>? parseOperatingDays(dynamic value) {
         if (value == null) return null;
         if (value is List) {
@@ -74,53 +71,75 @@ class MerchantModel {
         if (value is String && value.isNotEmpty) {
           return value.split(',').map((e) => e.trim()).toList();
         }
-        return [];
+        return null;
+      }
+
+      // Parse doubles safely
+      double? parseDouble(dynamic value) {
+        if (value == null) return null;
+        if (value is double) return value;
+        if (value is int) return value.toDouble();
+        if (value is String) {
+          try {
+            return double.parse(value);
+          } catch (e) {
+            print('Error parsing $value to double: $e');
+            return null;
+          }
+        }
+        return null;
+      }
+
+      // Parse integers safely
+      int? parseInt(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is double) return value.toInt();
+        if (value is String) {
+          try {
+            return int.parse(value);
+          } catch (e) {
+            print('Error parsing $value to int: $e');
+            return null;
+          }
+        }
+        return null;
       }
 
       return MerchantModel(
         id: parseInt(json['id']),
-        ownerId: parseInt(json['owner_id'].toString()) ?? 0,
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
         phoneNumber: json['phone_number']?.toString() ?? '',
-        status: json['status']?.toString() ?? 'ACTIVE',
+        status: json['status']?.toString()?.toLowerCase() ?? 'active',
         description: json['description']?.toString(),
         logo: json['logo']?.toString(),
-        logoUrl: json['logo_url']?.toString(),  // Parse logo_url from JSON
+        logoUrl: json['logo_url']?.toString(),
         openingTime: json['opening_time']?.toString(),
         closingTime: json['closing_time']?.toString(),
         operatingDays: parseOperatingDays(json['operating_days']),
-        productCount: parseInt(json['product_count']),
-        orderCount: parseInt(json['order_count']),
-        productsSold: parseInt(json['products_sold']),
-        totalSales: parseInt(json['total_sales']),
-        monthlyRevenue: parseInt(json['monthly_revenue']),
+        latitude: parseDouble(json['latitude']),
+        longitude: parseDouble(json['longitude']),
+        distance: parseDouble(json['distance']),
+        duration: parseInt(json['duration']),
         createdAt: json['created_at'] != null
-            ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
-            : DateTime.now(),
+            ? DateTime.tryParse(json['created_at'].toString())
+            : null,
         updatedAt: json['updated_at'] != null
-            ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
-            : DateTime.now(),
+            ? DateTime.tryParse(json['updated_at'].toString())
+            : null,
+        stats: json['stats'] as Map<String, dynamic>?,
+        totalProducts: parseInt(json['total_products']),
       );
     } catch (e) {
-      print('Error creating MerchantModel: $e');
-      // Return a minimal valid merchant with null ID instead of 0
+      print('Error parsing merchant data: $e');
+      print('JSON data: $json');
+      // Return a default merchant on error
       return MerchantModel(
-        id: null,
-        ownerId: 0,
-        name: '',
-        address: '',
-        phoneNumber: '',
-        description: null,
-        logo: null,
-        logoUrl: null,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        productCount: 0,
-        orderCount: 0,
-        productsSold: 0,
-        totalSales: 0,
-        monthlyRevenue: 0,
+        name: 'Error Loading Merchant',
+        address: 'Address Unavailable',
+        phoneNumber: 'Phone Unavailable',
+        status: 'inactive',
       );
     }
   }
@@ -128,87 +147,28 @@ class MerchantModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'owner_id': ownerId,
       'name': name,
       'address': address,
       'phone_number': phoneNumber,
       'status': status,
       'description': description,
       'logo': logo,
-      'logo_url': logoUrl,  // Include logoUrl in JSON
-      'product_count': productCount,
+      'logo_url': logoUrl,
       'opening_time': openingTime,
       'closing_time': closingTime,
       'operating_days': operatingDays,
-      'order_count': orderCount,
-      'products_sold': productsSold,
-      'total_sales': totalSales,
-      'monthly_revenue': monthlyRevenue,
+      'latitude': latitude,
+      'longitude': longitude,
+      'distance': distance,
+      'duration': duration,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'stats': stats,
+      'total_products': totalProducts,
     };
   }
 
-  MerchantModel copyWith({
-    int? id,
-    int? ownerId,
-    String? name,
-    String? address,
-    String? phoneNumber,
-    String? status,
-    String? description,
-    String? logo,
-    String? logoUrl,  // Added to copyWith
-    int? productCount,
-    String? openingTime,
-    String? closingTime,
-    List<String>? operatingDays,
-    int? orderCount,
-    int? productsSold,
-    int? totalSales,
-    int? monthlyRevenue,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return MerchantModel(
-      id: id ?? this.id,
-      ownerId: ownerId ?? this.ownerId,
-      name: name ?? this.name,
-      address: address ?? this.address,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      status: status ?? this.status,
-      description: description ?? this.description,
-      logo: logo ?? this.logo,
-      logoUrl: logoUrl ?? this.logoUrl,  // Include in copyWith
-      productCount: productCount ?? this.productCount,
-      openingTime: openingTime ?? this.openingTime,
-      closingTime: closingTime ?? this.closingTime,
-      operatingDays: operatingDays ?? this.operatingDays,
-      orderCount: orderCount ?? this.orderCount,
-      productsSold: productsSold ?? this.productsSold,
-      totalSales: totalSales ?? this.totalSales,
-      monthlyRevenue: monthlyRevenue ?? this.monthlyRevenue,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  bool get isActive => status?.toUpperCase() == 'ACTIVE';
-
-  MerchantModel updateStatus(String newStatus) {
-    return copyWith(
-      status: newStatus,
-      updatedAt: DateTime.now(),
-    );
-  }
-
-  String get formattedPhoneNumber => phoneNumber;
-
-  String get summary => '$name - $address';
-
-  String? get merchantLogoUrl => logoUrl;  // Use the provided full URL
-  String get merchantName => name;
-  String get merchantContact => phoneNumber;
-  String? get merchantOpeningHours => openingTime;
-  List<String>? get merchantOperatingDays => operatingDays;
+  bool get isActive => status.toLowerCase() == 'active';
 
   @override
   bool operator ==(Object other) {
@@ -216,31 +176,45 @@ class MerchantModel {
 
     return other is MerchantModel &&
         other.id == id &&
-        other.ownerId == ownerId &&
         other.name == name &&
         other.address == address &&
         other.phoneNumber == phoneNumber &&
         other.status == status &&
         other.description == description &&
         other.logo == logo &&
-        other.logoUrl == logoUrl;  // Added to equality check
+        other.logoUrl == logoUrl &&
+        other.openingTime == openingTime &&
+        other.closingTime == closingTime &&
+        other.latitude == latitude &&
+        other.longitude == longitude &&
+        other.distance == distance &&
+        other.duration == duration &&
+        other.totalProducts == totalProducts &&
+        other.stats.toString() == stats.toString();
   }
 
   @override
   int get hashCode {
     return id.hashCode ^
-        ownerId.hashCode ^
         name.hashCode ^
         address.hashCode ^
         phoneNumber.hashCode ^
         status.hashCode ^
         description.hashCode ^
         logo.hashCode ^
-        logoUrl.hashCode;  // Added to hash
+        logoUrl.hashCode ^
+        openingTime.hashCode ^
+        closingTime.hashCode ^
+        latitude.hashCode ^
+        longitude.hashCode ^
+        distance.hashCode ^
+        duration.hashCode ^
+        totalProducts.hashCode ^
+        stats.hashCode;
   }
 
   @override
   String toString() {
-    return 'MerchantModel(id: $id, name: $name, status: $status, description: $description, logo: $logo, logoUrl: $logoUrl)';
+    return 'MerchantModel(id: $id, name: $name, address: $address, status: $status, distance: $distance km, duration: $duration min, productCount: $productCount)';
   }
 }

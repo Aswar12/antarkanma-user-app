@@ -21,12 +21,33 @@ class UserModel {
     this.profilePhotoPath,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  factory UserModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      throw Exception('Cannot create UserModel from null');
+    }
+
+    // Safely get id with null check and type conversion
+    int? id;
+    if (json['id'] is int) {
+      id = json['id'];
+    } else if (json['id'] is String) {
+      id = int.tryParse(json['id']);
+    }
+    if (id == null) {
+      throw Exception('Invalid or missing user ID');
+    }
+
+    // Safely get name with null check
+    String? name = json['name']?.toString();
+    if (name == null || name.isEmpty) {
+      throw Exception('Invalid or missing user name');
+    }
+
     // Handle profile photo URL
-    String? photoUrl = json['profile_photo_url'];
+    String? photoUrl = json['profile_photo_url']?.toString();
     if (photoUrl == null || photoUrl.isEmpty) {
       // If no photo URL, check if there's a path and construct the URL
-      final photoPath = json['profile_photo_path'];
+      final photoPath = json['profile_photo_path']?.toString();
       if (photoPath != null && photoPath.isNotEmpty) {
         photoUrl = 'storage/$photoPath';
       }
@@ -34,27 +55,26 @@ class UserModel {
 
     // Handle role from different possible API response formats
     String role;
-    if (json['role'] != null) {
-      role = json['role'].toString().toUpperCase();
-    } else if (json['roles'] != null) {
-      if (json['roles'] is List) {
-        role = (json['roles'] as List).first.toString().toUpperCase();
+    var roleData = json['role'] ?? json['roles'];
+    if (roleData != null) {
+      if (roleData is List) {
+        role = roleData.first.toString().toUpperCase();
       } else {
-        role = json['roles'].toString().toUpperCase();
+        role = roleData.toString().toUpperCase();
       }
     } else {
-      role = ROLE_USER;  // Default to USER role
+      role = ROLE_USER; // Default to USER role
     }
 
     return UserModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      email: json['email'] as String?,
-      phoneNumber: json['phone_number'] as String?,
+      id: id,
+      name: name,
+      email: json['email']?.toString(),
+      phoneNumber: json['phone_number']?.toString(),
       role: role,
-      username: json['username'] as String?,
+      username: json['username']?.toString(),
       profilePhotoUrl: photoUrl,
-      profilePhotoPath: json['profile_photo_path'] as String?,
+      profilePhotoPath: json['profile_photo_path']?.toString(),
     );
   }
 
@@ -122,10 +142,15 @@ class UserModel {
 
   // Helper methods
   bool get isUser => role == ROLE_USER;
-  
+
   String get displayName => username ?? name;
-  
-  bool get hasProfilePhoto => 
-      (profilePhotoUrl?.isNotEmpty ?? false) || 
+
+  bool get hasProfilePhoto =>
+      (profilePhotoUrl?.isNotEmpty ?? false) ||
       (profilePhotoPath?.isNotEmpty ?? false);
+
+  @override
+  String toString() {
+    return 'UserModel(id: $id, name: $name, email: $email, phoneNumber: $phoneNumber, role: $role)';
+  }
 }

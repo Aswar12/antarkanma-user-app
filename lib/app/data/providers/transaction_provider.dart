@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:antarkanma/config.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/foundation.dart';
 

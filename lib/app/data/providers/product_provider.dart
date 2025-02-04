@@ -55,7 +55,7 @@ class ProductProvider {
       Map<String, dynamic> queryParams = {
         'page_size': pageSize,
       };
-      
+
       if (cursor != null) queryParams['cursor'] = cursor;
       if (query != null && query.isNotEmpty) queryParams['name'] = query;
       if (priceFrom != null) queryParams['price_from'] = priceFrom;
@@ -182,7 +182,7 @@ class ProductProvider {
   void _handleError(DioException error) {
     String message;
     debugPrint('API Error Response: ${error.response?.data}');
-    
+
     if (error.response?.data is Map && error.response?.data['meta'] != null) {
       message = error.response?.data['meta']['message'] ?? 'An error occurred';
     } else {
@@ -198,7 +198,8 @@ class ProductProvider {
           break;
         case 422:
           final errors = error.response?.data['errors'];
-          message = errors != null ? errors.toString() : 'Validation error occurred';
+          message =
+              errors != null ? errors.toString() : 'Validation error occurred';
           break;
         default:
           message = error.response?.data?['message'] ?? 'An error occurred';

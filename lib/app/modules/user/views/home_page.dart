@@ -5,7 +5,7 @@ import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
 import 'package:antarkanma/app/widgets/product_carousel_card.dart';
-import 'package:antarkanma/app/widgets/product_grid_card.dart';
+import 'package:antarkanma/app/widgets/merchant_card.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +33,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     controller = Get.find<HomePageController>();
     // Ensure data is loaded when page is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (controller.allProducts.isEmpty) {
+      if (controller.allMerchants.isEmpty) {
         controller.loadInitialData();
       }
     });
@@ -62,47 +62,11 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     }
   }
 
-  Widget _buildErrorView({required VoidCallback onRetry}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: Dimenssions.iconSize24 * 2,
-            color: Colors.red,
-          ),
-          SizedBox(height: Dimenssions.height10),
-          Text(
-            'Gagal memuat data',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font16,
-              color: secondaryTextColor,
-            ),
-          ),
-          SizedBox(height: Dimenssions.height10),
-          ElevatedButton(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: logoColorSecondary,
-            ),
-            child: Text(
-              'Coba Lagi',
-              style: primaryTextStyle.copyWith(
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchBar() {
     return SearchInputField(
       controller: controller.searchController,
       focusNode: controller.searchFocusNode,
-      hintText: 'Apa Ku AntarkanKi ?',
+      hintText: 'Cari Merchant...',
       onClear: () {
         controller.searchController.clear();
         controller.searchQuery.value = '';
@@ -232,7 +196,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     });
   }
 
-  Widget listProductsTitle() {
+  Widget merchantListTitle() {
     return Container(
       margin: EdgeInsets.only(
         top: Dimenssions.height15,
@@ -244,13 +208,13 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            controller.searchQuery.isEmpty ? 'Semua Produk' : 'Hasil Pencarian',
+            controller.searchQuery.isEmpty ? 'Semua Merchant' : 'Hasil Pencarian',
             style: primaryTextStyle.copyWith(
               fontSize: Dimenssions.font18,
               fontWeight: semiBold,
             ),
           ),
-          if (!controller.isLoading.value && controller.allProducts.isNotEmpty)
+          if (!controller.isLoading.value && controller.allMerchants.isNotEmpty)
             TextButton(
               onPressed: _handleRefresh,
               child: Text(
@@ -266,9 +230,9 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     );
   }
 
-  List<Widget> _buildProductSlivers() {
+  List<Widget> _buildMerchantSlivers() {
     return [
-      if (controller.filteredProducts.isEmpty)
+      if (controller.filteredMerchants.isEmpty)
         SliverFillRemaining(
           child: Center(
             child: Padding(
@@ -278,7 +242,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                 children: [
                   Icon(
                     controller.searchQuery.isEmpty
-                        ? Icons.shopping_bag_outlined
+                        ? Icons.store_outlined
                         : Icons.search_off_outlined,
                     size: Dimenssions.iconSize24 * 2,
                     color: secondaryTextColor,
@@ -286,8 +250,8 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                   SizedBox(height: Dimenssions.height10),
                   Text(
                     controller.searchQuery.isEmpty
-                        ? 'Tidak ada produk'
-                        : 'Tidak ada produk ditemukan',
+                        ? 'Tidak ada merchant'
+                        : 'Tidak ada merchant ditemukan',
                     style: primaryTextStyle.copyWith(
                       fontSize: Dimenssions.font16,
                       color: secondaryTextColor,
@@ -296,7 +260,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                   if (controller.searchQuery.isEmpty) ...[
                     SizedBox(height: Dimenssions.height10),
                     TextButton(
-                      onPressed: () => controller.loadAllProducts(),
+                      onPressed: () => controller.loadAllMerchants(),
                       child: Text(
                         'Muat Ulang',
                         style: primaryTextStyle.copyWith(
@@ -316,28 +280,31 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.65,
+              childAspectRatio: 0.8,
               mainAxisSpacing: Dimenssions.height10,
               crossAxisSpacing: Dimenssions.width10,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final product = controller.filteredProducts[index];
+                final merchant = controller.filteredMerchants[index];
 
-                if (index >= controller.filteredProducts.length - 3 && 
+                if (index >= controller.filteredMerchants.length - 3 && 
                     !controller.isLoadingMore.value && 
                     controller.hasMoreData.value) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    controller.loadMoreProducts();
+                    controller.loadMoreMerchants();
                   });
                 }
 
-                return ProductGridCard(
-                  product: product,
-                  onTap: () => navigateToProductDetail(product),
+                return MerchantCard(
+                  merchant: merchant,
+                  onTap: () => Get.toNamed(
+                    Routes.merchantDetail,
+                    arguments: {'merchantId': merchant.id},
+                  ),
                 );
               },
-              childCount: controller.filteredProducts.length,
+              childCount: controller.filteredMerchants.length,
             ),
           ),
         ),
@@ -451,9 +418,9 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: listProductsTitle(),
+                  child: merchantListTitle(),
                 ),
-                ..._buildProductSlivers(),
+                ..._buildMerchantSlivers(),
               ],
             ),
           ),

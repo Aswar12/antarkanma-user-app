@@ -1,97 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/product_service.dart';
+import '../../../services/merchant_service.dart';
 import '../../../services/category_service.dart';
 import '../../../services/storage_service.dart';
+import '../../../services/location_service.dart';
 import '../../../routes/app_pages.dart';
 import '../../../controllers/homepage_controller.dart';
 import '../../../data/models/user_model.dart';
 import '../../../utils/location_permission_handler.dart';
 
 class SplashController extends GetxController {
-  final AuthService _authService = Get.find<AuthService>();
-  final ProductService _productService = Get.find<ProductService>();
-  final CategoryService _categoryService = Get.find<CategoryService>();
-  final StorageService _storageService = StorageService.instance;
-  final HomePageController _homeController = Get.find<HomePageController>();
-  
+  // State
   final RxBool _isLoading = true.obs;
   final RxString _loadingText = 'Mempersiapkan aplikasi...'.obs;
 
   bool get isLoading => _isLoading.value;
   String get loadingText => _loadingText.value;
 
+  // Services
+  late final AuthService _authService;
+  late final CategoryService _categoryService;
+  late final StorageService _storageService;
+  late final LocationService _locationService;
+
   @override
   void onInit() {
     super.onInit();
+    _initializeServices();
     _initializeApp();
+  }
+
+  void _initializeServices() {
+    try {
+      _authService = Get.find<AuthService>();
+      _categoryService = Get.find<CategoryService>();
+      _storageService = StorageService.instance;
+      _locationService = Get.find<LocationService>();
+    } catch (e) {
+      debugPrint('Error initializing services: $e');
+    }
   }
 
   Future<void> _initializeApp() async {
     try {
-      // Request permissions first
-      await _requestInitialPermissions();
+      // Load initial data first
+      await _loadInitialData();
 
-      // Start loading data and checking auth in parallel
-      await Future.wait([
-        _loadInitialData(),
-        _checkAuthentication(),
-      ], eagerError: false); // Set to false to continue even if one fails
+      // Then check authentication
+      await _checkAuthentication();
 
-      // Wait a minimum of 2 seconds for splash screen
       await Future.delayed(const Duration(seconds: 2));
-      
+
       if (_authService.isLoggedIn.value) {
         Get.offAllNamed(Routes.userMainPage);
       } else {
         Get.offAllNamed(Routes.login);
       }
     } catch (e) {
-      print('Error in splash controller: $e');
-      // Even if there's an error, proceed to login
+      debugPrint('Error in splash controller: $e');
       Get.offAllNamed(Routes.login);
     } finally {
       _isLoading.value = false;
     }
   }
 
+  Future<void> _loadInitialData() async {
+    try {
+      _loadingText.value = 'Mendapatkan lokasi...';
+      await _getCurrentLocation();
+
+      _loadingText.value = 'Memuat data kategori...';
+      await _categoryService.getCategories();
+
+      _loadingText.value = 'Memuat data produk populer...';
+      final homeController = Get.find<HomePageController>();
+      await homeController.loadPopularProducts();
+
+      _loadingText.value = 'Memuat daftar merchant...';
+      await homeController.loadAllMerchants();
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+    }
+  }
+
   Future<void> _requestInitialPermissions() async {
     try {
       _loadingText.value = 'Memeriksa izin aplikasi...';
-
-      // Request location permission
       await LocationPermissionHandler.handleLocationPermission();
-      
-      // Request other permissions
       await _requestDataPermissions();
-
     } catch (e) {
-      print('Error requesting permissions: $e');
+      debugPrint('Error requesting permissions: $e');
     }
   }
 
   Future<void> _requestDataPermissions() async {
-    // Request storage permission
     if (await Permission.storage.status.isDenied) {
       _loadingText.value = 'Meminta izin akses penyimpanan...';
       await Permission.storage.request();
     }
 
-    // Request photos permission (for profile picture, etc)
     if (await Permission.photos.status.isDenied) {
       _loadingText.value = 'Meminta izin akses foto...';
       await Permission.photos.request();
     }
 
-    // Request camera permission
     if (await Permission.camera.status.isDenied) {
       _loadingText.value = 'Meminta izin akses kamera...';
       await Permission.camera.request();
     }
 
-    // If any permission is permanently denied, show settings dialog
     if (await Permission.storage.isPermanentlyDenied ||
         await Permission.photos.isPermanentlyDenied ||
         await Permission.camera.isPermanentlyDenied) {
@@ -99,9 +119,8 @@ class SplashController extends GetxController {
         AlertDialog(
           title: const Text('Izin Diperlukan'),
           content: const Text(
-            'Beberapa izin diperlukan untuk menggunakan fitur aplikasi ini. '
-            'Buka pengaturan untuk mengaktifkan izin yang diperlukan?'
-          ),
+              'Beberapa izin diperlukan untuk menggunakan fitur aplikasi ini. '
+              'Buka pengaturan untuk mengaktifkan izin yang diperlukan?'),
           actions: [
             TextButton(
               onPressed: () => Get.back(result: false),
@@ -122,30 +141,26 @@ class SplashController extends GetxController {
     }
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> _getCurrentLocation() async {
     try {
-      _loadingText.value = 'Memuat data kategori...';
-      await _categoryService.getCategories();
-
-      _loadingText.value = 'Memuat data produk...';
-      await _homeController.loadInitialData();
-
-      if (_homeController.popularProducts.isEmpty) {
-        _loadingText.value = 'Mencoba memuat ulang data produk...';
-        await _homeController.refreshProducts(showMessage: false);
+      bool hasPermission =
+          await LocationPermissionHandler.handleLocationPermission();
+      if (!hasPermission) {
+        debugPrint('Location permission not granted');
+        return;
       }
+
+      await _locationService.getCurrentLocation();
     } catch (e) {
-      print('Error loading initial data: $e');
-      // Continue execution even if data loading fails
-      // The user can refresh later if needed
+      debugPrint('Error getting location: $e');
     }
   }
 
   Future<void> _checkAuthentication() async {
     try {
       _loadingText.value = 'Memeriksa status login...';
-      
-      // Check remember me first
+
+      // First try auto-login if remember me is enabled
       if (_storageService.getRememberMe()) {
         final credentials = _storageService.getSavedCredentials();
         if (credentials != null) {
@@ -155,31 +170,50 @@ class SplashController extends GetxController {
             credentials['password']!,
             rememberMe: true,
             isAutoLogin: true,
+            showError: false,
           );
-          
+
           if (success) {
-            print('Auto-login successful');
+            debugPrint('Auto-login successful');
             return;
           }
         }
       }
 
-      // If auto-login failed, check token
+      // If auto-login fails or not enabled, try token-based auth
       final token = _storageService.getToken();
       final userData = _storageService.getUser();
-      
+
       if (token != null && userData != null) {
         final isValid = await _authService.verifyToken(token);
         if (isValid) {
           _loadingText.value = 'Memuat data user...';
-          _authService.currentUser.value = UserModel.fromJson(userData);
-          _authService.isLoggedIn.value = true;
+          try {
+            // Try to create UserModel from stored data first
+            _authService.currentUser.value = UserModel.fromJson(userData);
+            _authService.isLoggedIn.value = true;
+
+            // Then silently update profile in background
+            _authService.getProfile(showError: false).then((user) {
+              if (user != null) {
+                _authService.currentUser.value = user;
+              }
+            }).catchError((e) {
+              debugPrint('Error updating profile in background: $e');
+            });
+          } catch (e) {
+            debugPrint('Error loading stored user data: $e');
+            await _storageService.clearAuth();
+            _authService.isLoggedIn.value = false;
+            _authService.currentUser.value = null;
+          }
+        } else {
+          await _storageService.clearAuth();
         }
       }
     } catch (e) {
-      print('Error checking authentication: $e');
-      // Continue execution even if auth check fails
-      // User will be redirected to login
+      debugPrint('Error checking authentication: $e');
+      await _storageService.clearAuth();
     }
   }
 }

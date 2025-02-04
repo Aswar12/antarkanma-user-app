@@ -1,6 +1,5 @@
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class CartButton extends StatelessWidget {
   final int itemCount;

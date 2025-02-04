@@ -110,7 +110,7 @@ class NotificationService extends GetxService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  final TransactionService _transactionService = Get.find<TransactionService>();
+  late final TransactionService _transactionService;
 
   final _notificationCount = RxInt(0);
 
@@ -121,6 +121,9 @@ class NotificationService extends GetxService {
   int get notificationCount => _notificationCount.value;
 
   Future<NotificationService> init() async {
+    // Initialize dependencies
+    _transactionService = Get.find<TransactionService>();
+
     // Request notification permissions
     await _requestPermissions();
 

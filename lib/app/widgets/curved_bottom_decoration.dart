@@ -1,4 +1,3 @@
-import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 
 class CurvedBottomDecoration extends StatelessWidget {

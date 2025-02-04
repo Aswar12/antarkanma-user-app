@@ -3,16 +3,22 @@ import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
 import '../controllers/splash_controller.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends GetView<SplashController> {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  Widget build(BuildContext context) {
+    return _SplashContent();
+  }
 }
 
-class _SplashPageState extends State<SplashPage>
+class _SplashContent extends StatefulWidget {
+  @override
+  State<_SplashContent> createState() => _SplashContentState();
+}
+
+class _SplashContentState extends State<_SplashContent>
     with SingleTickerProviderStateMixin {
-  final splashController = Get.find<SplashController>();
   late final AnimationController _controller;
   late final Animation<double> _opacityAnimation;
   late final Animation<double> _scaleAnimation;
@@ -57,6 +63,8 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<SplashController>();
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
@@ -81,7 +89,7 @@ class _SplashPageState extends State<SplashPage>
               },
             ),
             const SizedBox(height: 40),
-            Obx(() => splashController.isLoading
+            Obx(() => controller.isLoading
                 ? Column(
                     children: [
                       const SizedBox(height: 20),
@@ -102,7 +110,7 @@ class _SplashPageState extends State<SplashPage>
                           ],
                         ),
                         child: Obx(() => Text(
-                              splashController.loadingText,
+                              controller.loadingText,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

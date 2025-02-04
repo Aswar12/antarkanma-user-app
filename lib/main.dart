@@ -9,13 +9,17 @@ import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app/constants/app_theme.dart';
 import 'app/constants/app_strings.dart';
-import 'app/bindings/initial_binding.dart';
+import 'app/bindings/app_binding.dart';
 import 'package:get_storage/get_storage.dart';
 import 'app/utils/performance_config.dart';
+import 'app/utils/logger_config.dart';
 
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Initialize logging
+    LoggerConfig.init();
 
     // Initialize GetStorage before anything else
     await GetStorage.init();
@@ -49,6 +53,18 @@ Future<void> main() async {
       enableLog: kDebugMode,
       defaultTransition: Transition.fadeIn,
       defaultPopGesture: false,
+      logWriterCallback: (String text, {bool isError = false}) {
+        // Filter out ViewRootImpl logs and other touch events
+        if (text.contains('ViewRootImpl') || 
+            text.contains('MotionEvent') ||
+            text.contains('dispatchPointerEvent') ||
+            text.contains('processMotionEvent')) {
+          return;
+        }
+        if (isError || kDebugMode) {
+          debugPrint('${isError ? 'ERROR: ' : ''}$text');
+        }
+      },
     );
 
     // Initialize system UI settings
@@ -77,7 +93,11 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      initialBinding: InitialBinding(), // Initialize core dependencies
+      initialBinding: BindingsBuilder(() {
+        // Initialize AppBinding
+        final binding = AppBinding();
+        binding.dependencies();
+      }),
       initialRoute: Routes.splash,
       getPages: AppPages.routes,
       debugShowCheckedModeBanner: false,
@@ -86,6 +106,13 @@ class MyApp extends StatelessWidget {
       popGesture: false,
       enableLog: kDebugMode,
       logWriterCallback: (String text, {bool isError = false}) {
+        // Filter out ViewRootImpl logs and other touch events
+        if (text.contains('ViewRootImpl') || 
+            text.contains('MotionEvent') ||
+            text.contains('dispatchPointerEvent') ||
+            text.contains('processMotionEvent')) {
+          return;
+        }
         if (isError || kDebugMode) {
           debugPrint('${isError ? 'ERROR: ' : ''}$text');
         }

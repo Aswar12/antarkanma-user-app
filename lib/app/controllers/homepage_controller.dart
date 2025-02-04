@@ -1,21 +1,32 @@
 import 'dart:async';
 import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class HomePageController extends GetxController {
   final ProductService productService = Get.find<ProductService>();
+  final MerchantService merchantService = Get.find<MerchantService>();
   final CategoryService _categoryService = Get.find<CategoryService>();
   final AuthService _authService = Get.find<AuthService>();
+  final LocationService _locationService = Get.find<LocationService>();
 
-  // Observable state variables
+  // Observable state variables for products
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
-  final RxList<ProductModel> searchResults = <ProductModel>[].obs;
   final RxList<ProductModel> allProducts = <ProductModel>[].obs;
+  final RxList<ProductModel> searchResults = <ProductModel>[].obs;
+
+  // Observable state variables for merchants
+  final RxList<MerchantModel> allMerchants = <MerchantModel>[].obs;
+  final RxList<MerchantModel> merchantSearchResults = <MerchantModel>[].obs;
+
+  // Common state variables
   final RxBool isLoading = true.obs;
   final RxBool isLoadingMore = false.obs;
   final RxBool hasMoreData = true.obs;
@@ -45,6 +56,16 @@ class HomePageController extends GetxController {
     searchFocusNode.addListener(_onSearchFocusChange);
     scrollController.addListener(_scrollListener);
     _setupSearchListener();
+    // Load initial data when controller is initialized
+    loadInitialData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    debugPrint('HomePageController: onReady');
+    // Refresh data when the page becomes ready
+    refreshProducts(showMessage: false);
   }
 
   @override
@@ -60,12 +81,11 @@ class HomePageController extends GetxController {
       if (scrollController.hasClients) {
         final maxScroll = scrollController.position.maxScrollExtent;
         final currentScroll = scrollController.position.pixels;
-        final delta = maxScroll * 0.2; // Load more when 20% from bottom
+        final delta = maxScroll * 0.2;
 
         if (maxScroll - currentScroll <= delta && _currentPage < _lastPage) {
-          debugPrint('Near bottom, loading more products');
-          debugPrint('Current page: $_currentPage, Last page: $_lastPage');
-          loadMoreProducts();
+          debugPrint('Near bottom, loading more merchants');
+          loadMoreMerchants();
         }
       }
     }
@@ -83,60 +103,61 @@ class HomePageController extends GetxController {
         performSearch();
       } else {
         searchResults.clear();
+        merchantSearchResults.clear();
       }
     });
   }
 
-  Future<void> loadAllProducts() async {
+  Future<void> loadAllMerchants() async {
     if (isLoadingMore.value) return;
 
     try {
       isLoadingMore.value = true;
-      debugPrint('Loading products for page $_currentPage...');
+      debugPrint('Loading merchants for page $_currentPage...');
 
-      final paginatedResponse = await productService.getAllProducts(
-        pageSize: _pageSize,
+      final coordinates = _locationService.getCurrentCoordinates();
+      debugPrint('Using coordinates for merchant request: $coordinates');
+      
+      final paginatedResponse = await merchantService.getAllMerchants(
         page: _currentPage,
+        pageSize: _pageSize,
+        category: selectedCategory.value == "Semua" ? null : selectedCategory.value,
+        latitude: coordinates?['latitude'],
+        longitude: coordinates?['longitude'],
       );
 
       if (_currentPage == 1) {
-        allProducts.clear();
+        allMerchants.clear();
       }
 
-      allProducts.addAll(paginatedResponse.data);
+      allMerchants.addAll(paginatedResponse.data);
+      debugPrint('Loaded ${paginatedResponse.data.length} merchants');
+      
       _lastPage = paginatedResponse.lastPage;
       _totalItems = paginatedResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
-      _retryAttempts = 0; // Reset retry counter on success
-
-      debugPrint('Loaded page $_currentPage of $_lastPage');
-      debugPrint('Total products loaded: ${allProducts.length} of $_totalItems');
-      debugPrint('Has more data: ${hasMoreData.value}');
+      _retryAttempts = 0;
 
     } catch (e) {
-      debugPrint('Error loading products: $e');
+      debugPrint('Error loading merchants: $e');
       if (_retryAttempts < maxRetries) {
         _retryAttempts++;
-        debugPrint('Retrying... Attempt $_retryAttempts of $maxRetries');
         await Future.delayed(Duration(seconds: _retryAttempts));
-        return loadAllProducts();
+        return loadAllMerchants();
       }
       rethrow;
     } finally {
       isLoadingMore.value = false;
+      isLoading.value = false; // Ensure loading state is updated
     }
   }
 
-  Future<void> loadMoreProducts() async {
-    if (isLoadingMore.value || _currentPage >= _lastPage) {
-      debugPrint(
-          'Skip loading more: currentPage=$_currentPage, lastPage=$_lastPage');
-      return;
-    }
+  Future<void> loadMoreMerchants() async {
+    if (isLoadingMore.value || _currentPage >= _lastPage) return;
 
     _currentPage++;
-    debugPrint('Loading more products, page: $_currentPage of $_lastPage');
-    await loadAllProducts();
+    debugPrint('Loading more merchants, page: $_currentPage');
+    await loadAllMerchants();
   }
 
   Future<void> performSearch() async {
@@ -144,24 +165,25 @@ class HomePageController extends GetxController {
 
     try {
       isLoadingMore.value = true;
-      final paginatedResponse = await productService.getAllProducts(
+      final coordinates = _locationService.getCurrentCoordinates();
+      
+      // Search merchants
+      final merchantResponse = await merchantService.getAllMerchants(
         query: searchQuery.value,
-        pageSize: _pageSize,
         page: _currentPage,
+        pageSize: _pageSize,
+        latitude: coordinates?['latitude'],
+        longitude: coordinates?['longitude'],
       );
 
       if (_currentPage == 1) {
-        searchResults.clear();
+        merchantSearchResults.clear();
       }
 
-      searchResults.addAll(paginatedResponse.data);
-      _lastPage = paginatedResponse.lastPage;
-      _totalItems = paginatedResponse.total;
+      merchantSearchResults.addAll(merchantResponse.data);
+      _lastPage = merchantResponse.lastPage;
+      _totalItems = merchantResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
-
-      debugPrint('Search results loaded: ${searchResults.length} of $_totalItems');
-      debugPrint('Current page: $_currentPage of $_lastPage');
-      debugPrint('Has more data: ${hasMoreData.value}');
 
     } catch (e) {
       debugPrint('Error performing search: $e');
@@ -187,12 +209,11 @@ class HomePageController extends GetxController {
 
       popularProducts.assignAll(paginatedResponse.data);
       _popularProductsCompleter?.complete();
-      _retryAttempts = 0; // Reset retry counter on success
+      _retryAttempts = 0;
     } catch (e) {
       debugPrint('Error loading popular products: $e');
       if (_retryAttempts < maxRetries) {
         _retryAttempts++;
-        debugPrint('Retrying popular products... Attempt $_retryAttempts of $maxRetries');
         await Future.delayed(Duration(seconds: _retryAttempts));
         _popularProductsCompleter?.completeError(e);
         _popularProductsCompleter = null;
@@ -221,10 +242,10 @@ class HomePageController extends GetxController {
     selectedCategory.value = categoryName;
     searchController.clear();
     searchQuery.value = '';
-    searchResults.clear();
+    merchantSearchResults.clear();
     _currentPage = 1;
     hasMoreData.value = true;
-    await loadAllProducts();
+    await loadAllMerchants();
   }
 
   Future<void> refreshProducts({bool showMessage = true}) async {
@@ -234,11 +255,17 @@ class HomePageController extends GetxController {
       isRefreshing.value = true;
       _retryAttempts = 0;
 
+      // Refresh location first
+      await _locationService.getCurrentLocation();
+
       // Clear all cached data
       await productService.clearLocalStorage();
+      await merchantService.clearLocalStorage();
       popularProducts.clear();
-      searchResults.clear();
       allProducts.clear();
+      searchResults.clear();
+      merchantSearchResults.clear();
+      allMerchants.clear();
       _categoryService.categories.clear();
       _currentPage = 1;
       _lastPage = 1;
@@ -247,7 +274,7 @@ class HomePageController extends GetxController {
       // Load fresh data
       await Future.wait([
         loadPopularProducts(),
-        loadAllProducts(),
+        loadAllMerchants(),
         _categoryService.getCategories(),
       ]);
 
@@ -264,7 +291,7 @@ class HomePageController extends GetxController {
         );
       }
     } catch (e) {
-      debugPrint('Error refreshing products: $e');
+      debugPrint('Error refreshing data: $e');
       if (showMessage) {
         Get.snackbar(
           'Error',
@@ -290,10 +317,12 @@ class HomePageController extends GetxController {
       hasMoreData.value = true;
       _retryAttempts = 0;
 
+      // Get location first
+      await _locationService.getCurrentLocation();
+
       await Future.wait([
-        _categoryService.getCategories(),
         loadPopularProducts(),
-        loadAllProducts(),
+        loadAllMerchants(),
       ]);
 
       selectedCategory.value = "Semua";
@@ -301,7 +330,6 @@ class HomePageController extends GetxController {
       debugPrint('Error loading initial data: $e');
       if (_retryAttempts < maxRetries) {
         _retryAttempts++;
-        debugPrint('Retrying initial data load... Attempt $_retryAttempts of $maxRetries');
         await Future.delayed(Duration(seconds: _retryAttempts));
         return loadInitialData();
       }
@@ -316,5 +344,7 @@ class HomePageController extends GetxController {
   bool get isCategoriesLoading => _categoryService.isLoading.value;
   List<ProductModel> get filteredProducts =>
       searchQuery.isEmpty ? allProducts : searchResults;
+  List<MerchantModel> get filteredMerchants =>
+      searchQuery.isEmpty ? allMerchants : merchantSearchResults;
   bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 }

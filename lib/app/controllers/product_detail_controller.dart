@@ -15,7 +15,7 @@ class ProductDetailController extends GetxController {
   final RxList<ProductReviewModel> apiReviews = <ProductReviewModel>[].obs;
   final isLoadingReviews = false.obs;
   final RxInt currentImageIndex = RxInt(0);
-  final RxInt selectedRatingFilter = RxInt(0); // 0 means all ratings
+  final RxInt selectedRatingFilter = RxInt(0);
   final RxBool isExpanded = RxBool(false);
 
   List<ProductReviewModel> get visibleReviews =>
@@ -46,7 +46,6 @@ class ProductDetailController extends GetxController {
   final quantity = 1.obs;
   final Rx<VariantModel?> selectedVariant = Rx<VariantModel?>(null);
 
-  // Review getters
   List<ProductReviewModel> get reviews => apiReviews;
   int get reviewCount => apiReviews.length;
   double get averageRating {
@@ -57,7 +56,7 @@ class ProductDetailController extends GetxController {
 
   void setRatingFilter(int rating) {
     if (selectedRatingFilter.value == rating) {
-      selectedRatingFilter.value = 0; // Reset to show all ratings
+      selectedRatingFilter.value = 0;
     } else {
       selectedRatingFilter.value = rating;
     }
@@ -68,9 +67,9 @@ class ProductDetailController extends GetxController {
     try {
       if (isLoadingReviews.value) return;
 
-      print('Fetching reviews for product ID: ${product.value.id}');
+      debugPrint('Fetching reviews for product ID: ${product.value.id}');
       if (product.value.id == null) {
-        print('Product ID is null, cannot fetch reviews');
+        debugPrint('Product ID is null, cannot fetch reviews');
         return;
       }
 
@@ -80,12 +79,11 @@ class ProductDetailController extends GetxController {
       final cachedReviews =
           StorageService.instance.getProductReviews(product.value.id!);
       if (cachedReviews != null) {
-        print('Using cached reviews: ${cachedReviews.length}');
+        debugPrint('Using cached reviews: ${cachedReviews.length}');
         apiReviews.value = cachedReviews
             .map((json) => ProductReviewModel.fromJson(json))
             .toList();
 
-        // Apply rating filter to cached reviews if needed
         if (selectedRatingFilter.value != 0) {
           apiReviews.value = apiReviews
               .where((review) => review.rating == selectedRatingFilter.value)
@@ -95,16 +93,15 @@ class ProductDetailController extends GetxController {
 
       // Fetch fresh reviews from API
       final token = StorageService.instance.getToken();
-      print('Token available: ${token != null}');
+      debugPrint('Token available: ${token != null}');
 
       final reviews = await reviewRepository.getProductReviews(
         product.value.id!,
-        rating:
-            selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
+        rating: selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
         token: token,
       );
 
-      print('Reviews fetched from API: ${reviews.length}');
+      debugPrint('Reviews fetched from API: ${reviews.length}');
 
       // Update cache with new reviews if rating filter is not applied
       if (selectedRatingFilter.value == 0) {
@@ -117,7 +114,7 @@ class ProductDetailController extends GetxController {
       // Update UI with new reviews
       apiReviews.value = reviews;
     } catch (e) {
-      print('Error fetching reviews: $e');
+      debugPrint('Error fetching reviews: $e');
       showCustomSnackbar(
         title: 'Error',
         message: 'Gagal memuat ulasan',
@@ -263,6 +260,11 @@ class ProductDetailController extends GetxController {
     product.value = newProduct;
     currentImageIndex.value = 0;
     selectedVariant.value = null;
+    quantity.value = 1;
+    apiReviews.clear();
+    selectedRatingFilter.value = 0;
+    isExpanded.value = false;
+    fetchReviews();
   }
 
   ProductGalleryModel? getGalleryAtIndex(int index) {
@@ -283,12 +285,13 @@ class ProductDetailController extends GetxController {
     super.onInit();
     if (Get.arguments != null) {
       setProduct(Get.arguments as ProductModel);
-      fetchReviews();
     }
   }
 
   @override
   void onClose() {
+    debugPrint('ProductDetailController: Cleaning up...');
+    // Clear all data
     product.value = ProductModel(
       id: null,
       name: 'Unknown Product',
@@ -307,6 +310,8 @@ class ProductDetailController extends GetxController {
     selectedVariant.value = null;
     apiReviews.clear();
     selectedRatingFilter.value = 0;
+    isExpanded.value = false;
+    isLoadingReviews.value = false;
     super.onClose();
   }
 }

@@ -78,11 +78,45 @@ class StorageService {
 
   // User Methods
   Future<void> saveUser(Map<String, dynamic> userData) async {
-    await _storage.write(_userKey, userData);
+    try {
+      // Convert to JSON string and back to ensure proper data structure
+      final jsonStr = json.encode(userData);
+      final validData = json.decode(jsonStr) as Map<String, dynamic>;
+      await _storage.write(_userKey, validData);
+    } catch (e) {
+      print('Error saving user data: $e');
+      throw Exception('Failed to save user data: Invalid format');
+    }
   }
 
   Map<String, dynamic>? getUser() {
-    return _storage.read(_userKey);
+    try {
+      final data = _storage.read(_userKey);
+      if (data == null) return null;
+
+      // If it's already a Map<String, dynamic>, validate and return
+      if (data is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(data);
+      }
+
+      // If it's a string (possibly JSON), try to parse it
+      if (data is String) {
+        try {
+          final decoded = json.decode(data);
+          if (decoded is Map<String, dynamic>) {
+            return decoded;
+          }
+        } catch (e) {
+          print('Error parsing user data string: $e');
+        }
+      }
+
+      print('Invalid user data format in storage');
+      return null;
+    } catch (e) {
+      print('Error getting user data: $e');
+      return null;
+    }
   }
 
   // Remember Me Methods
@@ -135,20 +169,33 @@ class StorageService {
 
   // Location Methods
   Future<void> saveList(String key, List<dynamic> data) async {
-    final jsonString = json.encode(data);
-    final encrypted = _encrypt(jsonString);
-    await _storage.write(key, encrypted);
+    try {
+      final jsonString = json.encode(data);
+      final encrypted = _encrypt(jsonString);
+      await _storage.write(key, encrypted);
+    } catch (e) {
+      print('Error saving list to storage: $e');
+    }
   }
 
   List<dynamic>? getList(String key) {
     try {
-      final encrypted = _storage.read(key);
-      if (encrypted == null) return null;
+      final value = _storage.read(key);
+      if (value == null) return null;
 
-      final decrypted = _decrypt(encrypted);
-      if (decrypted == null) return null;
+      // If the value is already a List, return it directly
+      if (value is List) return value;
 
-      return json.decode(decrypted) as List<dynamic>;
+      // If it's an encrypted string, try to decrypt and parse it
+      if (value is String) {
+        final decrypted = _decrypt(value);
+        if (decrypted == null) return null;
+        
+        final decoded = json.decode(decrypted);
+        if (decoded is List) return decoded;
+      }
+
+      return null;
     } catch (e) {
       print('Error getting list from storage: $e');
       return null;
@@ -156,20 +203,37 @@ class StorageService {
   }
 
   Future<void> saveMap(String key, Map<String, dynamic> data) async {
-    final jsonString = json.encode(data);
-    final encrypted = _encrypt(jsonString);
-    await _storage.write(key, encrypted);
+    try {
+      final jsonString = json.encode(data);
+      final encrypted = _encrypt(jsonString);
+      await _storage.write(key, encrypted);
+    } catch (e) {
+      print('Error saving map to storage: $e');
+    }
   }
 
   Map<String, dynamic>? getMap(String key) {
     try {
-      final encrypted = _storage.read(key);
-      if (encrypted == null) return null;
+      final value = _storage.read(key);
+      if (value == null) return null;
 
-      final decrypted = _decrypt(encrypted);
-      if (decrypted == null) return null;
+      // If the value is already a Map, validate and convert
+      if (value is Map) {
+        return Map<String, dynamic>.from(value);
+      }
 
-      return json.decode(decrypted) as Map<String, dynamic>;
+      // If it's an encrypted string, try to decrypt and parse it
+      if (value is String) {
+        final decrypted = _decrypt(value);
+        if (decrypted == null) return null;
+        
+        final decoded = json.decode(decrypted);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+
+      return null;
     } catch (e) {
       print('Error getting map from storage: $e');
       return null;
@@ -182,9 +246,19 @@ class StorageService {
   }
 
   List<Map<String, dynamic>>? getUserLocations() {
-    final data = getList(_userLocationsKey);
-    if (data == null) return null;
-    return List<Map<String, dynamic>>.from(data);
+    try {
+      final data = getList(_userLocationsKey);
+      if (data == null) return null;
+      return List<Map<String, dynamic>>.from(data.map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        }
+        return <String, dynamic>{};
+      }));
+    } catch (e) {
+      print('Error getting user locations: $e');
+      return null;
+    }
   }
 
   Future<void> saveDefaultLocation(Map<String, dynamic> location) async {
@@ -250,9 +324,19 @@ class StorageService {
   }
 
   List<Map<String, dynamic>>? getOrders() {
-    final data = getList(_ordersKey);
-    if (data == null) return null;
-    return List<Map<String, dynamic>>.from(data);
+    try {
+      final data = getList(_ordersKey);
+      if (data == null) return null;
+      return List<Map<String, dynamic>>.from(data.map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        }
+        return <String, dynamic>{};
+      }));
+    } catch (e) {
+      print('Error getting orders: $e');
+      return null;
+    }
   }
 
   Future<void> clearOrders() async {
@@ -269,20 +353,30 @@ class StorageService {
   }
 
   List<Map<String, dynamic>>? getProductReviews(int productId) {
-    final key = '${_reviewsKey}_$productId';
-    final data = getList(key);
-    if (data == null) return null;
+    try {
+      final key = '${_reviewsKey}_$productId';
+      final data = getList(key);
+      if (data == null) return null;
 
-    // Check if cache is older than 2 days
-    final timestamp = getInt('${key}_timestamp') ?? 0;
-    final age = DateTime.now().millisecondsSinceEpoch - timestamp;
-    if (age > _cacheDuration) {
-      remove(key);
-      remove('${key}_timestamp');
+      // Check if cache is older than 2 days
+      final timestamp = getInt('${key}_timestamp') ?? 0;
+      final age = DateTime.now().millisecondsSinceEpoch - timestamp;
+      if (age > _cacheDuration) {
+        remove(key);
+        remove('${key}_timestamp');
+        return null;
+      }
+
+      return List<Map<String, dynamic>>.from(data.map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        }
+        return <String, dynamic>{};
+      }));
+    } catch (e) {
+      print('Error getting product reviews: $e');
       return null;
     }
-
-    return List<Map<String, dynamic>>.from(data);
   }
 
   Future<void> clearProductReviews(int productId) async {
@@ -364,11 +458,9 @@ class StorageService {
     final Map<String, dynamic> allData = {};
     for (var key in _storage.getKeys()) {
       if (key is String) {
-        // Memastikan key adalah String
         var value = _storage.read(key);
         if (value != null) {
           if (value is String) {
-            // Jika nilai adalah String, kita coba dekripsi
             value = _decrypt(value) ?? value;
           }
           allData[key] = value;
@@ -394,15 +486,12 @@ class StorageService {
     int totalSize = 0;
     for (var key in _storage.getKeys()) {
       if (key is String) {
-        // Memastikan key adalah String
         var value = _storage.read(key);
         if (value != null) {
-          totalSize +=
-              key.length; // Tidak perlu .toString() karena key sudah String
+          totalSize += key.length;
           if (value is String) {
             totalSize += value.length;
           } else {
-            // Untuk tipe data lain, kita gunakan representasi string-nya
             totalSize += value.toString().length;
           }
         }
@@ -431,7 +520,6 @@ class StorageService {
     }).toList();
   }
 
-// Untuk mengambil String
   String? safeGetString(dynamic value) {
     if (value is String) {
       return value;
@@ -439,7 +527,6 @@ class StorageService {
     return null;
   }
 
-// Untuk mengambil int
   int? safeGetInt(dynamic value) {
     if (value is int) {
       return value;
@@ -447,7 +534,6 @@ class StorageService {
     return null;
   }
 
-// Untuk mengambil bool
   bool? safeGetBool(dynamic value) {
     if (value is bool) {
       return value;
@@ -455,7 +541,6 @@ class StorageService {
     return null;
   }
 
-  // Method to clear all data except certain keys
   Future<void> clearExcept(List<String> keysToKeep) async {
     final allKeys = _storage.getKeys().toList();
     for (var key in allKeys) {
