@@ -6,7 +6,7 @@ import 'package:antarkanma/app/services/auth_service.dart';
 class FCMTokenService extends GetxService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final NotificationProvider _notificationProvider = NotificationProvider();
-  final AuthService _authService = Get.find<AuthService>();
+  late final AuthService _authService;
 
   final _currentToken = RxnString();
   final _isTokenRegistered = RxBool(false);
@@ -28,14 +28,20 @@ class FCMTokenService extends GetxService {
     // Listen to token refresh
     _messaging.onTokenRefresh.listen(_handleTokenRefresh);
 
-    // Listen to auth changes to handle token registration
-    ever(_authService.currentUser, (user) {
-      if (user != null && 
-          _currentToken.value != null && 
-          !_isTokenRegistered.value) {
-        registerFCMToken(_currentToken.value!);
-      }
-    });
+    // Initialize AuthService lazily
+    try {
+      _authService = Get.find<AuthService>();
+      // Listen to auth changes to handle token registration
+      ever(_authService.currentUser, (user) {
+        if (user != null && 
+            _currentToken.value != null && 
+            !_isTokenRegistered.value) {
+          registerFCMToken(_currentToken.value!);
+        }
+      });
+    } catch (e) {
+      print('AuthService not yet initialized: $e');
+    }
 
     return this;
   }
@@ -48,10 +54,15 @@ class FCMTokenService extends GetxService {
       if (token != null) {
         _currentToken.value = token;
 
-        // Only register if user is already logged in
-        final user = _authService.currentUser.value;
-        if (user != null) {
-          await registerFCMToken(token);
+        // Only register if AuthService is initialized and user is logged in
+        try {
+          final authService = Get.find<AuthService>();
+          final user = authService.currentUser.value;
+          if (user != null) {
+            await registerFCMToken(token);
+          }
+        } catch (e) {
+          print('AuthService not yet initialized during token init: $e');
         }
       }
     } catch (e) {
@@ -66,14 +77,19 @@ class FCMTokenService extends GetxService {
       final oldToken = _currentToken.value;
       _currentToken.value = newToken;
 
-      final user = _authService.currentUser.value;
-      if (user != null) {
-        // If we had an old token, unregister it first
-        if (oldToken != null) {
-          await _notificationProvider.unregisterFCMToken(oldToken);
+      try {
+        final authService = Get.find<AuthService>();
+        final user = authService.currentUser.value;
+        if (user != null) {
+          // If we had an old token, unregister it first
+          if (oldToken != null) {
+            await _notificationProvider.unregisterFCMToken(oldToken);
+          }
+          // Register the new token
+          await registerFCMToken(newToken);
         }
-        // Register the new token
-        await registerFCMToken(newToken);
+      } catch (e) {
+        print('AuthService not yet initialized during token refresh: $e');
       }
     } catch (e) {
       print('Error handling token refresh: $e');
@@ -82,7 +98,8 @@ class FCMTokenService extends GetxService {
 
   Future<void> registerFCMToken(String fcmtoken) async {
     try {
-      final user = _authService.currentUser.value;
+      final authService = Get.find<AuthService>();
+      final user = authService.currentUser.value;
       if (user != null) {
         print('Registering FCM token for user ${user.id} with role ${user.role}');
 

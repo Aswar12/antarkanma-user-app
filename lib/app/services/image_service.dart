@@ -5,14 +5,25 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ImageService extends GetxService {
+  static ImageService get to => Get.find<ImageService>();
+  
   // Custom cache manager
-  final DefaultCacheManager _cacheManager = DefaultCacheManager();
+  late final DefaultCacheManager _cacheManager;
 
   // Initialize the service
-  Future<ImageService> init() async {
-    // Clear old cache on app start
-    await _cacheManager.emptyCache();
-    return this;
+  @override
+  void onInit() {
+    super.onInit();
+    _cacheManager = DefaultCacheManager();
+    _clearOldCache();
+  }
+
+  Future<void> _clearOldCache() async {
+    try {
+      await _cacheManager.emptyCache();
+    } catch (e) {
+      debugPrint('Error clearing image cache: $e');
+    }
   }
 
   // Get optimized image URL based on size
@@ -71,7 +82,11 @@ class ImageService extends GetxService {
 
   // Clear image cache
   Future<void> clearCache() async {
-    await _cacheManager.emptyCache();
+    try {
+      await _cacheManager.emptyCache();
+    } catch (e) {
+      debugPrint('Error clearing image cache: $e');
+    }
   }
 
   @override

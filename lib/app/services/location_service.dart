@@ -15,8 +15,55 @@ class LocationService extends GetxService {
     return this;
   }
 
-  Future<Position?> getCurrentLocation() async {
+  Future<Position?> getCurrentLocation({bool forceUpdate = false}) async {
     try {
+      Position? mostAccuratePosition;
+      double bestAccuracy = double.infinity;
+
+      if (!forceUpdate) {
+        // Try to get device's last known position
+        Position? devicePosition = await Geolocator.getLastKnownPosition();
+        if (devicePosition != null && devicePosition.accuracy < bestAccuracy) {
+          mostAccuratePosition = devicePosition;
+          bestAccuracy = devicePosition.accuracy;
+        }
+
+        // Check stored location
+        final storedLocation = _storageService.getMap('user_location');
+        if (storedLocation != null) {
+          final timestamp = storedLocation['timestamp'] as int;
+          final age = DateTime.now().millisecondsSinceEpoch - timestamp;
+          final storedAccuracy = storedLocation['accuracy'] as double? ?? double.infinity;
+
+          // Consider stored location if it's less than 1 hour old and more accurate
+          if (age <= 3600000 && storedAccuracy < bestAccuracy) {
+            mostAccuratePosition = Position(
+              latitude: storedLocation['latitude'] as double,
+              longitude: storedLocation['longitude'] as double,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+              accuracy: storedAccuracy,
+              altitude: 0,
+              heading: 0,
+              speed: 0,
+              speedAccuracy: 0,
+              altitudeAccuracy: 0,
+              headingAccuracy: 0,
+            );
+            bestAccuracy = storedAccuracy;
+          }
+        }
+
+        // If we found an accurate enough position (less than 50 meters), use it
+        if (mostAccuratePosition != null && bestAccuracy < 50) {
+          debugPrint('Using existing accurate location (accuracy: ${bestAccuracy}m): ${mostAccuratePosition.latitude}, ${mostAccuratePosition.longitude}');
+          latitude.value = mostAccuratePosition.latitude;
+          longitude.value = mostAccuratePosition.longitude;
+          isLocationAvailable.value = true;
+          return mostAccuratePosition;
+        }
+      }
+
+      // If no accurate enough location found or force update requested, get new location
       bool hasPermission = await LocationPermissionHandler.handleLocationPermission();
       if (!hasPermission) {
         debugPrint('Location permission not granted');
@@ -32,14 +79,15 @@ class LocationService extends GetxService {
       longitude.value = position.longitude;
       isLocationAvailable.value = true;
 
-      // Save to storage for merchant requests
+      // Save to storage for future requests with accuracy info
       await _storageService.saveMap('user_location', {
         'latitude': position.latitude,
         'longitude': position.longitude,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'accuracy': position.accuracy,
       });
 
-      debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
+      debugPrint('New location obtained: ${position.latitude}, ${position.longitude}');
       return position;
     } catch (e) {
       debugPrint('Error getting location: $e');
@@ -49,38 +97,55 @@ class LocationService extends GetxService {
 
   Future<Map<String, double>?> getLastKnownLocation() async {
     try {
-      // First try to get from device's last known position
-      Position? position = await Geolocator.getLastKnownPosition();
-      if (position != null) {
-        latitude.value = position.latitude;
-        longitude.value = position.longitude;
-        isLocationAvailable.value = true;
-        return {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-        };
+      Position? mostAccuratePosition;
+      double bestAccuracy = double.infinity;
+      
+      // Try to get from device's last known position
+      Position? devicePosition = await Geolocator.getLastKnownPosition();
+      if (devicePosition != null && devicePosition.accuracy < bestAccuracy) {
+        mostAccuratePosition = devicePosition;
+        bestAccuracy = devicePosition.accuracy;
       }
       
-      // If no last known position, try to get from storage
+      // Check stored location
       final storedLocation = _storageService.getMap('user_location');
       if (storedLocation != null) {
         final timestamp = storedLocation['timestamp'] as int;
         final age = DateTime.now().millisecondsSinceEpoch - timestamp;
+        final storedAccuracy = storedLocation['accuracy'] as double? ?? double.infinity;
         
-        // Only use stored location if it's less than 1 hour old
-        if (age <= 3600000) { // 1 hour in milliseconds
-          latitude.value = storedLocation['latitude'] as double;
-          longitude.value = storedLocation['longitude'] as double;
-          isLocationAvailable.value = true;
-          return {
-            'latitude': latitude.value,
-            'longitude': longitude.value,
-          };
+        // Only consider stored location if it's less than 1 hour old and more accurate
+        if (age <= 3600000 && storedAccuracy < bestAccuracy) { // 1 hour in milliseconds
+          mostAccuratePosition = Position(
+            latitude: storedLocation['latitude'] as double,
+            longitude: storedLocation['longitude'] as double,
+            timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+            accuracy: storedAccuracy,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+          bestAccuracy = storedAccuracy;
         }
       }
 
-      // If no valid location found, try to get current location
-      return getCurrentLocation().then((position) {
+      // If we found a valid position, use it
+      if (mostAccuratePosition != null) {
+        latitude.value = mostAccuratePosition.latitude;
+        longitude.value = mostAccuratePosition.longitude;
+        isLocationAvailable.value = true;
+        debugPrint('Using most accurate location (accuracy: ${mostAccuratePosition.accuracy}m): ${mostAccuratePosition.latitude}, ${mostAccuratePosition.longitude}');
+        return {
+          'latitude': mostAccuratePosition.latitude,
+          'longitude': mostAccuratePosition.longitude,
+        };
+      }
+
+      // If no valid location found or accuracy not good enough, try to get current location
+      return getCurrentLocation(forceUpdate: true).then((position) {
         if (position != null) {
           return {
             'latitude': position.latitude,

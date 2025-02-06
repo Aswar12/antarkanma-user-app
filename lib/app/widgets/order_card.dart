@@ -217,7 +217,6 @@ class OrderCard extends StatelessWidget {
   }
 
   Widget _buildProductItem(dynamic item) {
-    final imageService = Get.find<ImageService>();
     return Container(
       margin: EdgeInsets.only(bottom: Dimenssions.height8),
       child: Row(
@@ -233,7 +232,7 @@ class OrderCard extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: imageService.buildProductThumbnail(
+            child: ImageService.to.buildProductThumbnail(
               item.product.firstImageUrl,
               size: Dimenssions.height65,
             ),

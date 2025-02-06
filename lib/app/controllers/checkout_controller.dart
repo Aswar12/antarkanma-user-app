@@ -3,6 +3,7 @@ import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
+import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
@@ -17,21 +18,29 @@ class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
   final AuthController authController;
   final CartController cartController;
+  final ShippingService shippingService;
 
   CheckoutController({
     required this.userLocationController,
     required this.authController,
-  }) : cartController = Get.find<CartController>();
+    required this.cartController,
+    required this.shippingService,
+  });
 
   // Observable properties
   final isLoading = false.obs;
   final isProcessingCheckout = false.obs;
+  final isCalculatingShipping = false.obs;
   final orderItems = <OrderItemModel>[].obs;
   final selectedLocation = Rx<UserLocationModel?>(null);
   final selectedPaymentMethod = Rx<String?>(null);
   final subtotal = 0.0.obs;
   final deliveryFee = 0.0.obs;
   final total = 0.0.obs;
+  
+  // New shipping preview state
+  final shippingPreview = Rx<Map<int, Map<String, dynamic>>>({});
+  final merchantItems = Rx<Map<int, List<OrderItemModel>>>({});
 
   final List<String> paymentMethods = [
     'COD',
@@ -72,6 +81,119 @@ class CheckoutController extends GetxController {
       this.selectedLocation.value = priorityLocation;
       userLocationController.setSelectedLocation(priorityLocation);
     }
+  }
+
+  void _initializeCheckout() {
+    try {
+      Map<int, List<CartItemModel>>? merchantCartItems;
+      
+      // Check if this is a direct purchase
+      if (Get.arguments != null && Get.arguments is Map) {
+        final args = Get.arguments as Map;
+        if (args['type'] == 'direct_buy' && args['merchantItems'] != null) {
+          merchantCartItems = args['merchantItems'] as Map<int, List<CartItemModel>>;
+        }
+      }
+
+      // If not a direct purchase, get items from cart
+      if (merchantCartItems == null) {
+        final selectedItems = cartController.selectedItems;
+        merchantCartItems = <int, List<CartItemModel>>{};
+        for (var item in selectedItems) {
+          final merchantId = item.merchant.id ?? 0;
+          if (!merchantCartItems.containsKey(merchantId)) {
+            merchantCartItems[merchantId] = [];
+          }
+          merchantCartItems[merchantId]!.add(item);
+        }
+      }
+
+      // Convert cart items to order items and group by merchant
+      final Map<int, List<OrderItemModel>> groupedItems = {};
+      final List<OrderItemModel> allItems = [];
+      
+      merchantCartItems.forEach((merchantId, items) {
+        final merchantOrderItems = items.map((cartItem) => OrderItemModel.fromCartItem(
+          cartItem,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        )).toList();
+        
+        groupedItems[merchantId] = merchantOrderItems;
+        allItems.addAll(merchantOrderItems);
+      });
+
+      merchantItems.value = groupedItems;
+      orderItems.value = allItems;
+      _calculateTotals();
+    } catch (e) {
+      _handleInitializationError(e);
+    }
+  }
+
+  void _handleInitializationError(dynamic error) {
+    debugPrint('Error initializing checkout: $error');
+    showCustomSnackbar(
+      title: 'Error',
+      message: 'Terjadi kesalahan saat memuat data checkout',
+      isError: true,
+    );
+  }
+
+  Future<void> _calculateTotals() async {
+    subtotal.value = orderItems.fold(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
+    
+    await _calculateShippingPreview();
+    _updateDeliveryFee();
+    total.value = subtotal.value + deliveryFee.value;
+  }
+
+  Future<void> _calculateShippingPreview() async {
+    if (orderItems.isEmpty || selectedLocation.value == null) {
+      shippingPreview.value = {};
+      return;
+    }
+
+    isCalculatingShipping.value = true;
+    try {
+      final Map<int, Map<String, dynamic>> preview = {};
+      
+      // Calculate shipping for each merchant
+      for (final entry in merchantItems.value.entries) {
+        final merchantId = entry.key;
+        
+        if (selectedLocation.value?.id != null) {
+          final shippingData = await shippingService.calculateShipping(
+            userLocationId: selectedLocation.value!.id!,
+            merchantId: merchantId,
+          );
+
+          if (shippingData != null) {
+            preview[merchantId] = {
+              'cost': (shippingData['delivery_cost'] as num).toDouble(),
+              'distance': shippingData['distance'],
+              'duration': shippingData['duration'],
+              'destination': shippingData['destination'],
+            };
+          }
+        }
+      }
+
+      shippingPreview.value = preview;
+      debugPrint('Shipping preview calculated: $preview');
+    } catch (e) {
+      debugPrint('Error calculating shipping preview: $e');
+      shippingPreview.value = {};
+    } finally {
+      isCalculatingShipping.value = false;
+    }
+  }
+
+  void _updateDeliveryFee() {
+    deliveryFee.value = shippingPreview.value.values
+        .fold(0.0, (sum, preview) => sum + (preview['cost'] as double? ?? 0.0));
   }
 
   void setDeliveryLocation(UserLocationModel location) {
@@ -120,65 +242,6 @@ class CheckoutController extends GetxController {
     return null;
   }
 
-  void _initializeCheckout() {
-    try {
-      // Get selected items from cart controller
-      final selectedItems = cartController.selectedItems;
-      
-      // Group items by merchant
-      final merchantItems = <int, List<CartItemModel>>{};
-      for (var item in selectedItems) {
-        final merchantId = item.merchant.id ?? 0;
-        if (!merchantItems.containsKey(merchantId)) {
-          merchantItems[merchantId] = [];
-        }
-        merchantItems[merchantId]!.add(item);
-      }
-
-      // Convert cart items to order items
-      final List<OrderItemModel> allItems = [];
-      merchantItems.forEach((merchantId, items) {
-        for (var cartItem in items) {
-          allItems.add(OrderItemModel.fromCartItem(
-            cartItem,
-            DateTime.now().millisecondsSinceEpoch.toString(),
-          ));
-        }
-      });
-
-      orderItems.value = allItems;
-      _calculateTotals();
-      
-    } catch (e) {
-      _handleInitializationError(e);
-    }
-  }
-
-  void _handleInitializationError(dynamic error) {
-    debugPrint('Error initializing checkout: $error');
-    showCustomSnackbar(
-      title: 'Error',
-      message: 'Terjadi kesalahan saat memuat data checkout',
-      isError: true,
-    );
-  }
-
-  void _calculateTotals() {
-    subtotal.value = orderItems.fold(
-      0.0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
-    deliveryFee.value = _calculateDeliveryFee();
-    total.value = subtotal.value + deliveryFee.value;
-  }
-
-  double _calculateDeliveryFee() {
-    if (orderItems.isEmpty) return 0.0;
-    // Calculate delivery fee per merchant
-    final merchantIds = orderItems.map((item) => item.merchant.id).toSet();
-    return merchantIds.length * 10000.0; // 10,000 per merchant
-  }
-
   Future<void> processCheckout() async {
     if (isProcessingCheckout.value) {
       debugPrint('Checkout already in progress, ignoring duplicate request');
@@ -198,26 +261,24 @@ class CheckoutController extends GetxController {
       }
 
       final transactionService = Get.find<TransactionService>();
-      
-      // Create a single transaction with all items
+
+      // Create transaction payload without shipping costs
       final Map<String, dynamic> transactionPayload = {
         'user_location_id': selectedLocation.value?.id,
-        'total_price': subtotal.value,
-        'shipping_price': deliveryFee.value,
         'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
-        'items': orderItems.map((item) => {
-          'product_id': item.product.id,
-          'product': item.product.toJson(),
-          'quantity': item.quantity,
-          'price': item.price,
-          'merchant': item.merchant.toJson(),
-        }).toList(),
+        'items': orderItems
+            .map((item) => {
+                  'product_id': item.product.id,
+                  'quantity': item.quantity,
+                })
+            .toList(),
       };
 
       debugPrint('Sending transaction payload');
 
-      // Create single transaction
-      final createdTransaction = await transactionService.createTransaction(transactionPayload);
+      // Create transaction
+      final createdTransaction =
+          await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
         debugPrint('Transaction created successfully: ${createdTransaction.id}');
@@ -270,7 +331,8 @@ class CheckoutController extends GetxController {
     }
 
     // Validate merchant IDs
-    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+    final invalidItems =
+        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -306,6 +368,8 @@ class CheckoutController extends GetxController {
     Get.offNamed(Routes.checkoutSuccess, arguments: {
       'allTransactions': [transaction],
       'orderItems': orderItems.toList(),
+      'subtotal': subtotal.value,
+      'shippingFee': deliveryFee.value,
       'total': total.value,
       'deliveryAddress': selectedLocation.value,
     });
@@ -332,7 +396,10 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      cartController.clearCart();
+      // Only clear cart if not a direct purchase
+      if (Get.arguments == null || (Get.arguments as Map)['type'] != 'direct_buy') {
+        cartController.clearCart();
+      }
     } catch (e) {
       debugPrint('Error clearing cart: $e');
     }

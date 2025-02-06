@@ -4,30 +4,24 @@ import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
+import 'package:antarkanma/app/controllers/cart_controller.dart';
+import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/theme.dart';
 
 class AddressSelectionPage extends StatelessWidget {
-  final UserLocationController controller =
-      Get.put(UserLocationController(locationService: UserLocationService()));
+  // Use Get.find instead of creating a new instance
+  final UserLocationController controller = Get.find<UserLocationController>();
 
   AddressSelectionPage({super.key});
 
   void _handleAddressSelection(UserLocationModel address) {
     controller.selectLocation(address);
     
-    // Remove existing CheckoutController if it exists
-    if (Get.isRegistered<CheckoutController>()) {
-      Get.delete<CheckoutController>();
-    }
+    // Get the existing CheckoutController instead of creating a new one
+    final checkoutController = Get.find<CheckoutController>();
     
-    // Re-initialize CheckoutController with required dependencies
-    final checkoutController = Get.put(CheckoutController(
-      userLocationController: Get.find<UserLocationController>(),
-      authController: Get.find<AuthController>(),
-    ));
-    
-    // Update the selected location in the new controller
+    // Update the selected location in the controller
     checkoutController.setDeliveryLocation(address);
     
     Get.back(result: address);

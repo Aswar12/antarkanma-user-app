@@ -23,107 +23,180 @@ class ProductCategoryProvider {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          print('Making request to: ${options.uri}');
-          options.headers.addAll({
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          });
+          options.headers['Accept'] = 'application/json';
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          print('Received response: ${response.statusCode}');
-          print('Response data: ${response.data}');
           return handler.next(response);
         },
         onError: (DioException error, handler) {
-          print('Request error: ${error.message}');
-          print('Error response: ${error.response?.data}');
+          // Don't throw errors during silent requests
+          if (error.requestOptions.extra['silent'] == true) {
+            return handler.resolve(Response(
+              requestOptions: error.requestOptions,
+              statusCode: 200,
+              data: {'data': []}, // Return empty array for categories
+            ));
+          }
           return handler.next(error);
         },
       ),
     );
   }
 
-  Future<Response> getCategories(String token) async {
+  Future<Response> getCategories(String token, {bool silent = false}) async {
     try {
-      return await _dio.get(
+      final response = await _dio.get(
         '/product-categories',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            if (silent) return true;
+            return status! < 500;
           },
         ),
       );
+      return response;
     } catch (e) {
-      print('Error in getCategories: $e');
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/product-categories'),
+          statusCode: 200,
+          data: {'data': []},
+        );
+      }
       throw Exception('Failed to get categories: $e');
     }
   }
 
-  Future<Response> getCategory(String token, int id) async {
+  Future<Response> getCategory(String token, int id, {bool silent = false}) async {
     try {
-      return await _dio.get(
-        '/product-category/$id',
+      final response = await _dio.get(
+        '/product-categories/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            if (silent) return true;
+            return status! < 500;
           },
         ),
       );
+      return response;
     } catch (e) {
-      print('Error in getCategory: $e');
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/product-categories/$id'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to get category: $e');
     }
   }
 
-  Future<Response> createCategory(
-      String token, Map<String, dynamic> data) async {
+  Future<Response> createCategory(String token, Map<String, dynamic> data, {bool silent = false}) async {
     try {
-      return await _dio.post(
-        '/product-category',
+      final response = await _dio.post(
+        '/product-categories',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            if (silent) return true;
+            return status! < 500;
           },
         ),
         data: data,
       );
+      return response;
     } catch (e) {
-      print('Error in createCategory: $e');
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/product-categories'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to create category: $e');
     }
   }
 
-  Future<Response> updateCategory(
-      String token, int id, Map<String, dynamic> data) async {
+  Future<Response> updateCategory(String token, int id, Map<String, dynamic> data, {bool silent = false}) async {
     try {
-      return await _dio.put(
-        '/product-category/$id',
+      final response = await _dio.put(
+        '/product-categories/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            if (silent) return true;
+            return status! < 500;
           },
         ),
         data: data,
       );
+      return response;
     } catch (e) {
-      print('Error in updateCategory: $e');
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/product-categories/$id'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to update category: $e');
     }
   }
 
-  Future<Response> deleteCategory(String token, int id) async {
+  Future<Response> deleteCategory(String token, int id, {bool silent = false}) async {
     try {
-      return await _dio.delete(
-        '/product-category/$id',
+      final response = await _dio.delete(
+        '/product-categories/$id',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            if (silent) return true;
+            return status! < 500;
           },
         ),
       );
+      return response;
     } catch (e) {
-      print('Error in deleteCategory: $e');
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/product-categories/$id'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to delete category: $e');
     }
   }

@@ -136,7 +136,6 @@ class MerchantService extends GetxService {
       if (response.data != null) {
         final merchantData = response.data['data'] ?? response.data;
         if (merchantData != null) {
-          // Add debug logging
           debugPrint('Merchant data before parsing: $merchantData');
           final merchant = MerchantModel.fromJson(merchantData);
           debugPrint('Parsed merchant: $merchant');

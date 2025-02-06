@@ -1,27 +1,38 @@
+import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/product_gallery_model.dart';
 import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:antarkanma/theme.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
+import 'package:antarkanma/app/services/merchant_service.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ProductDetailController extends GetxController {
   final ReviewRepository reviewRepository;
+  final MerchantService _merchantService = Get.find<MerchantService>();
+  
   final RxList<ProductReviewModel> apiReviews = <ProductReviewModel>[].obs;
   final isLoadingReviews = false.obs;
   final RxInt currentImageIndex = RxInt(0);
   final RxInt selectedRatingFilter = RxInt(0);
   final RxBool isExpanded = RxBool(false);
+  final RxBool isLoadingMerchant = false.obs;
 
   List<ProductReviewModel> get visibleReviews =>
       isExpanded.value ? apiReviews : apiReviews.take(3).toList();
 
   bool get hasMoreReviews => apiReviews.length > 3;
+
+  List<ProductReviewModel> get reviews => apiReviews;
+  int get reviewCount => apiReviews.length;
+  double get averageRating {
+    if (apiReviews.isEmpty) return 0.0;
+    final total = apiReviews.fold(0, (sum, review) => sum + review.rating);
+    return total / apiReviews.length;
+  }
 
   void toggleReviews() {
     isExpanded.value = !isExpanded.value;
@@ -46,94 +57,6 @@ class ProductDetailController extends GetxController {
   final quantity = 1.obs;
   final Rx<VariantModel?> selectedVariant = Rx<VariantModel?>(null);
 
-  List<ProductReviewModel> get reviews => apiReviews;
-  int get reviewCount => apiReviews.length;
-  double get averageRating {
-    if (apiReviews.isEmpty) return 0.0;
-    final total = apiReviews.fold(0, (sum, review) => sum + review.rating);
-    return total / apiReviews.length;
-  }
-
-  void setRatingFilter(int rating) {
-    if (selectedRatingFilter.value == rating) {
-      selectedRatingFilter.value = 0;
-    } else {
-      selectedRatingFilter.value = rating;
-    }
-    fetchReviews();
-  }
-
-  Future<void> fetchReviews() async {
-    try {
-      if (isLoadingReviews.value) return;
-
-      debugPrint('Fetching reviews for product ID: ${product.value.id}');
-      if (product.value.id == null) {
-        debugPrint('Product ID is null, cannot fetch reviews');
-        return;
-      }
-
-      isLoadingReviews.value = true;
-
-      // Try to get cached reviews first
-      final cachedReviews =
-          StorageService.instance.getProductReviews(product.value.id!);
-      if (cachedReviews != null) {
-        debugPrint('Using cached reviews: ${cachedReviews.length}');
-        apiReviews.value = cachedReviews
-            .map((json) => ProductReviewModel.fromJson(json))
-            .toList();
-
-        if (selectedRatingFilter.value != 0) {
-          apiReviews.value = apiReviews
-              .where((review) => review.rating == selectedRatingFilter.value)
-              .toList();
-        }
-      }
-
-      // Fetch fresh reviews from API
-      final token = StorageService.instance.getToken();
-      debugPrint('Token available: ${token != null}');
-
-      final reviews = await reviewRepository.getProductReviews(
-        product.value.id!,
-        rating: selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
-        token: token,
-      );
-
-      debugPrint('Reviews fetched from API: ${reviews.length}');
-
-      // Update cache with new reviews if rating filter is not applied
-      if (selectedRatingFilter.value == 0) {
-        await StorageService.instance.saveProductReviews(
-          product.value.id!,
-          reviews.map((review) => review.toJson()).toList(),
-        );
-      }
-
-      // Update UI with new reviews
-      apiReviews.value = reviews;
-    } catch (e) {
-      debugPrint('Error fetching reviews: $e');
-      showCustomSnackbar(
-        title: 'Error',
-        message: 'Gagal memuat ulasan',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoadingReviews.value = false;
-    }
-  }
-
-  void selectVariant(VariantModel variant) {
-    if (selectedVariant.value?.id == variant.id) {
-      selectedVariant.value = null;
-    } else {
-      selectedVariant.value = variant;
-    }
-  }
-
   double get totalPrice {
     double basePrice = product.value.price;
     if (selectedVariant.value != null) {
@@ -142,24 +65,13 @@ class ProductDetailController extends GetxController {
     return basePrice * quantity.value;
   }
 
-  String get formattedTotalPrice {
-    final formatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return formatter.format(totalPrice);
-  }
-
   void incrementQuantity() {
     if (quantity.value < 99) {
       quantity.value++;
     } else {
       showCustomSnackbar(
-        title: 'Maksimal Mi pesananta',
-        message: 'Tidak bisaki kalau lebih 50',
-        backgroundColor: logoColorSecondary,
-        snackPosition: SnackPosition.BOTTOM,
+        title: 'Maksimal Pemesanan',
+        message: 'Tidak bisa melebihi 99 item',
         isError: true,
       );
     }
@@ -171,29 +83,16 @@ class ProductDetailController extends GetxController {
     }
   }
 
-  String get currentImageUrl {
-    if (product.value.galleries.isEmpty) {
-      return 'assets/image_shoes.png';
+  void selectVariant(VariantModel variant) {
+    if (selectedVariant.value?.id == variant.id) {
+      selectedVariant.value = null;
+    } else {
+      selectedVariant.value = variant;
     }
-    return product.value.galleries[currentImageIndex.value].url;
   }
-
-  List<String> get imageUrls => product.value.imageUrls;
-  int get imageCount => product.value.galleries.length;
 
   void updateImageIndex(int index) {
     currentImageIndex.value = index;
-  }
-
-  String getVariantDisplayText(VariantModel variant) {
-    return '${variant.name}: ${variant.value} (${variant.formattedPriceAdjustment})';
-  }
-
-  bool isVariantSelected(VariantModel? variant) {
-    if (variant == null) {
-      return product.value.variants.isEmpty;
-    }
-    return selectedVariant.value?.id == variant.id;
   }
 
   bool validateCheckout() {
@@ -201,8 +100,6 @@ class ProductDetailController extends GetxController {
       showCustomSnackbar(
         title: 'Error',
         message: 'Data merchant tidak valid',
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
         isError: true,
       );
       return false;
@@ -212,8 +109,6 @@ class ProductDetailController extends GetxController {
       showCustomSnackbar(
         title: 'Pilih Varian',
         message: 'Silakan pilih varian produk terlebih dahulu',
-        backgroundColor: logoColorSecondary,
-        snackPosition: SnackPosition.BOTTOM,
         isError: true,
       );
       return false;
@@ -223,8 +118,6 @@ class ProductDetailController extends GetxController {
       showCustomSnackbar(
         title: 'Merchant Tidak Aktif',
         message: 'Maaf, merchant ini sedang tidak aktif',
-        backgroundColor: logoColorSecondary,
-        snackPosition: SnackPosition.BOTTOM,
         isError: true,
       );
       return false;
@@ -234,8 +127,6 @@ class ProductDetailController extends GetxController {
       showCustomSnackbar(
         title: 'Produk Tidak Tersedia',
         message: 'Maaf, produk ini sedang tidak tersedia',
-        backgroundColor: logoColorSecondary,
-        snackPosition: SnackPosition.BOTTOM,
         isError: true,
       );
       return false;
@@ -244,74 +135,127 @@ class ProductDetailController extends GetxController {
     return true;
   }
 
-  Map<String, dynamic> getCheckoutData() {
-    return {
-      'product': product.value,
-      'quantity': quantity.value,
-      'variant': selectedVariant.value,
-      'totalPrice': totalPrice,
-      'priceAdjustment': selectedVariant.value?.priceAdjustment ?? 0,
-      'variantName': selectedVariant.value?.name,
-      'variantValue': selectedVariant.value?.value,
-    };
+  Future<void> loadMerchantData(int? merchantId) async {
+    try {
+      // If no merchantId provided, try to get it from product's merchant data
+      final actualMerchantId = merchantId ?? product.value.merchant?.id;
+      
+      if (actualMerchantId == null) {
+        debugPrint('No merchant ID available to load merchant data');
+        return;
+      }
+
+      isLoadingMerchant.value = true;
+      final token = StorageService.instance.getToken();
+      
+      final merchant = await _merchantService.getMerchantById(actualMerchantId, token: token);
+      
+      // Update the product with merchant data
+      final updatedProduct = ProductModel(
+        id: product.value.id,
+        name: product.value.name,
+        description: product.value.description,
+        galleries: product.value.galleries,
+        price: product.value.price,
+        status: product.value.status,
+        merchant: merchant,  // Set the loaded merchant
+        category: product.value.category,
+        createdAt: product.value.createdAt,
+        updatedAt: product.value.updatedAt,
+        variants: product.value.variants,
+        reviews: product.value.reviews,
+        averageRatingRaw: product.value.averageRatingRaw,
+        totalReviewsRaw: product.value.totalReviewsRaw,
+        ratingInfo: product.value.ratingInfo,
+      );
+      
+      product.value = updatedProduct;
+      
+    } catch (e) {
+      debugPrint('Error loading merchant data: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal memuat data merchant',
+        isError: true,
+      );
+    } finally {
+      isLoadingMerchant.value = false;
+    }
   }
 
-  void setProduct(ProductModel newProduct) {
-    product.value = newProduct;
-    currentImageIndex.value = 0;
-    selectedVariant.value = null;
-    quantity.value = 1;
-    apiReviews.clear();
-    selectedRatingFilter.value = 0;
-    isExpanded.value = false;
+  void setProduct(ProductModel newProduct) async {
+    try {
+      // Set initial product data
+      product.value = newProduct;
+      currentImageIndex.value = 0;
+      selectedVariant.value = null;
+      quantity.value = 1;
+      apiReviews.clear();
+      selectedRatingFilter.value = 0;
+      isExpanded.value = false;
+
+      // Check if we need to load merchant data
+      if (newProduct.merchant == null || newProduct.merchant?.id == null) {
+        // This is likely from popular products, need to load merchant data
+        debugPrint('Product missing merchant data, attempting to load...');
+        await loadMerchantData(null);  // Will try to get merchant ID from product data
+      } else {
+        debugPrint('Product already has merchant data');
+        // Even if we have merchant data, let's refresh it to ensure it's up to date
+        await loadMerchantData(newProduct.merchant!.id);
+      }
+
+      // Load reviews
+      fetchReviews();
+      
+    } catch (e) {
+      debugPrint('Error in setProduct: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memuat data produk',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> fetchReviews() async {
+    try {
+      if (isLoadingReviews.value || product.value.id == null) return;
+
+      isLoadingReviews.value = true;
+      final token = StorageService.instance.getToken();
+
+      final reviews = await reviewRepository.getProductReviews(
+        product.value.id!,
+        rating: selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
+        token: token,
+      );
+
+      apiReviews.value = reviews;
+    } catch (e) {
+      debugPrint('Error fetching reviews: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal memuat ulasan',
+        isError: true,
+      );
+    } finally {
+      isLoadingReviews.value = false;
+    }
+  }
+
+  void setRatingFilter(int rating) {
+    if (selectedRatingFilter.value == rating) {
+      selectedRatingFilter.value = 0;
+    } else {
+      selectedRatingFilter.value = rating;
+    }
     fetchReviews();
-  }
-
-  ProductGalleryModel? getGalleryAtIndex(int index) {
-    if (index >= 0 && index < product.value.galleries.length) {
-      return product.value.galleries[index];
-    }
-    return null;
-  }
-
-  bool get isProductValid =>
-      product.value.id != null && product.value.status == 'ACTIVE';
-
-  String formatReviewDate(DateTime date) =>
-      DateFormat('dd/MM/yyyy').format(date);
-
-  @override
-  void onInit() {
-    super.onInit();
-    if (Get.arguments != null) {
-      setProduct(Get.arguments as ProductModel);
-    }
   }
 
   @override
   void onClose() {
-    debugPrint('ProductDetailController: Cleaning up...');
-    // Clear all data
-    product.value = ProductModel(
-      id: null,
-      name: 'Unknown Product',
-      description: 'No description available',
-      galleries: [],
-      price: 0.0,
-      status: null,
-      merchant: null,
-      category: null,
-      createdAt: null,
-      updatedAt: null,
-      variants: [],
-    );
-    currentImageIndex.value = 0;
-    quantity.value = 1;
-    selectedVariant.value = null;
     apiReviews.clear();
-    selectedRatingFilter.value = 0;
-    isExpanded.value = false;
-    isLoadingReviews.value = false;
     super.onClose();
   }
 }

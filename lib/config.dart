@@ -1,5 +1,5 @@
 class Config {
-  static String baseUrl = 'http://dev.antarkanmaa.my.id/api';
+  static String baseUrl = 'https://dev.antarkanmaa.my.id/api';
   static const int receiveTimeout = 15000;
   static const int connectTimeout = 15000;
 

@@ -19,32 +19,125 @@ class AuthProvider {
     );
   }
 
-  Future<Response> deleteAccount(String token) async {
+  void _setupInterceptors() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.headers['Accept'] = 'application/json';
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          return handler.next(response);
+        },
+        onError: (DioException error, handler) {
+          // Don't throw errors during silent requests
+          if (error.requestOptions.extra['silent'] == true) {
+            return handler.resolve(Response(
+              requestOptions: error.requestOptions,
+              statusCode: 200,  // Force success status
+              data: {'data': null},  // Return empty data
+            ));
+          }
+          
+          _handleError(error);
+          return handler.next(error);
+        },
+      ),
+    );
+  }
+
+  Future<Response> getProfile(String token, {bool silent = false}) async {
     try {
-      return await _dio.delete(
-        '/auth/delete-account',
+      final response = await _dio.get(
+        '/user/profile',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
           },
+          extra: {
+            'silent': silent,
+          },
+          validateStatus: (status) {
+            // For silent requests, treat all responses as valid
+            if (silent) return true;
+            // Otherwise only accept < 500
+            return status! < 500;
+          },
         ),
       );
+      return response;
     } catch (e) {
-      throw Exception('Failed to delete account: $e');
+      // For silent requests, return fake success response
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/user/profile'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
+      throw Exception('Failed to get profile: $e');
     }
   }
 
-  Future<Response> refreshToken(String token) async {
+  Future<Response> login(String identifier, String password, {bool silent = false}) async {
     try {
-      return await _dio.post(
+      final Map<String, dynamic> loginData = {
+        'identifier': identifier,
+        'password': password,
+      };
+
+      final response = await _dio.post(
+        Config.login, 
+        data: loginData,
+        options: Options(
+          extra: {
+            'silent': silent,
+          },
+        ),
+      );
+      return response;
+    } catch (e) {
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: Config.login),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
+      throw Exception('Login failed: $e');
+    }
+  }
+
+  Future<Response> register(Map<String, dynamic> userData) async {
+    try {
+      return await _dio.post(Config.register, data: userData);
+    } catch (e) {
+      throw Exception('Registration failed: $e');
+    }
+  }
+
+  Future<Response> refreshToken(String token, {bool silent = false}) async {
+    try {
+      final response = await _dio.post(
         '/auth/refresh',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
           },
+          extra: {
+            'silent': silent,
+          },
         ),
       );
+      return response;
     } catch (e) {
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/auth/refresh'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to refresh token: $e');
     }
   }
@@ -105,81 +198,6 @@ class AuthProvider {
     }
   }
 
-  Future<Response> getProfile(String token, {bool silent = false}) async {
-    try {
-      final response = await _dio.get(
-        '/user/profile',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-      
-      if (response.statusCode == 200 && response.data != null) {
-        return response;
-      }
-      
-      // If not successful and not silent, throw error
-      if (!silent) {
-        throw Exception('Failed to get profile: Invalid response');
-      }
-      
-      // Return the response even if unsuccessful when in silent mode
-      return response;
-    } catch (e) {
-      if (!silent) {
-        throw Exception('Failed to get profile: $e');
-      }
-      // Return a fake response in silent mode to prevent errors
-      return Response(
-        requestOptions: RequestOptions(path: '/user/profile'),
-        statusCode: 401,
-        data: {'message': 'Failed to get profile silently'},
-      );
-    }
-  }
-
-  void _setupInterceptors() {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // Don't set Content-Type here as it will be set per-request
-          options.headers['Accept'] = 'application/json';
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          return handler.next(response);
-        },
-        onError: (DioException error, handler) {
-          _handleError(error);
-          return handler.next(error);
-        },
-      ),
-    );
-  }
-
-  Future<Response> login(String identifier, String password) async {
-    try {
-      final Map<String, dynamic> loginData = {
-        'identifier': identifier,
-        'password': password,
-      };
-
-      return await _dio.post(Config.login, data: loginData);
-    } catch (e) {
-      throw Exception('Login failed: $e');
-    }
-  }
-
-  Future<Response> register(Map<String, dynamic> userData) async {
-    try {
-      return await _dio.post(Config.register, data: userData);
-    } catch (e) {
-      throw Exception('Registration failed: $e');
-    }
-  }
-
   Future<Response> changePassword(
       String token, Map<String, dynamic> data) async {
     try {
@@ -193,23 +211,64 @@ class AuthProvider {
     }
   }
 
-  Future<Response> logout(String token) async {
+  Future<Response> logout(String token, {bool silent = false}) async {
     try {
-      return await _dio.post('/auth/logout', options: _getAuthOptions(token));
+      final response = await _dio.post(
+        '/auth/logout', 
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          extra: {
+            'silent': silent,
+          },
+        ),
+      );
+      return response;
     } catch (e) {
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/auth/logout'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Logout failed: $e');
     }
   }
 
-  Future<Response> getCurrentUser(String token) async {
+  Future<Response> getCurrentUser(String token, {bool silent = false}) async {
     try {
-      return await _dio.get('/auth/user', options: _getAuthOptions(token));
+      final response = await _dio.get(
+        '/auth/user',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          extra: {
+            'silent': silent,
+          },
+        ),
+      );
+      return response;
     } catch (e) {
+      if (silent) {
+        return Response(
+          requestOptions: RequestOptions(path: '/auth/user'),
+          statusCode: 200,
+          data: {'data': null},
+        );
+      }
       throw Exception('Failed to get current user: $e');
     }
   }
 
   void _handleError(DioException error) {
+    // Don't handle errors for silent requests
+    if (error.requestOptions.extra['silent'] == true) {
+      return;
+    }
+
     String message;
     switch (error.response?.statusCode) {
       case 401:
@@ -225,10 +284,13 @@ class AuthProvider {
     throw Exception(message);
   }
 
-  Options _getAuthOptions(String token) {
+  Options _getAuthOptions(String token, {bool silent = false}) {
     return Options(
       headers: {
         'Authorization': 'Bearer $token',
+      },
+      extra: {
+        'silent': silent,
       },
     );
   }

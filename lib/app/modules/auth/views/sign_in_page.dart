@@ -7,7 +7,12 @@ import '../../../widgets/custom_input_field.dart';
 class SignInPage extends GetView<AuthController> {
   final GlobalKey<FormState> _signInFormKey = GlobalKey<FormState>();
 
-  SignInPage({super.key});
+  SignInPage({super.key}) {
+    // Ensure AuthController is initialized
+    if (!Get.isRegistered<AuthController>()) {
+      Get.put(AuthController());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +49,7 @@ class SignInPage extends GetView<AuthController> {
       children: [
         Image.asset(
           'assets/logo.png',
-          height: Dimenssions
-              .height80, // Reduced from height100 to height80 (20% smaller)
+          height: Dimenssions.height80,
           fit: BoxFit.contain,
         ),
         SizedBox(height: Dimenssions.height20),

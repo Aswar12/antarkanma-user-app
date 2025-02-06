@@ -1,6 +1,12 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
+import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
+import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/widgets/product_review_section.dart';
 import 'package:antarkanma/app/widgets/merchant_info_section.dart';
@@ -11,13 +17,7 @@ import 'package:antarkanma/app/widgets/product_bottom_nav.dart';
 import 'package:antarkanma/app/widgets/cart_button.dart';
 import 'package:antarkanma/app/widgets/back_button.dart';
 import 'package:antarkanma/app/widgets/curved_bottom_decoration.dart';
-import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'package:antarkanma/app/controllers/product_detail_controller.dart';
-import 'package:antarkanma/app/data/models/product_model.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key});
@@ -27,21 +27,49 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  late ProductDetailController controller;
-  late CartController cartController;
+  final ProductDetailController controller = Get.find<ProductDetailController>();
+  final CartController cartController = Get.find<CartController>();
+  final UserMainController userMainController = Get.find<UserMainController>();
 
   @override
   void initState() {
     super.initState();
-    controller = Get.find<ProductDetailController>();
-    // Initialize CartController if not already initialized
-    if (!Get.isRegistered<CartController>()) {
-      Get.put(CartController());
-    }
-    cartController = Get.find<CartController>();
     _initializeDateFormatting();
-    final product = Get.arguments as ProductModel;
-    controller.setProduct(product);
+    _initializeProduct();
+  }
+
+  Future<void> _initializeProduct() async {
+    try {
+      final dynamic args = Get.arguments;
+      if (args == null) {
+        _handleError('Data produk tidak tersedia');
+        return;
+      }
+
+      final ProductModel? product = args is ProductModel ? args : null;
+      if (product == null || product.id == null) {
+        _handleError('Data produk tidak valid');
+        return;
+      }
+
+      controller.setProduct(product);
+    } catch (e) {
+      _handleError('Terjadi kesalahan saat memuat data produk');
+    }
+  }
+
+  void _handleError(String message) {
+    Get.snackbar(
+      'Error',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      Get.back();
+    });
   }
 
   void _addToCart() {
@@ -58,6 +86,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         controller.quantity.value,
         selectedVariant: controller.selectedVariant.value,
         merchant: merchant,
+      );
+
+      showCustomSnackbar(
+        title: 'Berhasil',
+        message: 'Produk berhasil ditambahkan ke keranjang',
       );
     } catch (e) {
       showCustomSnackbar(
@@ -111,14 +144,46 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Future<void> _initializeDateFormatting() async {
     try {
       await initializeDateFormatting('id_ID', null);
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error initializing date formatting: $e');
+    }
   }
 
   void _navigateToCart() {
-    Get.back(); // Go back to UserMainPage
-    // Get UserMainController and change to cart tab (index 1)
-    final userMainController = Get.find<UserMainController>();
-    userMainController.changePage(1);
+    try {
+      // First try to find UserMainPage in the navigation stack
+      final currentRoute = Get.currentRoute;
+      if (currentRoute == Routes.userMainPage) {
+        // If we're already on UserMainPage, just switch tabs
+        userMainController.changePage(1);
+      } else {
+        // Try to navigate back to UserMainPage if it exists in the stack
+        bool foundUserMainPage = false;
+        Get.until((route) {
+          if (route.settings.name == Routes.userMainPage) {
+            foundUserMainPage = true;
+            return true;
+          }
+          return false;
+        });
+
+        if (foundUserMainPage) {
+          // Successfully found and navigated to UserMainPage
+          userMainController.changePage(1);
+        } else {
+          // UserMainPage not found in stack, navigate to it directly
+          Get.offAllNamed(Routes.userMainPage)?.then((_) {
+            userMainController.changePage(1);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error navigating to cart: $e');
+      // Fallback: Try to navigate directly to UserMainPage
+      Get.offAllNamed(Routes.userMainPage)?.then((_) {
+        userMainController.changePage(1);
+      });
+    }
   }
 
   @override
@@ -151,12 +216,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 )),
                             Obx(() => VariantSelectorSection(
                                   product: controller.product.value,
-                                  selectedVariant:
-                                      controller.selectedVariant.value,
+                                  selectedVariant: controller.selectedVariant.value,
                                   onVariantSelected: controller.selectVariant,
                                 )),
-                            MerchantInfoSection(
-                                product: controller.product.value),
+                            Obx(() => MerchantInfoSection(
+                                  product: controller.product.value,
+                                )),
                             ProductReviewSection(controller: controller),
                           ],
                         ),

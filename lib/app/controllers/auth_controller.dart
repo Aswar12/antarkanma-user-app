@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'package:antarkanma/app/utils/validators.dart';
+import '../bindings/auth_binding.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -69,6 +70,9 @@ class AuthController extends GetxController {
           await logout();
           return;
         }
+
+        // Initialize authenticated services
+        await AuthBinding.initializeAuthenticatedServices();
         
         print('Navigating to USER main page');
         Get.offAllNamed(Routes.userMainPage);

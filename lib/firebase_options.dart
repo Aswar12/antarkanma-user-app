@@ -73,5 +73,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'antarkanma-98fde.firebasestorage.app',
     measurementId: 'G-YLSK93M6XC',
   );
-
 }

@@ -17,7 +17,7 @@ class MerchantModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic>? stats;
-  final int? totalProducts; // Added for merchant list response
+  final int? totalProducts;
 
   MerchantModel({
     this.id,
@@ -41,11 +41,18 @@ class MerchantModel {
     this.totalProducts,
   });
 
+  String? get effectiveLogoUrl {
+    if (logoUrl != null && logoUrl!.isNotEmpty) {
+      if (logoUrl!.startsWith('http://') || logoUrl!.startsWith('https://')) {
+        return logoUrl;
+      }
+    }
+    return null;
+  }
+
   int get productCount {
-    // First check totalProducts (from merchant list)
     if (totalProducts != null) return totalProducts!;
     
-    // Then check stats.product_count (from merchant detail)
     if (stats != null) {
       var count = stats!['product_count'];
       if (count == null) return 0;
@@ -62,7 +69,6 @@ class MerchantModel {
 
   factory MerchantModel.fromJson(Map<String, dynamic> json) {
     try {
-      // Parse operating days
       List<String>? parseOperatingDays(dynamic value) {
         if (value == null) return null;
         if (value is List) {
@@ -74,7 +80,6 @@ class MerchantModel {
         return null;
       }
 
-      // Parse doubles safely
       double? parseDouble(dynamic value) {
         if (value == null) return null;
         if (value is double) return value;
@@ -90,7 +95,6 @@ class MerchantModel {
         return null;
       }
 
-      // Parse integers safely
       int? parseInt(dynamic value) {
         if (value == null) return null;
         if (value is int) return value;
@@ -134,7 +138,6 @@ class MerchantModel {
     } catch (e) {
       print('Error parsing merchant data: $e');
       print('JSON data: $json');
-      // Return a default merchant on error
       return MerchantModel(
         name: 'Error Loading Merchant',
         address: 'Address Unavailable',

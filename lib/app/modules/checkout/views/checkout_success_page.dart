@@ -15,22 +15,46 @@ class CheckoutSuccessPage extends StatelessWidget {
 
   Future<void> _navigateToOrderPage() async {
     debugPrint('Navigating to order page...');
-    final controller = Get.put(UserMainController(), permanent: true);
-    controller.currentIndex.value = 2;
-    await Future.delayed(const Duration(milliseconds: 100));
-    await Get.offAll(
-      () => const UserMainPage(),
-      transition: Transition.noTransition,
-      duration: const Duration(milliseconds: 0),
-    );
-    debugPrint('Navigation to order page complete');
+    try {
+      // Initialize UserMainController if not already initialized
+      final controller = Get.isRegistered<UserMainController>() 
+          ? Get.find<UserMainController>() 
+          : Get.put(UserMainController(), permanent: true);
+          
+      // Set the index to Orders tab (2)
+      controller.currentIndex.value = 2;
+      
+      // Navigate to UserMainPage with initial page argument
+      await Get.offAll(
+        () => const UserMainPage(),
+        arguments: {'initialPage': 2},
+        transition: Transition.noTransition,
+      );
+      
+      debugPrint('Navigation to order page complete');
+    } catch (e) {
+      debugPrint('Error navigating to order page: $e');
+      _showErrorAndNavigate('Terjadi kesalahan saat navigasi');
+    }
   }
 
   void _navigateToHome() {
     debugPrint('Navigating to home...');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Get.offAll(() => const UserMainPage());
-    });
+    try {
+      // Initialize UserMainController if not already initialized
+      if (!Get.isRegistered<UserMainController>()) {
+        Get.put(UserMainController(), permanent: true);
+      }
+      
+      Get.offAll(
+        () => const UserMainPage(),
+        arguments: {'initialPage': 0},
+        transition: Transition.noTransition,
+      );
+    } catch (e) {
+      debugPrint('Error navigating to home: $e');
+      _showErrorAndNavigate('Terjadi kesalahan saat navigasi');
+    }
   }
 
   void _showErrorAndNavigate(String message) {
@@ -325,9 +349,23 @@ class CheckoutSuccessPage extends StatelessWidget {
               itemBuilder: (context, index) => _buildOrderItems(transaction.orders[index]),
             ),
             const SizedBox(height: 16),
+            // Display subtotal
+            _buildOrderDetail(
+              'Subtotal',
+              'Rp ${transaction.totalPrice.toStringAsFixed(0)}',
+              Colors.grey[700],
+            ),
+            // Display shipping cost
+            _buildOrderDetail(
+              'Biaya Pengiriman',
+              'Rp ${transaction.shippingPrice.toStringAsFixed(0)}',
+              Colors.grey[700],
+            ),
+            const Divider(),
+            // Display total payment (subtotal + shipping)
             _buildOrderDetail(
               'Total Pembayaran',
-              transaction.formattedGrandTotal,
+              'Rp ${(transaction.totalPrice + transaction.shippingPrice).toStringAsFixed(0)}',
               logoColorSecondary,
             ),
           ],
@@ -354,21 +392,29 @@ class CheckoutSuccessPage extends StatelessWidget {
     final List<TransactionModel> allTransactions =
         args['allTransactions'] ?? [];
     final List<OrderItemModel>? orderItems = args['orderItems'];
+    final double? subtotal = args['subtotal'];
+    final double? shippingFee = args['shippingFee'];
     final double? total = args['total'];
     final UserLocationModel? deliveryAddress = args['deliveryAddress'];
 
     debugPrint('Transactions count: ${allTransactions.length}');
     debugPrint('Order items count: ${orderItems?.length}');
+    debugPrint('Subtotal: $subtotal');
+    debugPrint('Shipping Fee: $shippingFee');
     debugPrint('Total: $total');
     debugPrint('Delivery address: ${deliveryAddress?.fullAddress}');
 
     if (allTransactions.isEmpty ||
         orderItems == null ||
+        subtotal == null ||
+        shippingFee == null ||
         total == null ||
         deliveryAddress == null) {
       debugPrint('Error: Missing required data');
       debugPrint('Transactions empty: ${allTransactions.isEmpty}');
       debugPrint('Order items null: ${orderItems == null}');
+      debugPrint('Subtotal null: ${subtotal == null}');
+      debugPrint('Shipping Fee null: ${shippingFee == null}');
       debugPrint('Total null: ${total == null}');
       debugPrint('Delivery address null: ${deliveryAddress == null}');
       _showErrorAndNavigate('Data transaksi tidak lengkap');
@@ -500,7 +546,7 @@ class CheckoutSuccessPage extends StatelessWidget {
                           child: _buildTransactionCard(
                               transaction, deliveryAddress),
                         ))
-                    ,
+                    .toList(),
 
                 SizedBox(height: Dimenssions.height20),
 

@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/data/providers/product_category_provider.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
@@ -8,41 +9,53 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 class ProductCategoryService extends GetxService {
   final ProductCategoryProvider _provider = ProductCategoryProvider();
   final AuthService _authService = Get.find<AuthService>();
+  final StorageService _storage = StorageService.instance;
 
   static const String CATEGORIES_STORAGE_KEY = 'product_categories';
   final RxList<ProductCategory> categories = <ProductCategory>[].obs;
   final RxBool isLoading = false.obs;
-  final StorageService _storage = StorageService.instance;
+
+  String? _getToken() {
+    // First try to get token from storage
+    final token = _storage.getToken();
+    if (token != null) return token;
+    
+    // If not in storage, try from auth service
+    return _authService.getToken();
+  }
 
   Future<List<ProductCategory>> getCategories({bool forceRefresh = false}) async {
     try {
       // Always try to load from local storage first
       final storedCategories = _storage.getList(CATEGORIES_STORAGE_KEY);
-      if (storedCategories != null) {
-        print('Loading categories from local storage: ${storedCategories.length}'); // Debug print
+      if (storedCategories != null && storedCategories.isNotEmpty) {
+        debugPrint('Loading categories from local storage: ${storedCategories.length}');
         final localCategories = storedCategories
             .map((json) => ProductCategory.fromJson(json))
             .toList();
         categories.assignAll(localCategories);
         
         // If we have local data and don't need to refresh, return it
-        if (!forceRefresh && localCategories.isNotEmpty) {
+        if (!forceRefresh) {
           return localCategories;
         }
       }
 
       // Only fetch from API if we need to refresh or don't have local data
       isLoading.value = true;
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token not found');
+      final token = _getToken();
+      if (token == null) {
+        debugPrint('No token available for categories request');
+        return categories.toList(); // Return cached data if available
+      }
 
-      final response = await _provider.getCategories(token);
-      if (response.statusCode == 200) {
+      final response = await _provider.getCategories(token, silent: true);
+      if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> data = response.data['data'];
         final List<ProductCategory> newCategories =
             data.map((json) => ProductCategory.fromJson(json)).toList();
 
-        print('Loaded categories from API: ${newCategories.length}'); // Debug print
+        debugPrint('Loaded categories from API: ${newCategories.length}');
         categories.assignAll(newCategories);
 
         // Save to local storage
@@ -50,21 +63,13 @@ class ProductCategoryService extends GetxService {
             newCategories.map((cat) => cat.toJson()).toList());
 
         return newCategories;
-      }
-      throw Exception('Failed to get categories');
-    } catch (e) {
-      print('Error in getCategories: $e'); // Debug print
-      // If we have local data, use that on error
-      if (categories.isNotEmpty) {
-        return categories;
       } else {
-        showCustomSnackbar(
-          title: 'Error',
-          message: 'Failed to load categories: ${e.toString()}',
-          isError: true,
-        );
-        return [];
+        debugPrint('Failed to load categories. Status code: ${response.statusCode}');
       }
+      return categories.toList(); // Return cached data if API call fails
+    } catch (e) {
+      debugPrint('Error in getCategories: $e');
+      return categories.toList(); // Return cached data on error
     } finally {
       isLoading.value = false;
     }
@@ -78,28 +83,24 @@ class ProductCategoryService extends GetxService {
         return localCategory;
       }
 
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token not found');
+      final token = _getToken();
+      if (token == null) return null;
 
-      final response = await _provider.getCategory(token, id);
-      if (response.statusCode == 200) {
+      final response = await _provider.getCategory(token, id, silent: true);
+      if (response.statusCode == 200 && response.data['data'] != null) {
         return ProductCategory.fromJson(response.data['data']);
       }
-      throw Exception('Failed to get category');
+      return null;
     } catch (e) {
-      showCustomSnackbar(
-        title: 'Error',
-        message: 'Failed to load category: ${e.toString()}',
-        isError: true,
-      );
+      debugPrint('Error getting category: $e');
       return null;
     }
   }
 
   Future<bool> createCategory(String name, {String? description}) async {
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token not found');
+      final token = _getToken();
+      if (token == null) return false;
 
       final response = await _provider.createCategory(token, {
         'name': name,
@@ -120,8 +121,7 @@ class ProductCategoryService extends GetxService {
         );
         return true;
       }
-
-      throw Exception(response.data['message'] ?? 'Failed to create category');
+      return false;
     } catch (e) {
       showCustomSnackbar(
         title: 'Error',
@@ -132,11 +132,10 @@ class ProductCategoryService extends GetxService {
     }
   }
 
-  Future<bool> updateCategory(int id, String name,
-      {String? description}) async {
+  Future<bool> updateCategory(int id, String name, {String? description}) async {
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token not found');
+      final token = _getToken();
+      if (token == null) return false;
 
       final response = await _provider.updateCategory(token, id, {
         'name': name,
@@ -159,8 +158,7 @@ class ProductCategoryService extends GetxService {
         );
         return true;
       }
-
-      throw Exception(response.data['message'] ?? 'Failed to update category');
+      return false;
     } catch (e) {
       showCustomSnackbar(
         title: 'Error',
@@ -173,8 +171,8 @@ class ProductCategoryService extends GetxService {
 
   Future<bool> deleteCategory(int id) async {
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token not found');
+      final token = _getToken();
+      if (token == null) return false;
 
       final response = await _provider.deleteCategory(token, id);
       if (response.statusCode == 200) {
@@ -190,8 +188,7 @@ class ProductCategoryService extends GetxService {
         );
         return true;
       }
-
-      throw Exception(response.data['message'] ?? 'Failed to delete category');
+      return false;
     } catch (e) {
       showCustomSnackbar(
         title: 'Error',

@@ -16,6 +16,19 @@ class AuthService extends GetxService {
   final RxBool isLoggedIn = false.obs;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
 
+  // Getters
+  String? getToken() => _storageService.getToken();
+  UserModel? getUser() => currentUser.value;
+  String get userName => currentUser.value?.name ?? '';
+  String get userEmail => currentUser.value?.email ?? '';
+  String get userPhone => currentUser.value?.phoneNumber ?? '';
+  String get userRole => currentUser.value?.role ?? '';
+  bool get isUser => currentUser.value?.isUser ?? false;
+  int? get userId => currentUser.value?.id;
+  String? get userProfilePhotoUrl => currentUser.value?.profilePhotoUrl;
+  String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;
+  bool get isRememberMeEnabled => _storageService.getRememberMe();
+
   // FCM token management
   Future<void> _handleFCMToken({bool register = true}) async {
     try {
@@ -93,7 +106,6 @@ class AuthService extends GetxService {
       final token = response.data['data']['access_token'];
 
       if (token != null) {
-        // Create UserModel and check role
         final user = UserModel.fromJson(userData);
         if (!user.isUser) {
           if (!isAutoLogin && showError) {
@@ -116,13 +128,10 @@ class AuthService extends GetxService {
         }
 
         currentUser.value = user;
-        print("User logged in successfully: ${currentUser.value}"); // Debug log
         isLoggedIn.value = true;
 
-        // Register FCM token after successful login
         await _handleFCMToken(register: true);
 
-        // Only redirect and show snackbar if not auto-login
         if (!isAutoLogin) {
           Get.offAllNamed(Routes.userMainPage);
           if (showError) {
@@ -200,24 +209,23 @@ class AuthService extends GetxService {
   Future<UserModel?> getProfile({bool showError = false}) async {
     try {
       final token = _storageService.getToken();
-      if (token == null) {
-        if (showError) {
-          showCustomSnackbar(
-              title: 'Error', message: 'Token tidak valid', isError: true);
-        }
-        return null;
-      }
+      if (token == null) return null;
 
-      final response = await _authProvider.getProfile(token, silent: !showError);
+      final response = await _authProvider.getProfile(token, silent: true);
       if (response.statusCode == 200 && response.data != null) {
         final userData = response.data['data'];
         if (userData != null) {
-          await _storageService.saveUser(userData);
-          currentUser.value = UserModel.fromJson(userData);
-          return currentUser.value;
+          try {
+            final user = UserModel.fromJson(userData);
+            await _storageService.saveUser(userData);
+            currentUser.value = user;
+            return user;
+          } catch (e) {
+            print('Error parsing user data: $e');
+            return null;
+          }
         }
       }
-
       return null;
     } catch (e) {
       print('Error getting profile: $e');
@@ -259,42 +267,29 @@ class AuthService extends GetxService {
         ),
       });
 
-      try {
-        final response = await _authProvider.updateProfilePhoto(token, formData);
-
-        if (response.statusCode == 200) {
-          final userResponse = await _authProvider.getProfile(token);
-          if (userResponse.statusCode == 200) {
-            final userData = userResponse.data['data'];
-            await _storageService.saveUser(userData);
-            currentUser.value = UserModel.fromJson(userData);
-
-            showCustomSnackbar(
-                title: 'Sukses', message: 'Foto profil berhasil diperbarui');
-            return true;
-          }
+      final response = await _authProvider.updateProfilePhoto(token, formData);
+      if (response.statusCode == 200) {
+        final userResponse = await _authProvider.getProfile(token);
+        if (userResponse.statusCode == 200) {
+          final userData = userResponse.data['data'];
+          await _storageService.saveUser(userData);
+          currentUser.value = UserModel.fromJson(userData);
+          showCustomSnackbar(
+              title: 'Sukses', message: 'Foto profil berhasil diperbarui');
+          return true;
         }
+      }
 
-        final errorMessage =
-            response.data['message'] ?? 'Gagal memperbarui foto profil';
-        print('Upload failed: $errorMessage');
-        print('Response data: ${response.data}');
-        showCustomSnackbar(
-            title: 'Error', message: errorMessage, isError: true);
-        return false;
-      } catch (e) {
-        print('Error during API call: $e');
-        rethrow;
-      }
+      showCustomSnackbar(
+          title: 'Error',
+          message: response.data['message'] ?? 'Gagal memperbarui foto profil',
+          isError: true);
+      return false;
     } catch (e) {
-      print('Error in updateProfilePhoto: $e');
-      String errorMessage = 'Gagal memperbarui foto profil';
-      if (e.toString().contains('File size exceeds 2MB limit')) {
-        errorMessage = 'Ukuran file melebihi batas 2MB';
-      } else if (e.toString().contains('Invalid file type')) {
-        errorMessage = 'Format file tidak valid. Gunakan JPG, JPEG, atau PNG';
-      }
-      showCustomSnackbar(title: 'Error', message: errorMessage, isError: true);
+      showCustomSnackbar(
+          title: 'Error',
+          message: 'Gagal memperbarui foto profil: ${e.toString()}',
+          isError: true);
       return false;
     }
   }
@@ -312,28 +307,6 @@ class AuthService extends GetxService {
         return false;
       }
 
-      if (name.isEmpty) {
-        showCustomSnackbar(
-            title: 'Error', message: 'Nama tidak boleh kosong', isError: true);
-        return false;
-      }
-
-      if (email.isNotEmpty && !GetUtils.isEmail(email)) {
-        showCustomSnackbar(
-            title: 'Error', message: 'Format email tidak valid', isError: true);
-        return false;
-      }
-
-      if (phoneNumber != null && phoneNumber.isNotEmpty) {
-        if (!GetUtils.isPhoneNumber(phoneNumber)) {
-          showCustomSnackbar(
-              title: 'Error',
-              message: 'Format nomor telepon tidak valid',
-              isError: true);
-          return false;
-        }
-      }
-
       final updateData = {
         'name': name,
         'email': email,
@@ -342,14 +315,12 @@ class AuthService extends GetxService {
       };
 
       final response = await _authProvider.updateProfile(token, updateData);
-
       if (response.statusCode == 200) {
         final userResponse = await _authProvider.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
           await _storageService.saveUser(userData);
           currentUser.value = UserModel.fromJson(userData);
-
           showCustomSnackbar(
               title: 'Sukses', message: 'Profil berhasil diperbarui');
           return true;
@@ -362,107 +333,9 @@ class AuthService extends GetxService {
           isError: true);
       return false;
     } catch (e) {
-      String errorMessage = 'Gagal memperbarui profil';
-      if (e.toString().contains('Email already exists')) {
-        errorMessage = 'Email sudah digunakan';
-      } else if (e.toString().contains('Phone number already exists')) {
-        errorMessage = 'Nomor telepon sudah digunakan';
-      }
-      showCustomSnackbar(title: 'Error', message: errorMessage, isError: true);
-      return false;
-    }
-  }
-
-  Future<bool> changePassword({
-    required String currentPassword,
-    required String newPassword,
-    required String confirmPassword,
-  }) async {
-    try {
-      final token = _storageService.getToken();
-      if (token == null) {
-        showCustomSnackbar(
-            title: 'Error', message: 'Token tidak valid', isError: true);
-        return false;
-      }
-
-      if (newPassword.length < 6) {
-        showCustomSnackbar(
-            title: 'Error',
-            message: 'Password baru harus memiliki minimal 6 karakter',
-            isError: true);
-        return false;
-      }
-
-      if (newPassword != confirmPassword) {
-        showCustomSnackbar(
-            title: 'Error',
-            message: 'Password baru tidak cocok',
-            isError: true);
-        return false;
-      }
-
-      final response = await _authProvider.changePassword(token, {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-        'new_password_confirmation': confirmPassword,
-      });
-
-      if (response.statusCode == 200) {
-        if (_storageService.getRememberMe()) {
-          final credentials = _storageService.getSavedCredentials();
-          if (credentials != null) {
-            await _storageService.saveCredentials(
-              credentials['identifier']!,
-              newPassword,
-            );
-          }
-        }
-
-        showCustomSnackbar(
-            title: 'Sukses', message: 'Password berhasil diubah');
-        return true;
-      }
-
       showCustomSnackbar(
           title: 'Error',
-          message: response.data['message'] ?? 'Gagal mengganti password',
-          isError: true);
-      return false;
-    } catch (e) {
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal mengganti password: ${e.toString()}',
-          isError: true);
-      return false;
-    }
-  }
-
-  Future<bool> deleteAccount() async {
-    try {
-      final token = _storageService.getToken();
-      if (token == null) {
-        showCustomSnackbar(
-            title: 'Error', message: 'Token tidak valid', isError: true);
-        return false;
-      }
-
-      final response = await _authProvider.deleteAccount(token);
-      if (response.statusCode == 200) {
-        showCustomSnackbar(title: 'Sukses', message: 'Akun berhasil dihapus');
-        await _clearAuthData(fullClear: true);
-        return true;
-      }
-
-      showCustomSnackbar(
-          title: 'Error',
-          message: response.data['message'] ?? 'Gagal menghapus akun',
-          isError: true);
-      return false;
-    } catch (e) {
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal menghapus akun: ${e.toString()}',
+          message: 'Gagal memperbarui profil: ${e.toString()}',
           isError: true);
       return false;
     }
@@ -502,34 +375,14 @@ class AuthService extends GetxService {
 
     isLoggedIn.value = false;
     currentUser.value = null;
-
-    await _storageService.clearOrders();
-    await _storageService.clearLocationData();
   }
 
   void handleAuthError(dynamic error) {
     if (error.toString().contains('401')) {
       _clearAuthData(fullClear: true);
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Sesi Anda telah berakhir. Silakan login kembali.',
-          isError: true);
       Get.offAllNamed(Routes.login);
     }
   }
-
-  String? getToken() => _storageService.getToken();
-  UserModel? getUser() => currentUser.value;
-  String get userName => currentUser.value?.name ?? '';
-  String get userEmail => currentUser.value?.email ?? '';
-  String get userPhone => currentUser.value?.phoneNumber ?? '';
-  String get userRole => currentUser.value?.role ?? '';
-  bool get isUser => currentUser.value?.isUser ?? false;
-  int? get userId => currentUser.value?.id;
-  String? get userProfilePhotoUrl => currentUser.value?.profilePhotoUrl;
-  String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;
-
-  bool get isRememberMeEnabled => _storageService.getRememberMe();
 
   @override
   void onClose() {

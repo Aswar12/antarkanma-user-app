@@ -117,7 +117,7 @@ class HomePageController extends GetxController {
 
       final coordinates = _locationService.getCurrentCoordinates();
       debugPrint('Using coordinates for merchant request: $coordinates');
-      
+
       final paginatedResponse = await merchantService.getAllMerchants(
         page: _currentPage,
         pageSize: _pageSize,
@@ -132,12 +132,11 @@ class HomePageController extends GetxController {
 
       allMerchants.addAll(paginatedResponse.data);
       debugPrint('Loaded ${paginatedResponse.data.length} merchants');
-      
+
       _lastPage = paginatedResponse.lastPage;
       _totalItems = paginatedResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
       _retryAttempts = 0;
-
     } catch (e) {
       debugPrint('Error loading merchants: $e');
       if (_retryAttempts < maxRetries) {
@@ -145,7 +144,6 @@ class HomePageController extends GetxController {
         await Future.delayed(Duration(seconds: _retryAttempts));
         return loadAllMerchants();
       }
-      rethrow;
     } finally {
       isLoadingMore.value = false;
       isLoading.value = false; // Ensure loading state is updated
@@ -166,7 +164,7 @@ class HomePageController extends GetxController {
     try {
       isLoadingMore.value = true;
       final coordinates = _locationService.getCurrentCoordinates();
-      
+
       // Search merchants
       final merchantResponse = await merchantService.getAllMerchants(
         query: searchQuery.value,
@@ -184,7 +182,6 @@ class HomePageController extends GetxController {
       _lastPage = merchantResponse.lastPage;
       _totalItems = merchantResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
-
     } catch (e) {
       debugPrint('Error performing search: $e');
       rethrow;

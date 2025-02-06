@@ -1,5 +1,16 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../modules/auth/bindings/auth_binding.dart';
+
+import '../bindings/auth_binding.dart';
+import '../bindings/initial_binding.dart';
+import '../bindings/feature_bindings/home_binding.dart';
+import '../bindings/feature_bindings/merchant_binding.dart';
+import '../bindings/feature_bindings/checkout_binding.dart';
+import '../bindings/feature_bindings/profile_binding.dart';
+import '../bindings/feature_bindings/product_detail_binding.dart';
+import '../bindings/feature_bindings/cart_binding.dart';
+
 import '../modules/auth/views/sign_in_page.dart';
 import '../modules/auth/views/sign_up_page.dart';
 import '../modules/checkout/views/checkout_success_page.dart';
@@ -18,9 +29,8 @@ import '../modules/user/views/product_detail_page.dart';
 import '../modules/user/views/profile_page.dart';
 import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
-import '../modules/splash/controllers/splash_controller.dart';
-import '../controllers/product_detail_controller.dart';
-import '../data/repositories/review_repository.dart';
+
+import '../services/auth_service.dart';
 
 abstract class Routes {
   static const splash = '/splash';
@@ -51,9 +61,7 @@ class AppPages {
     GetPage(
       name: Routes.splash,
       page: () => const SplashPage(),
-      binding: BindingsBuilder(() {
-        Get.put(SplashController());
-      }),
+      binding: InitialBinding(),
     ),
     GetPage(
       name: Routes.login,
@@ -68,34 +76,37 @@ class AppPages {
     GetPage(
       name: Routes.cart,
       page: () => const CartPage(),
+      binding: CartBinding(),
+      middlewares: [AuthGuard()],
     ),
     GetPage(
       name: Routes.checkoutSuccess,
       page: () => const CheckoutSuccessPage(),
+      binding: HomeBinding(),
+      middlewares: [AuthGuard()],
     ),
     GetPage(
       name: Routes.productDetail,
       page: () => const ProductDetailPage(),
-      binding: BindingsBuilder(() {
-        // Create a new controller instance for each product detail page
-        Get.put(
-          ProductDetailController(
-            reviewRepository: Get.find<ReviewRepository>(),
-          ),
-        );
-      }),
+      binding: ProductDetailBinding(),
+      preventDuplicates: true,
+      transition: Transition.fadeIn,
     ),
     GetPage(
       name: Routes.merchantDetail,
       page: () => const MerchantDetailPage(),
+      binding: MerchantBinding(),
     ),
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
+      binding: HomeBinding(),
+      middlewares: [AuthGuard()],
       children: [
         GetPage(
           name: '/profile',
           page: () => ProfilePage(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/chat',
@@ -108,37 +119,52 @@ class AppPages {
         GetPage(
           name: '/home',
           page: () => const HomePage(),
+          binding: HomeBinding(),
         ),
         GetPage(
           name: '/address',
           page: () => const AddressPage(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/add-address',
           page: () => AddEditAddressPage(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/edit-address',
           page: () => AddEditAddressPage(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/select-address',
           page: () => AddressSelectionPage(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/map-picker',
           page: () => const MapPickerView(),
+          binding: ProfileBinding(),
         ),
         GetPage(
           name: '/checkout',
           page: () => CheckoutPage(),
-          preventDuplicates: false,
+          binding: CheckoutBinding(),
         ),
         GetPage(
           name: '/edit-profile',
           page: () => const EditProfileView(),
+          binding: ProfileBinding(),
         ),
       ],
     ),
   ];
+}
+
+class AuthGuard extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    final authService = Get.find<AuthService>();
+    return authService.isLoggedIn.value ? null : RouteSettings(name: Routes.login);
+  }
 }

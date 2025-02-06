@@ -12,7 +12,8 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:intl/intl.dart';
 
 class CheckoutPage extends GetView<CheckoutController> {
-  final UserLocationController locationController = Get.find<UserLocationController>();
+  final UserLocationController locationController =
+      Get.find<UserLocationController>();
 
   CheckoutPage({super.key}) {
     // Initialize the controller when the page is created
@@ -87,7 +88,8 @@ class CheckoutPage extends GetView<CheckoutController> {
 
   Widget _buildProductImage(OrderItemModel item) {
     final imageUrl = item.product.firstImageUrl;
-    final hasValidImage = imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.isAbsolute == true;
+    final hasValidImage =
+        imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.isAbsolute == true;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -97,7 +99,8 @@ class CheckoutPage extends GetView<CheckoutController> {
               width: 80,
               height: 80,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildPlaceholderImage(),
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
                 return _buildLoadingImage();
@@ -189,7 +192,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                 if (location.isDefault)
                   Container(
                     margin: const EdgeInsets.only(left: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.green,
                       borderRadius: BorderRadius.circular(4),
@@ -242,6 +246,125 @@ class CheckoutPage extends GetView<CheckoutController> {
     );
   }
 
+  Widget _buildShippingPreviewSection() {
+    return Obx(() {
+      if (controller.isCalculatingShipping.value) {
+        return Card(
+          color: backgroundColor1,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Column(
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Menghitung ongkir...',
+                    style: primaryTextStyle,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      final merchantItems = controller.merchantItems.value;
+      final shippingPreview = controller.shippingPreview.value;
+
+      if (merchantItems.isEmpty || shippingPreview.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Card(
+        color: backgroundColor1,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Detail Pengiriman',
+                style: primaryTextStyle.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...merchantItems.entries.map((entry) {
+                final merchantId = entry.key;
+                final items = entry.value;
+                final preview = shippingPreview[merchantId];
+
+                if (preview == null) return const SizedBox.shrink();
+
+                return Card(
+                  color: backgroundColor8,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          items.first.merchantName,
+                          style: primaryTextStyle.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, color: logoColorSecondary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Jarak: ${preview['distance']} km',
+                              style: primaryTextStyle,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.timer, color: logoColorSecondary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Estimasi: ${preview['duration']} menit',
+                              style: primaryTextStyle,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.local_shipping, color: logoColorSecondary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Ongkir: ${NumberFormat.currency(
+                                locale: 'id_ID',
+                                symbol: 'Rp ',
+                                decimalDigits: 0,
+                              ).format(preview['cost'])}',
+                              style: primaryTextStyle.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
   Widget _buildOrderItemsSection() {
     return Card(
       color: backgroundColor1,
@@ -259,7 +382,9 @@ class CheckoutPage extends GetView<CheckoutController> {
             ),
             const SizedBox(height: 8),
             Obx(() {
-              if (controller.orderItems.isEmpty) {
+              final merchantItems = controller.merchantItems.value;
+              
+              if (merchantItems.isEmpty) {
                 return Center(
                   child: Text(
                     'Tidak ada pesanan',
@@ -267,13 +392,28 @@ class CheckoutPage extends GetView<CheckoutController> {
                   ),
                 );
               }
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: controller.orderItems.length,
-                itemBuilder: (context, index) {
-                  return _buildOrderItemCard(controller.orderItems[index]);
-                },
+
+              return Column(
+                children: merchantItems.entries.map((entry) {
+                  final items = entry.value;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          items.first.merchantName,
+                          style: primaryTextStyle.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Dimenssions.font16,
+                          ),
+                        ),
+                      ),
+                      ...items.map((item) => _buildOrderItemCard(item)).toList(),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }).toList(),
               );
             }),
           ],
@@ -456,7 +596,8 @@ class CheckoutPage extends GetView<CheckoutController> {
           SizedBox(
             width: double.infinity,
             child: Obx(() => ElevatedButton(
-                  onPressed: controller.isProcessingCheckout.value || !controller.canCheckout
+                  onPressed: controller.isProcessingCheckout.value ||
+                          !controller.canCheckout
                       ? null
                       : () => controller.processCheckout(),
                   style: ElevatedButton.styleFrom(
@@ -518,6 +659,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDeliveryAddressSection(),
+                  const SizedBox(height: 16),
+                  _buildShippingPreviewSection(),
                   const SizedBox(height: 16),
                   _buildOrderItemsSection(),
                   const SizedBox(height: 16),

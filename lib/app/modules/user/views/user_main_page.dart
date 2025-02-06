@@ -15,12 +15,14 @@ class UserMainPage extends GetView<UserMainController> {
 
   @override
   Widget build(BuildContext context) {
-    // Pastikan controller sudah diinisialisasi
-    final UserMainController controller = Get.find();
-
-    // Ensure HomePageController is initialized
+    // Ensure controllers are initialized
     if (!Get.isRegistered<HomePageController>()) {
       Get.put(HomePageController(), permanent: true);
+    }
+    
+    // Ensure UserMainController is initialized
+    if (!Get.isRegistered<UserMainController>()) {
+      Get.put(UserMainController(), permanent: true);
     }
 
     // Set initial page if provided in arguments
@@ -39,14 +41,12 @@ class UserMainPage extends GetView<UserMainController> {
     ];
 
     Widget body() {
-      return GetX<UserMainController>(
-        builder: (_) {
-          return IndexedStack(
-            index: controller.currentIndex.value,
-            children: pages,
-          );
-        },
-      );
+      return Obx(() {
+        return IndexedStack(
+          index: controller.currentIndex.value,
+          children: pages,
+        );
+      });
     }
 
     BottomNavigationBarItem createNavItem(
@@ -54,61 +54,57 @@ class UserMainPage extends GetView<UserMainController> {
       return BottomNavigationBarItem(
         icon: Container(
           margin: EdgeInsets.only(top: Dimenssions.height5),
-          child: GetX<UserMainController>(
-            builder: (_) => Image.asset(
-              assetPath,
-              width: Dimenssions.height22,
-              color: controller.currentIndex.value == index
-                  ? logoColorSecondary
-                  : secondaryTextColor,
-            ),
-          ),
+          child: Obx(() => Image.asset(
+            assetPath,
+            width: Dimenssions.height22,
+            color: controller.currentIndex.value == index
+                ? logoColorSecondary
+                : secondaryTextColor,
+          )),
         ),
         label: label,
       );
     }
 
     Widget customBottomNav() {
-      return GetX<UserMainController>(
-        builder: (_) => Container(
-          decoration: BoxDecoration(
-            color: backgroundColor2,
-            boxShadow: controller.currentIndex.value == 1
-                ? []
-                : [
-                    BoxShadow(
-                      color: backgroundColor6.withOpacity(0.15),
-                      offset: const Offset(0, -1),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                    BoxShadow(
-                      color: backgroundColor6.withOpacity(0.3),
-                      offset: const Offset(0, -0.5),
-                      blurRadius: 4,
-                      spreadRadius: 0,
-                    ),
-                  ],
-          ),
-          child: ClipRRect(
-            child: BottomNavigationBar(
-              selectedItemColor: logoColorSecondary,
-              unselectedItemColor: secondaryTextColor,
-              currentIndex: controller.currentIndex.value,
-              onTap: (index) => controller.changePage(index),
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: backgroundColor2,
-              elevation: 0,
-              items: [
-                createNavItem('assets/icon_home.png', 'Home', 0),
-                createNavItem('assets/icon_cart.png', 'Keranjang', 1),
-                createNavItem('assets/list.png', 'Pesanan', 2),
-                createNavItem('assets/icon_profile.png', 'Profile', 3),
-              ],
-            ),
+      return Obx(() => Container(
+        decoration: BoxDecoration(
+          color: backgroundColor2,
+          boxShadow: controller.currentIndex.value == 1
+              ? []
+              : [
+                  BoxShadow(
+                    color: backgroundColor6.withOpacity(0.15),
+                    offset: const Offset(0, -1),
+                    blurRadius: 10,
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: backgroundColor6.withOpacity(0.3),
+                    offset: const Offset(0, -0.5),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                  ),
+                ],
+        ),
+        child: ClipRRect(
+          child: BottomNavigationBar(
+            selectedItemColor: logoColorSecondary,
+            unselectedItemColor: secondaryTextColor,
+            currentIndex: controller.currentIndex.value,
+            onTap: (index) => controller.changePage(index),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: backgroundColor2,
+            elevation: 0,
+            items: [
+              createNavItem('assets/icon_home.png', 'Home', 0),
+              createNavItem('assets/icon_cart.png', 'Keranjang', 1),
+              createNavItem('assets/list.png', 'Pesanan', 2),
+              createNavItem('assets/icon_profile.png', 'Profile', 3),
+            ],
           ),
         ),
-      );
+      ));
     }
 
     return WillPopScope(

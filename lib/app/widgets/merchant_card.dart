@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/data/models/merchant_model.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/cached_image_view.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
@@ -21,9 +22,11 @@ class MerchantCard extends StatelessWidget {
         if (onTap != null) {
           onTap!();
         } else {
-          Get.toNamed('/merchant-detail', arguments: {
-            'merchantId': merchant.id,
-          });
+          Get.toNamed(
+            Routes.merchantDetail,
+            arguments: {'merchantId': merchant.id},
+            preventDuplicates: true,
+          );
         }
       },
       child: Container(
@@ -101,53 +104,26 @@ class MerchantCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Row: Status and Product Count
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Status Badge
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width8,
-                          vertical: Dimenssions.height4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: merchant.isActive
-                              ? Colors.green.withOpacity(0.9)
-                              : alertColor.withOpacity(0.9),
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius20),
-                        ),
-                        child: Text(
-                          merchant.isActive ? 'Buka' : 'Tutup',
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font12,
-                            color: Colors.white,
-                            fontWeight: medium,
-                          ),
-                        ),
+                  // Status Badge
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimenssions.width8,
+                      vertical: Dimenssions.height4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: merchant.isActive
+                          ? Colors.green.withOpacity(0.9)
+                          : alertColor.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius20),
+                    ),
+                    child: Text(
+                      merchant.isActive ? 'Buka' : 'Tutup',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font12,
+                        color: Colors.white,
+                        fontWeight: medium,
                       ),
-                      // Product Count
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width8,
-                          vertical: Dimenssions.height4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: logoColorSecondary.withOpacity(0.9),
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius12),
-                        ),
-                        child: Text(
-                          '${merchant.productCount} Produk',
-                          style: secondaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font12,
-                            color: Colors.white,
-                            fontWeight: medium,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
 
                   const Spacer(),
@@ -193,11 +169,11 @@ class MerchantCard extends StatelessWidget {
                       ),
                       SizedBox(height: Dimenssions.height8),
 
-                      // Distance and Duration
-                      if (merchant.distance != null ||
-                          merchant.duration != null)
-                        Wrap(
-                          spacing: Dimenssions.width8,
+                      // Bottom Row: Distance, Duration, and Product Count
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             if (merchant.distance != null)
                               Container(
@@ -229,6 +205,9 @@ class MerchantCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                            if (merchant.distance != null &&
+                                merchant.duration != null)
+                              SizedBox(width: Dimenssions.width8),
                             if (merchant.duration != null)
                               Container(
                                 padding: EdgeInsets.symmetric(
@@ -248,11 +227,40 @@ class MerchantCard extends StatelessWidget {
                                       size: Dimenssions.iconSize16,
                                       color: Colors.white,
                                     ),
+                                    SizedBox(width: Dimenssions.width4),
+                                    Text(
+                                      '${merchant.duration} min',
+                                      style: secondaryTextStyle.copyWith(
+                                        fontSize: Dimenssions.font12,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
+                            SizedBox(width: Dimenssions.width8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Dimenssions.width8,
+                                vertical: Dimenssions.height4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: logoColorSecondary.withOpacity(0.9),
+                                borderRadius:
+                                    BorderRadius.circular(Dimenssions.radius12),
+                              ),
+                              child: Text(
+                                '${merchant.productCount} Produk',
+                                style: secondaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                  color: Colors.white,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
+                      ),
                     ],
                   ),
                 ],

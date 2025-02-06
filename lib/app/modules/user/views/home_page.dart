@@ -13,6 +13,7 @@ import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
+import 'package:antarkanma/app/bindings/feature_bindings/merchant_binding.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -39,11 +40,78 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     });
   }
 
-  void navigateToProductDetail(ProductModel product) {
-    // Ensure ProductDetailController is initialized before navigation
-    if (!Get.isRegistered<ProductDetailController>()) {
-      Get.put(ProductDetailController(reviewRepository: Get.find()));
+  Widget _buildProfileWidget() {
+    return Obx(() {
+      Widget defaultProfileWidget = Container(
+        width: Dimenssions.height40,
+        height: Dimenssions.height40,
+        decoration: BoxDecoration(
+          color: backgroundColor3,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: logoColorSecondary.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          Icons.person,
+          color: secondaryTextColor,
+          size: Dimenssions.iconSize20,
+        ),
+      );
+
+      try {
+        final authService = Get.find<AuthService>();
+        final user = authService.getUser();
+        if (user == null) {
+          return defaultProfileWidget;
+        }
+        return ProfileImage(
+          user: user,
+          size: Dimenssions.height40,
+        );
+      } catch (e) {
+        debugPrint('Error getting auth service: $e');
+        return defaultProfileWidget;
+      }
+    });
+  }
+
+  Future<void> navigateToProductDetail(ProductModel product) async {
+    if (product.id == null) {
+      Get.snackbar(
+        'Error',
+        'Data produk tidak valid',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
     }
+
+    // Ensure product data is loaded before navigation
+    if (!controller.hasValidData) {
+      try {
+        Get.snackbar(
+          'Loading',
+          'Mohon tunggu sebentar...',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 1),
+        );
+        await controller.loadInitialData();
+      } catch (e) {
+        Get.snackbar(
+          'Error',
+          'Gagal memuat data produk',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    }
+
+    // Let the binding handle controller initialization
     Get.toNamed(Routes.productDetail, arguments: product);
   }
 
@@ -296,13 +364,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                   });
                 }
 
-                return MerchantCard(
-                  merchant: merchant,
-                  onTap: () => Get.toNamed(
-                    Routes.merchantDetail,
-                    arguments: {'merchantId': merchant.id},
-                  ),
-                );
+                return MerchantCard(merchant: merchant);
               },
               childCount: controller.filteredMerchants.length,
             ),
@@ -362,33 +424,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                       children: [
                         Expanded(child: _buildSearchBar()),
                         SizedBox(width: Dimenssions.width10),
-                        Obx(() {
-                          final authService = Get.find<AuthService>();
-                          final user = authService.getUser();
-                          if (user == null) {
-                            return Container(
-                              width: Dimenssions.height40,
-                              height: Dimenssions.height40,
-                              decoration: BoxDecoration(
-                                color: backgroundColor3,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: logoColorSecondary.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.person,
-                                color: secondaryTextColor,
-                                size: Dimenssions.iconSize20,
-                              ),
-                            );
-                          }
-                          return ProfileImage(
-                            user: user,
-                            size: Dimenssions.height40,
-                          );
-                        }),
+                        _buildProfileWidget(),
                       ],
                     ),
                   ),

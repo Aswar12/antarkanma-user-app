@@ -87,18 +87,23 @@ class MerchantDetailPage extends StatelessWidget {
     );
 
     Widget buildSearchBar() {
-      return Container(
-        height: 40,
-        margin: EdgeInsets.only(left: Dimenssions.width8),
-        child: SearchInputField(
-          controller: controller.searchController,
-          hintText: 'Cari produk di toko ini',
-          onClear: () {
-            controller.searchController.clear();
-            controller.searchProducts('');
-            FocusManager.instance.primaryFocus?.unfocus();
-          },
-          onChanged: (value) => controller.searchProducts(value),
+      return Expanded(
+        child: Container(
+          height: 40,
+          margin: EdgeInsets.only(
+            left: Dimenssions.width2, // Very small left margin
+            right: Dimenssions.width12, // Right padding
+          ),
+          child: SearchInputField(
+            controller: controller.searchController,
+            hintText: 'Cari produk di toko ini',
+            onClear: () {
+              controller.searchController.clear();
+              controller.searchProducts('');
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            onChanged: (value) => controller.searchProducts(value),
+          ),
         ),
       );
     }
@@ -155,9 +160,28 @@ class MerchantDetailPage extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           itemBuilder: (context, index) {
             final product = controller.products[index];
+            // Ensure product has merchant data before navigation
+            final productWithMerchant = ProductModel(
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              galleries: product.galleries,
+              price: product.price,
+              status: product.status,
+              merchant: controller.merchant.value,  // Include current merchant data
+              category: product.category,
+              createdAt: product.createdAt,
+              updatedAt: product.updatedAt,
+              variants: product.variants,
+              reviews: product.reviews,
+              averageRatingRaw: product.averageRatingRaw,
+              totalReviewsRaw: product.totalReviewsRaw,
+              ratingInfo: product.ratingInfo,
+            );
+            
             return ProductGridCard(
-              product: product,
-              onTap: () => Get.toNamed('/product-detail', arguments: product),
+              product: productWithMerchant,
+              onTap: () => Get.toNamed('/product-detail', arguments: productWithMerchant),
             );
           },
         );
@@ -172,6 +196,7 @@ class MerchantDetailPage extends StatelessWidget {
           backgroundColor: backgroundColor1,
           elevation: 0,
           leading: IconButton(
+            padding: EdgeInsets.only(left: Dimenssions.width8),
             icon: Icon(
               Icons.arrow_back_ios,
               color: primaryTextColor,

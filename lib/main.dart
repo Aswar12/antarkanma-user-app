@@ -9,7 +9,7 @@ import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app/constants/app_theme.dart';
 import 'app/constants/app_strings.dart';
-import 'app/bindings/app_binding.dart';
+import 'app/bindings/initial_binding.dart';
 import 'package:get_storage/get_storage.dart';
 import 'app/utils/performance_config.dart';
 import 'app/utils/logger_config.dart';
@@ -17,6 +17,9 @@ import 'app/utils/logger_config.dart';
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Set Get.testMode to true for testing
+    Get.testMode = true;
 
     // Initialize logging
     LoggerConfig.init();
@@ -44,7 +47,8 @@ Future<void> main() async {
       );
 
       await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(channel);
     }
 
@@ -55,7 +59,7 @@ Future<void> main() async {
       defaultPopGesture: false,
       logWriterCallback: (String text, {bool isError = false}) {
         // Filter out ViewRootImpl logs and other touch events
-        if (text.contains('ViewRootImpl') || 
+        if (text.contains('ViewRootImpl') ||
             text.contains('MotionEvent') ||
             text.contains('dispatchPointerEvent') ||
             text.contains('processMotionEvent')) {
@@ -93,11 +97,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      initialBinding: BindingsBuilder(() {
-        // Initialize AppBinding
-        final binding = AppBinding();
-        binding.dependencies();
-      }),
+      initialBinding: InitialBinding(),
       initialRoute: Routes.splash,
       getPages: AppPages.routes,
       debugShowCheckedModeBanner: false,
@@ -107,7 +107,7 @@ class MyApp extends StatelessWidget {
       enableLog: kDebugMode,
       logWriterCallback: (String text, {bool isError = false}) {
         // Filter out ViewRootImpl logs and other touch events
-        if (text.contains('ViewRootImpl') || 
+        if (text.contains('ViewRootImpl') ||
             text.contains('MotionEvent') ||
             text.contains('dispatchPointerEvent') ||
             text.contains('processMotionEvent')) {
