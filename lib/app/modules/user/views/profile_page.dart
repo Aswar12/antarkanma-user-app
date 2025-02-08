@@ -3,7 +3,6 @@
 import 'package:antarkanma/app/controllers/auth_controller.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
-import 'package:antarkanma/app/services/user_location_service.dart';
 import 'package:antarkanma/app/widgets/logout_confirmation_dialog.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
@@ -13,15 +12,9 @@ import 'package:get/get.dart';
 
 class ProfilePage extends GetView<AuthController> {
   final AuthService authService = Get.find<AuthService>();
-  late final UserLocationController locationController;
+  final UserLocationController locationController = Get.find<UserLocationController>();
 
-  ProfilePage({super.key}) {
-    if (!Get.isRegistered<UserLocationController>()) {
-      Get.put(UserLocationController(
-          locationService: Get.find<UserLocationService>()));
-    }
-    locationController = Get.find<UserLocationController>();
-  }
+  ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {

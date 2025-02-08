@@ -6,14 +6,14 @@ import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
 import 'package:antarkanma/app/widgets/product_carousel_card.dart';
 import 'package:antarkanma/app/widgets/merchant_card.dart';
+import 'package:antarkanma/app/widgets/home_skeleton_loading.dart';
+import 'package:antarkanma/app/widgets/merchant_skeleton_loading.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/bindings/feature_bindings/merchant_binding.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,7 +31,11 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   @override
   void initState() {
     super.initState();
-    controller = Get.find<HomePageController>();
+    try {
+      controller = Get.find<HomePageController>();
+    } catch (e) {
+      controller = Get.put(HomePageController());
+    }
     // Ensure data is loaded when page is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.allMerchants.isEmpty) {
@@ -111,7 +115,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       }
     }
 
-    // Let the binding handle controller initialization
     Get.toNamed(Routes.productDetail, arguments: product);
   }
 
@@ -160,11 +163,13 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Produk Populer',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font18,
-              fontWeight: semiBold,
+          Expanded(
+            child: Text(
+              'Produk Populer',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font18,
+                fontWeight: semiBold,
+              ),
             ),
           ),
         ],
@@ -175,12 +180,12 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   Widget popularProducts() {
     return Obx(() {
       if (controller.isLoading.value) {
-        return SizedBox(
+        return Container(
           height: Dimenssions.pageView,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: logoColorSecondary,
-            ),
+          margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(Dimenssions.radius15),
           ),
         );
       }
@@ -188,34 +193,36 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       if (controller.popularProducts.isEmpty) {
         return SizedBox(
           height: Dimenssions.pageView,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.shopping_bag_outlined,
-                  size: Dimenssions.iconSize24 * 2,
-                  color: secondaryTextColor,
-                ),
-                SizedBox(height: Dimenssions.height10),
-                Text(
-                  'Tidak ada produk populer',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font16,
+          child: SingleChildScrollView(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_bag_outlined,
+                    size: Dimenssions.iconSize24 * 2,
                     color: secondaryTextColor,
                   ),
-                ),
-                SizedBox(height: Dimenssions.height10),
-                TextButton(
-                  onPressed: () => controller.loadPopularProducts(),
-                  child: Text(
-                    'Muat Ulang',
+                  SizedBox(height: Dimenssions.height10),
+                  Text(
+                    'Tidak ada produk populer',
                     style: primaryTextStyle.copyWith(
-                      color: logoColorSecondary,
+                      fontSize: Dimenssions.font16,
+                      color: secondaryTextColor,
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: Dimenssions.height10),
+                  TextButton(
+                    onPressed: () => controller.loadPopularProducts(),
+                    child: Text(
+                      'Muat Ulang',
+                      style: primaryTextStyle.copyWith(
+                        color: logoColorSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -275,11 +282,15 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            controller.searchQuery.isEmpty ? 'Semua Merchant' : 'Hasil Pencarian',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font18,
-              fontWeight: semiBold,
+          Expanded(
+            child: Text(
+              controller.searchQuery.isEmpty
+                  ? 'Semua Merchant'
+                  : 'Hasil Pencarian',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font18,
+                fontWeight: semiBold,
+              ),
             ),
           ),
           if (!controller.isLoading.value && controller.allMerchants.isNotEmpty)
@@ -299,14 +310,23 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   }
 
   List<Widget> _buildMerchantSlivers() {
-    return [
-      if (controller.filteredMerchants.isEmpty)
+    if (controller.isLoading.value) {
+      return [
+        const SliverToBoxAdapter(
+          child: MerchantSkeletonLoading(),
+        ),
+      ];
+    }
+
+    if (controller.filteredMerchants.isEmpty) {
+      return [
         SliverFillRemaining(
           child: Center(
             child: Padding(
               padding: EdgeInsets.all(Dimenssions.height20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     controller.searchQuery.isEmpty
@@ -341,63 +361,54 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
               ),
             ),
           ),
-        )
-      else ...[
-        SliverPadding(
-          padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.8,
-              mainAxisSpacing: Dimenssions.height10,
-              crossAxisSpacing: Dimenssions.width10,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final merchant = controller.filteredMerchants[index];
+        ),
+      ];
+    }
 
-                if (index >= controller.filteredMerchants.length - 3 && 
-                    !controller.isLoadingMore.value && 
-                    controller.hasMoreData.value) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    controller.loadMoreMerchants();
-                  });
-                }
+    return [
+      SliverPadding(
+        padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.8,
+            mainAxisSpacing: Dimenssions.height10,
+            crossAxisSpacing: Dimenssions.width10,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final merchant = controller.filteredMerchants[index];
 
-                return MerchantCard(merchant: merchant);
-              },
-              childCount: controller.filteredMerchants.length,
-            ),
+              if (index >= controller.filteredMerchants.length - 3 &&
+                  !controller.isLoadingMore.value &&
+                  controller.hasMoreData.value) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  controller.loadMoreMerchants();
+                });
+              }
+
+              return MerchantCard(merchant: merchant);
+            },
+            childCount: controller.filteredMerchants.length,
           ),
         ),
-        if (controller.isLoadingMore.value)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(Dimenssions.height10),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: logoColorSecondary,
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
+      if (controller.isLoadingMore.value)
+        const SliverToBoxAdapter(
+          child: MerchantSkeletonLoading(),
+        ),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Obx(() {
       if (controller.isLoading.value && controller.searchQuery.isEmpty) {
-        return SafeArea(
+        return const SafeArea(
           child: Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(
-                color: logoColorSecondary,
-              ),
-            ),
+            body: HomeSkeletonLoading(),
           ),
         );
       }
@@ -429,10 +440,10 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                     ),
                   ),
                 ),
-                // Only show popular products when not searching
                 if (controller.searchQuery.isEmpty) ...[
                   SliverToBoxAdapter(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         popularProductsTitle(),
                         popularProducts(),

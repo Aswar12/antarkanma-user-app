@@ -190,7 +190,7 @@ class StorageService {
       if (value is String) {
         final decrypted = _decrypt(value);
         if (decrypted == null) return null;
-        
+
         final decoded = json.decode(decrypted);
         if (decoded is List) return decoded;
       }
@@ -226,7 +226,7 @@ class StorageService {
       if (value is String) {
         final decrypted = _decrypt(value);
         if (decrypted == null) return null;
-        
+
         final decoded = json.decode(decrypted);
         if (decoded is Map) {
           return Map<String, dynamic>.from(decoded);

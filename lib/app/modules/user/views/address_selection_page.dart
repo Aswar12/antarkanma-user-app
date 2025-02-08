@@ -1,11 +1,7 @@
-import 'package:antarkanma/app/services/user_location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
-import 'package:antarkanma/app/controllers/auth_controller.dart';
-import 'package:antarkanma/app/controllers/cart_controller.dart';
-import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/theme.dart';
 

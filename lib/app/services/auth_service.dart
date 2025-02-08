@@ -5,16 +5,27 @@ import 'package:antarkanma/app/utils/validators.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile, Response;
 import 'package:dio/dio.dart';
 import 'package:antarkanma/app/services/fcm_token_service.dart';
 
 class AuthService extends GetxService {
-  final StorageService _storageService = StorageService.instance;
-  final AuthProvider _authProvider = AuthProvider();
+  late final StorageService _storageService;
+  late final AuthProvider _authProvider;
 
   final RxBool isLoggedIn = false.obs;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
+
+  AuthService() {
+    try {
+      _storageService = Get.find<StorageService>();
+      _authProvider = Get.find<AuthProvider>();
+    } catch (e) {
+      debugPrint('Error initializing AuthService dependencies: $e');
+      rethrow;
+    }
+  }
 
   // Getters
   String? getToken() => _storageService.getToken();
@@ -29,20 +40,50 @@ class AuthService extends GetxService {
   String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;
   bool get isRememberMeEnabled => _storageService.getRememberMe();
 
-  // FCM token management
   Future<void> _handleFCMToken({bool register = true}) async {
+    if (Get.currentRoute.contains('splash')) {
+      print('Skipping FCM token handling during splash/initialization');
+      return;
+    }
+
     try {
-      final fcmTokenService = Get.find<FCMTokenService>();
+      FCMTokenService? fcmTokenService;
+      try {
+        if (!Get.isRegistered<FCMTokenService>()) {
+          print('FCMTokenService not registered yet, initializing...');
+          await Get.putAsync(() async {
+            final service = FCMTokenService();
+            await service.init();
+            return service;
+          });
+        }
+        fcmTokenService = Get.find<FCMTokenService>();
+      } catch (e) {
+        print('Error initializing FCMTokenService: $e');
+        return;
+      }
+
+      if (fcmTokenService == null) return;
+
       if (register) {
         final fcmToken = fcmTokenService.currentToken;
-        if (fcmToken != null && currentUser.value?.id != null) {
-          await fcmTokenService.registerFCMToken(fcmToken);
+        final userId = currentUser.value?.id;
+        if (fcmToken != null && userId != null) {
+          try {
+            await fcmTokenService.registerFCMToken(fcmToken);
+          } catch (e) {
+            print('Error registering FCM token: $e');
+          }
         }
       } else {
-        await fcmTokenService.unregisterToken();
+        try {
+          await fcmTokenService.unregisterToken();
+        } catch (e) {
+          print('Error unregistering FCM token: $e');
+        }
       }
     } catch (e) {
-      print('Error handling FCM token: $e');
+      print('Error in FCM token handling: $e');
     }
   }
 
@@ -105,40 +146,51 @@ class AuthService extends GetxService {
       final userData = response.data['data']['user'];
       final token = response.data['data']['access_token'];
 
-      if (token != null) {
-        final user = UserModel.fromJson(userData);
-        if (!user.isUser) {
+      if (token != null && userData != null) {
+        try {
+          final user = UserModel.fromJson(userData);
+          if (!user.isUser) {
+            if (!isAutoLogin && showError) {
+              showCustomSnackbar(
+                  title: 'Login Gagal',
+                  message: 'Aplikasi ini hanya untuk pengguna.',
+                  isError: true);
+            }
+            return false;
+          }
+
+          await _storageService.saveToken(token);
+          await _storageService.saveUser(userData);
+
+          if (rememberMe) {
+            await _storageService.saveRememberMe(true);
+            await _storageService.saveCredentials(identifier, password);
+          } else {
+            await _storageService.clearCredentials();
+          }
+
+          currentUser.value = user;
+          isLoggedIn.value = true;
+
+          if (!isAutoLogin) {
+            await _handleFCMToken(register: true);
+          }
+
+          if (!isAutoLogin) {
+            Get.offAllNamed(Routes.userMainPage);
+            if (showError) {
+              showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
+            }
+          }
+          return true;
+        } catch (e) {
+          print('Error parsing user data: $e');
           if (!isAutoLogin && showError) {
             showCustomSnackbar(
-                title: 'Login Gagal',
-                message: 'Aplikasi ini hanya untuk pengguna.',
-                isError: true);
+                title: 'Error', message: 'Data pengguna tidak valid', isError: true);
           }
           return false;
         }
-
-        await _storageService.saveToken(token);
-        await _storageService.saveUser(userData);
-
-        if (rememberMe) {
-          await _storageService.saveRememberMe(true);
-          await _storageService.saveCredentials(identifier, password);
-        } else {
-          await _storageService.clearCredentials();
-        }
-
-        currentUser.value = user;
-        isLoggedIn.value = true;
-
-        await _handleFCMToken(register: true);
-
-        if (!isAutoLogin) {
-          Get.offAllNamed(Routes.userMainPage);
-          if (showError) {
-            showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
-          }
-        }
-        return true;
       }
 
       if (!isAutoLogin && showError) {
@@ -180,12 +232,20 @@ class AuthService extends GetxService {
         final userData = response.data['data']['user'];
         final token = response.data['data']['access_token'];
         if (token != null && userData != null) {
-          await _storageService.saveToken(token);
-          await _storageService.saveUser(userData);
-          currentUser.value = UserModel.fromJson(userData);
-          isLoggedIn.value = true;
-          Get.offAllNamed(Routes.userMainPage);
-          return true;
+          try {
+            final user = UserModel.fromJson(userData);
+            await _storageService.saveToken(token);
+            await _storageService.saveUser(userData);
+            currentUser.value = user;
+            isLoggedIn.value = true;
+            Get.offAllNamed(Routes.userMainPage);
+            return true;
+          } catch (e) {
+            print('Error parsing user data: $e');
+            showCustomSnackbar(
+                title: 'Error', message: 'Data pengguna tidak valid', isError: true);
+            return false;
+          }
         }
         showCustomSnackbar(
             title: 'Error', message: 'Data login tidak valid.', isError: true);
@@ -222,6 +282,12 @@ class AuthService extends GetxService {
             return user;
           } catch (e) {
             print('Error parsing user data: $e');
+            if (showError) {
+              showCustomSnackbar(
+                  title: 'Error',
+                  message: 'Data profil tidak valid',
+                  isError: true);
+            }
             return null;
           }
         }
@@ -229,6 +295,12 @@ class AuthService extends GetxService {
       return null;
     } catch (e) {
       print('Error getting profile: $e');
+      if (showError) {
+        showCustomSnackbar(
+            title: 'Error',
+            message: 'Gagal mengambil profil: ${e.toString()}',
+            isError: true);
+      }
       return null;
     }
   }
@@ -272,11 +344,23 @@ class AuthService extends GetxService {
         final userResponse = await _authProvider.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
-          await _storageService.saveUser(userData);
-          currentUser.value = UserModel.fromJson(userData);
-          showCustomSnackbar(
-              title: 'Sukses', message: 'Foto profil berhasil diperbarui');
-          return true;
+          if (userData != null) {
+            try {
+              final user = UserModel.fromJson(userData);
+              await _storageService.saveUser(userData);
+              currentUser.value = user;
+              showCustomSnackbar(
+                  title: 'Sukses', message: 'Foto profil berhasil diperbarui');
+              return true;
+            } catch (e) {
+              print('Error parsing user data: $e');
+              showCustomSnackbar(
+                  title: 'Error',
+                  message: 'Data profil tidak valid',
+                  isError: true);
+              return false;
+            }
+          }
         }
       }
 
@@ -319,11 +403,23 @@ class AuthService extends GetxService {
         final userResponse = await _authProvider.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
-          await _storageService.saveUser(userData);
-          currentUser.value = UserModel.fromJson(userData);
-          showCustomSnackbar(
-              title: 'Sukses', message: 'Profil berhasil diperbarui');
-          return true;
+          if (userData != null) {
+            try {
+              final user = UserModel.fromJson(userData);
+              await _storageService.saveUser(userData);
+              currentUser.value = user;
+              showCustomSnackbar(
+                  title: 'Sukses', message: 'Profil berhasil diperbarui');
+              return true;
+            } catch (e) {
+              print('Error parsing user data: $e');
+              showCustomSnackbar(
+                  title: 'Error',
+                  message: 'Data profil tidak valid',
+                  isError: true);
+              return false;
+            }
+          }
         }
       }
 

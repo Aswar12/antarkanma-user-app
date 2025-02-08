@@ -1,12 +1,10 @@
 import 'package:dio/dio.dart' as dio;
-import 'package:antarkanma/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/paginated_response.dart';
 import 'package:antarkanma/app/data/providers/merchant_provider.dart';
-import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/location_service.dart';
 
 class MerchantService extends GetxService {

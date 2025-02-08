@@ -232,25 +232,25 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                       ),
                     ],
                   ),
-                  if (merchant.productCount != null) ...[
-                    SizedBox(height: Dimenssions.height8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.shopping_bag,
-                          color: logoColorSecondary,
-                          size: 20,
+                  ...[
+                  SizedBox(height: Dimenssions.height8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.shopping_bag,
+                        color: logoColorSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: Dimenssions.width8),
+                      Text(
+                        '${merchant.productCount} Produk',
+                        style: secondaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
                         ),
-                        SizedBox(width: Dimenssions.width8),
-                        Text(
-                          '${merchant.productCount} Produk',
-                          style: secondaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
+                ],
                 ],
               ),
             ),

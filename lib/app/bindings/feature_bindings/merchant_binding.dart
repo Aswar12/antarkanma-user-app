@@ -2,6 +2,7 @@ import 'package:antarkanma/app/data/providers/shipping_provider.dart';
 import 'package:get/get.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/product_detail_controller.dart';
+import '../../controllers/merchant_detail_controller.dart';
 import '../../data/providers/merchant_provider.dart';
 import '../../data/providers/product_provider.dart';
 import '../../data/repositories/review_repository.dart';
@@ -40,6 +41,12 @@ class MerchantBinding extends Bindings {
     Get.put(ProductController(), permanent: true);
     Get.put(
       ProductDetailController(reviewRepository: Get.find<ReviewRepository>()),
+      permanent: true,
+    );
+    
+    // Always initialize MerchantDetailController
+    Get.put(
+      MerchantDetailController(merchantService: Get.find<MerchantService>()),
       permanent: true,
     );
   }

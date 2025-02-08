@@ -118,7 +118,7 @@ class OrderController extends GetxController {
     final active = transactions.where((t) {
       // Check transaction status first
       final transactionStatus = t.status.toUpperCase();
-      if (transactionStatus == STATUS_COMPLETED || 
+      if (transactionStatus == STATUS_COMPLETED ||
           transactionStatus == STATUS_CANCELED) {
         return false;
       }
@@ -126,11 +126,12 @@ class OrderController extends GetxController {
       // Then check if any order is active
       return t.orders.any((order) {
         final orderStatus = order.orderStatus.toUpperCase();
-        debugPrint('Checking transaction ${t.id} order with status: $orderStatus');
-        return orderStatus == ORDER_STATUS_PENDING || 
-               orderStatus == ORDER_STATUS_PROCESSING || 
-               orderStatus == ORDER_STATUS_READYTOPICKUP ||
-               orderStatus == ORDER_STATUS_SHIPPED;
+        debugPrint(
+            'Checking transaction ${t.id} order with status: $orderStatus');
+        return orderStatus == ORDER_STATUS_PENDING ||
+            orderStatus == ORDER_STATUS_PROCESSING ||
+            orderStatus == ORDER_STATUS_READYTOPICKUP ||
+            orderStatus == ORDER_STATUS_SHIPPED;
       });
     }).toList();
 
@@ -140,7 +141,8 @@ class OrderController extends GetxController {
       debugPrint('Transaction ID: ${transaction.id}');
       debugPrint('Transaction Status: ${transaction.status}');
       for (var order in transaction.orders) {
-        debugPrint('Order Status: ${order.orderStatus}, Items: ${order.orderItems.length}');
+        debugPrint(
+            'Order Status: ${order.orderStatus}, Items: ${order.orderItems.length}');
       }
     }
 
@@ -151,7 +153,7 @@ class OrderController extends GetxController {
     final history = transactions.where((t) {
       // Check transaction status first
       final transactionStatus = t.status.toUpperCase();
-      if (transactionStatus == STATUS_COMPLETED || 
+      if (transactionStatus == STATUS_COMPLETED ||
           transactionStatus == STATUS_CANCELED) {
         return true;
       }
@@ -159,10 +161,11 @@ class OrderController extends GetxController {
       // Then check if all orders are completed/canceled/delivered
       return t.orders.every((order) {
         final orderStatus = order.orderStatus.toUpperCase();
-        debugPrint('Checking transaction ${t.id} order with status: $orderStatus');
-        return orderStatus == ORDER_STATUS_COMPLETED || 
-               orderStatus == ORDER_STATUS_CANCELED ||
-               orderStatus == ORDER_STATUS_DELIVERED;
+        debugPrint(
+            'Checking transaction ${t.id} order with status: $orderStatus');
+        return orderStatus == ORDER_STATUS_COMPLETED ||
+            orderStatus == ORDER_STATUS_CANCELED ||
+            orderStatus == ORDER_STATUS_DELIVERED;
       });
     }).toList();
 
@@ -172,7 +175,8 @@ class OrderController extends GetxController {
       debugPrint('Transaction ID: ${transaction.id}');
       debugPrint('Transaction Status: ${transaction.status}');
       for (var order in transaction.orders) {
-        debugPrint('Order Status: ${order.orderStatus}, Items: ${order.orderItems.length}');
+        debugPrint(
+            'Order Status: ${order.orderStatus}, Items: ${order.orderItems.length}');
       }
     }
 
@@ -201,17 +205,18 @@ class OrderController extends GetxController {
       isLoading.value = true;
 
       // Cancel the transaction
-      final success = await _transactionService.cancelTransaction(transactionId);
+      final success =
+          await _transactionService.cancelTransaction(transactionId);
       if (!success) {
         throw Exception('Gagal membatalkan pesanan');
       }
 
       // Remove the transaction from the active list
       transactions.removeWhere((t) => t.id.toString() == transactionId);
-      
+
       // Refresh the orders list to get updated data
       await refreshOrders();
-      
+
       // Show success message after a short delay
       Future.delayed(const Duration(milliseconds: 300), () {
         CustomSnackbarX.showSuccess(
@@ -222,7 +227,7 @@ class OrderController extends GetxController {
       debugPrint('Error canceling order: $e');
       debugPrint('Stack trace: $stackTrace');
       errorMessage.value = e.toString();
-      
+
       // Show error message after a short delay
       Future.delayed(const Duration(milliseconds: 300), () {
         CustomSnackbarX.showError(

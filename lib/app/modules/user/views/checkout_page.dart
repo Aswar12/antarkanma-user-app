@@ -9,15 +9,24 @@ import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
+import 'package:antarkanma/app/modules/checkout/widgets/shipping_details_section_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:antarkanma/app/widgets/shipping_preview_skeleton_loading.dart';
 
 class CheckoutPage extends GetView<CheckoutController> {
-  final UserLocationController locationController =
-      Get.find<UserLocationController>();
+  const CheckoutPage({super.key});
 
-  CheckoutPage({super.key}) {
-    // Initialize the controller when the page is created
-    controller.autoSetInitialValues();
+  UserLocationController get locationController => Get.find<UserLocationController>();
+
+  void _initializeCheckout(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final controller = Get.find<CheckoutController>();
+        controller.autoSetInitialValues();
+      } catch (e) {
+        debugPrint('Error initializing checkout: $e');
+      }
+    });
   }
 
   Widget _buildOrderItemCard(OrderItemModel item) {
@@ -143,33 +152,37 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   Widget _buildDeliveryAddressSection() {
-    return Card(
-      color: backgroundColor1,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Alamat Pengiriman', style: primaryTextStyle),
-                TextButton(
-                  onPressed: controller.isProcessingCheckout.value
-                      ? null
-                      : () => Get.to(() => AddressSelectionPage()),
-                  child: Text('Ubah', style: primaryTextStyle),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Obx(() {
-              final location = locationController.selectedLocation.value;
-              return location != null
-                  ? _buildAddressCard(location)
-                  : _buildNoAddressWidget();
-            }),
-          ],
+    return GetBuilder<UserLocationController>(
+      init: Get.find<UserLocationController>(),
+      initState: (_) => _initializeCheckout(Get.context!),
+      builder: (locationCtrl) => Card(
+        color: backgroundColor1,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Alamat Pengiriman', style: primaryTextStyle),
+                  TextButton(
+                    onPressed: controller.isProcessingCheckout.value
+                        ? null
+                        : () => Get.to(() => AddressSelectionPage()),
+                    child: Text('Ubah', style: primaryTextStyle),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Obx(() {
+                final location = locationCtrl.selectedLocation.value;
+                return location != null
+                    ? _buildAddressCard(location)
+                    : _buildNoAddressWidget();
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -246,125 +259,6 @@ class CheckoutPage extends GetView<CheckoutController> {
     );
   }
 
-  Widget _buildShippingPreviewSection() {
-    return Obx(() {
-      if (controller.isCalculatingShipping.value) {
-        return Card(
-          color: backgroundColor1,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Column(
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Menghitung ongkir...',
-                    style: primaryTextStyle,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
-
-      final merchantItems = controller.merchantItems.value;
-      final shippingPreview = controller.shippingPreview.value;
-
-      if (merchantItems.isEmpty || shippingPreview.isEmpty) {
-        return const SizedBox.shrink();
-      }
-
-      return Card(
-        color: backgroundColor1,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Detail Pengiriman',
-                style: primaryTextStyle.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ...merchantItems.entries.map((entry) {
-                final merchantId = entry.key;
-                final items = entry.value;
-                final preview = shippingPreview[merchantId];
-
-                if (preview == null) return const SizedBox.shrink();
-
-                return Card(
-                  color: backgroundColor8,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          items.first.merchantName,
-                          style: primaryTextStyle.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, color: logoColorSecondary, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Jarak: ${preview['distance']} km',
-                              style: primaryTextStyle,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.timer, color: logoColorSecondary, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Estimasi: ${preview['duration']} menit',
-                              style: primaryTextStyle,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.local_shipping, color: logoColorSecondary, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Ongkir: ${NumberFormat.currency(
-                                locale: 'id_ID',
-                                symbol: 'Rp ',
-                                decimalDigits: 0,
-                              ).format(preview['cost'])}',
-                              style: primaryTextStyle.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
   Widget _buildOrderItemsSection() {
     return Card(
       color: backgroundColor1,
@@ -409,7 +303,7 @@ class CheckoutPage extends GetView<CheckoutController> {
                           ),
                         ),
                       ),
-                      ...items.map((item) => _buildOrderItemCard(item)).toList(),
+                      ...items.map((item) => _buildOrderItemCard(item)),
                       const SizedBox(height: 16),
                     ],
                   );
@@ -595,29 +489,184 @@ class CheckoutPage extends GetView<CheckoutController> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: Obx(() => ElevatedButton(
+            child: Obx(() {
+              final shippingDetails = controller.shippingDetails.value;
+              final shouldSplit = shippingDetails?.recommendations.shouldSplit ?? false;
+
+              if (shouldSplit) {
+                return Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange[50]!,
+                            Colors.orange[100]!.withOpacity(0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.orange.withOpacity(0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.route_rounded,
+                                  color: Colors.orange[700],
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Rute Pengiriman Tidak Optimal',
+                                      style: primaryTextStyle.copyWith(
+                                        color: Colors.orange[900],
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Beberapa merchant berada di arah yang berbeda. Anda dapat memisahkan pesanan untuk pengiriman yang lebih efisien.',
+                                      style: primaryTextStyle.copyWith(
+                                        color: Colors.orange[800],
+                                        fontSize: 14,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      height: 50,
+                      margin: const EdgeInsets.only(top: 8),
+                      child: ElevatedButton(
+                        onPressed: () => Get.back(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: logoColorSecondary,
+                          elevation: 2,
+                          shadowColor: Colors.grey.withOpacity(0.3),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: logoColorSecondary.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 20,
+                              color: logoColorSecondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Kembali ke Keranjang',
+                              style: primaryTextStyle.copyWith(
+                                color: logoColorSecondary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Container(
+                height: 50,
+                width: double.infinity,
+                child: ElevatedButton(
                   onPressed: controller.isProcessingCheckout.value ||
                           !controller.canCheckout
                       ? null
                       : () => controller.processCheckout(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: logoColorSecondary,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: logoColorSecondary.withOpacity(0.5),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: controller.isProcessingCheckout.value
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          'Pesan Sekarang',
-                          style: primaryTextStyle.copyWith(
-                            color: Colors.white,
-                            fontSize: Dimenssions.font16,
-                            fontWeight: FontWeight.bold,
+                      ? SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Pesan Sekarang',
+                              style: primaryTextStyle.copyWith(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
-                )),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -631,7 +680,8 @@ class CheckoutPage extends GetView<CheckoutController> {
         if (controller.isProcessingCheckout.value) {
           return false;
         }
-        return true;
+        Get.back();
+        return false;
       },
       child: Scaffold(
         backgroundColor: backgroundColor8,
@@ -660,13 +710,25 @@ class CheckoutPage extends GetView<CheckoutController> {
                 children: [
                   _buildDeliveryAddressSection(),
                   const SizedBox(height: 16),
-                  _buildShippingPreviewSection(),
+                  Obx(() {
+                    final shippingDetails = controller.shippingDetails.value;
+                    if (shippingDetails != null) {
+                      return ShippingDetailsSectionWidget(
+                        shippingDetails: shippingDetails,
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  const SizedBox(height: 16),
+                  // Add the shipping preview skeleton loading here
+                  if (controller.isLoading.value) const ShippingPreviewSkeletonLoading(),
                   const SizedBox(height: 16),
                   _buildOrderItemsSection(),
                   const SizedBox(height: 16),
                   _buildPaymentSection(),
                   const SizedBox(height: 16),
                   _buildTotalSection(),
+                  const SizedBox(height: 80),
                 ],
               ),
             );

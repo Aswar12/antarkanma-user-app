@@ -15,13 +15,24 @@ class UserService extends GetxService {
       if (token == null) throw Exception('Token not found');
 
       final response = await _userProvider.getUserProfile(token);
-
-      if (response.statusCode == 200) {
-        final userData = response.data['data']['user'];
-        return UserModel.fromJson(userData);
+      if (response.statusCode == 200 && response.data != null) {
+        final userData = response.data['data'];
+        if (userData != null) {
+          try {
+            final user = UserModel.fromJson(userData);
+            await _storage.saveUser(userData);
+            return user;
+          } catch (e) {
+            print('Error parsing user data: $e');
+            showCustomSnackbar(
+                title: 'Error',
+                message: 'Failed to parse user data',
+                isError: true);
+            return null;
+          }
+        }
       }
-
-      throw Exception(response.data['meta']['message']);
+      throw Exception(response.data?['message'] ?? 'Failed to get user profile');
     } catch (e) {
       showCustomSnackbar(
           title: 'Error',
@@ -36,7 +47,7 @@ class UserService extends GetxService {
     String? email,
     String? phoneNumber,
     String? username,
-    String? profileImageUrl, // Ensure this parameter is included
+    String? profileImageUrl,
   }) async {
     try {
       final token = _storage.getToken();
@@ -47,19 +58,29 @@ class UserService extends GetxService {
         if (email != null) 'email': email,
         if (phoneNumber != null) 'phone_number': phoneNumber,
         if (username != null) 'username': username,
-        if (profileImageUrl != null)
-          'profile_image_url': profileImageUrl, // Ensure this line is included
+        if (profileImageUrl != null) 'profile_image_url': profileImageUrl,
       };
 
       final response = await _userProvider.updateUserProfile(token, data);
-
-      if (response.statusCode == 200) {
-        showCustomSnackbar(
-            title: 'Success', message: 'Profile updated successfully');
-        return true;
+      if (response.statusCode == 200 && response.data != null) {
+        final userData = response.data['data'];
+        if (userData != null) {
+          try {
+            await _storage.saveUser(userData);
+            showCustomSnackbar(
+                title: 'Success', message: 'Profile updated successfully');
+            return true;
+          } catch (e) {
+            print('Error saving user data: $e');
+            showCustomSnackbar(
+                title: 'Error',
+                message: 'Failed to save user data',
+                isError: true);
+            return false;
+          }
+        }
       }
-
-      throw Exception(response.data['meta']['message']);
+      throw Exception(response.data?['message'] ?? 'Failed to update profile');
     } catch (e) {
       showCustomSnackbar(
           title: 'Error',
@@ -75,13 +96,14 @@ class UserService extends GetxService {
       if (token == null) throw Exception('Token not found');
 
       final response = await _userProvider.uploadProfileImage(token, imagePath);
-
-      if (response.statusCode == 200) {
-        return response.data['data']
-            ['imageUrl']; // Adjust based on your API response
+      if (response.statusCode == 200 && response.data != null) {
+        final imageUrl = response.data['data']?['image_url'];
+        if (imageUrl != null && imageUrl is String) {
+          return imageUrl;
+        }
+        throw Exception('Invalid image URL in response');
       }
-
-      throw Exception(response.data['meta']['message']);
+      throw Exception(response.data?['message'] ?? 'Failed to upload image');
     } catch (e) {
       showCustomSnackbar(
           title: 'Error',

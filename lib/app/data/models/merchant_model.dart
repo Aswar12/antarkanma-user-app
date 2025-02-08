@@ -115,7 +115,7 @@ class MerchantModel {
         name: json['name']?.toString() ?? '',
         address: json['address']?.toString() ?? '',
         phoneNumber: json['phone_number']?.toString() ?? '',
-        status: json['status']?.toString()?.toLowerCase() ?? 'active',
+        status: json['status']?.toString().toLowerCase() ?? 'active',
         description: json['description']?.toString(),
         logo: json['logo']?.toString(),
         logoUrl: json['logo_url']?.toString(),

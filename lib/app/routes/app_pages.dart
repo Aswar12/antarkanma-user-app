@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:antarkanma/app/modules/splash/controllers/splash_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -10,6 +10,8 @@ import '../bindings/feature_bindings/checkout_binding.dart';
 import '../bindings/feature_bindings/profile_binding.dart';
 import '../bindings/feature_bindings/product_detail_binding.dart';
 import '../bindings/feature_bindings/cart_binding.dart';
+import '../bindings/feature_bindings/splash_binding.dart';
+import '../bindings/user_main_binding.dart';
 
 import '../modules/auth/views/sign_in_page.dart';
 import '../modules/auth/views/sign_up_page.dart';
@@ -61,7 +63,14 @@ class AppPages {
     GetPage(
       name: Routes.splash,
       page: () => const SplashPage(),
-      binding: InitialBinding(),
+      bindings: [
+        InitialBinding(),
+        BindingsBuilder(() {
+          if (!Get.isRegistered<SplashController>()) {
+            Get.put(SplashController(), permanent: true);
+          }
+        }),
+      ],
     ),
     GetPage(
       name: Routes.login,
@@ -100,7 +109,7 @@ class AppPages {
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
-      binding: HomeBinding(),
+      binding: UserMainBinding(),
       middlewares: [AuthGuard()],
       children: [
         GetPage(

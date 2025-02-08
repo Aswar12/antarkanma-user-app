@@ -1,5 +1,6 @@
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
+import 'package:antarkanma/app/data/models/shipping_details_model.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
@@ -19,12 +20,14 @@ class CheckoutController extends GetxController {
   final AuthController authController;
   final CartController cartController;
   final ShippingService shippingService;
+  final TransactionService transactionService;
 
   CheckoutController({
     required this.userLocationController,
     required this.authController,
     required this.cartController,
     required this.shippingService,
+    required this.transactionService,
   });
 
   // Observable properties
@@ -37,9 +40,9 @@ class CheckoutController extends GetxController {
   final subtotal = 0.0.obs;
   final deliveryFee = 0.0.obs;
   final total = 0.0.obs;
-  
+
   // New shipping preview state
-  final shippingPreview = Rx<Map<int, Map<String, dynamic>>>({});
+  final shippingDetails = Rx<ShippingDetails?>(null);
   final merchantItems = Rx<Map<int, List<OrderItemModel>>>({});
 
   final List<String> paymentMethods = [
@@ -51,13 +54,31 @@ class CheckoutController extends GetxController {
     super.onInit();
     _initializeCheckoutLocation();
     _initializeCheckout();
-    // Set COD as default payment method
     setPaymentMethod('COD');
+    
+    // Listen to location changes
     ever(userLocationController.selectedLocation, (location) {
       if (location != null) {
         setDeliveryLocation(location);
       }
     });
+
+    // Listen to cart changes
+    ever(cartController.merchantItems, (_) {
+      _calculateShippingPreview();
+    });
+  }
+
+  void autoSetInitialValues() {
+    if (selectedLocation.value == null) {
+      _initializeCheckoutLocation();
+    }
+
+    if (selectedPaymentMethod.value == null && paymentMethods.isNotEmpty) {
+      setPaymentMethod(paymentMethods.first);
+    }
+
+    update();
   }
 
   void _initializeCheckoutLocation() {
@@ -67,15 +88,7 @@ class CheckoutController extends GetxController {
         ? userLocationController.userLocations.first
         : null;
 
-    UserLocationModel? priorityLocation;
-
-    if (selectedLocation != null) {
-      priorityLocation = selectedLocation;
-    } else if (defaultLocation != null) {
-      priorityLocation = defaultLocation;
-    } else if (firstLocation != null) {
-      priorityLocation = firstLocation;
-    }
+    UserLocationModel? priorityLocation = selectedLocation ?? defaultLocation ?? firstLocation;
 
     if (priorityLocation != null) {
       this.selectedLocation.value = priorityLocation;
@@ -86,7 +99,7 @@ class CheckoutController extends GetxController {
   void _initializeCheckout() {
     try {
       Map<int, List<CartItemModel>>? merchantCartItems;
-      
+
       // Check if this is a direct purchase
       if (Get.arguments != null && Get.arguments is Map) {
         final args = Get.arguments as Map;
@@ -96,28 +109,20 @@ class CheckoutController extends GetxController {
       }
 
       // If not a direct purchase, get items from cart
-      if (merchantCartItems == null) {
-        final selectedItems = cartController.selectedItems;
-        merchantCartItems = <int, List<CartItemModel>>{};
-        for (var item in selectedItems) {
-          final merchantId = item.merchant.id ?? 0;
-          if (!merchantCartItems.containsKey(merchantId)) {
-            merchantCartItems[merchantId] = [];
-          }
-          merchantCartItems[merchantId]!.add(item);
-        }
-      }
+      merchantCartItems ??= _groupCartItemsByMerchant();
 
       // Convert cart items to order items and group by merchant
       final Map<int, List<OrderItemModel>> groupedItems = {};
       final List<OrderItemModel> allItems = [];
-      
+
       merchantCartItems.forEach((merchantId, items) {
-        final merchantOrderItems = items.map((cartItem) => OrderItemModel.fromCartItem(
-          cartItem,
-          DateTime.now().millisecondsSinceEpoch.toString(),
-        )).toList();
-        
+        final merchantOrderItems = items
+            .map((cartItem) => OrderItemModel.fromCartItem(
+                  cartItem,
+                  DateTime.now().millisecondsSinceEpoch.toString(),
+                ))
+            .toList();
+
         groupedItems[merchantId] = merchantOrderItems;
         allItems.addAll(merchantOrderItems);
       });
@@ -128,6 +133,21 @@ class CheckoutController extends GetxController {
     } catch (e) {
       _handleInitializationError(e);
     }
+  }
+
+  Map<int, List<CartItemModel>> _groupCartItemsByMerchant() {
+    final selectedItems = cartController.selectedItems;
+    final Map<int, List<CartItemModel>> merchantCartItems = {};
+    
+    for (var item in selectedItems) {
+      final merchantId = item.merchant.id ?? 0;
+      if (!merchantCartItems.containsKey(merchantId)) {
+        merchantCartItems[merchantId] = [];
+      }
+      merchantCartItems[merchantId]!.add(item);
+    }
+    
+    return merchantCartItems;
   }
 
   void _handleInitializationError(dynamic error) {
@@ -144,7 +164,7 @@ class CheckoutController extends GetxController {
       0.0,
       (sum, item) => sum + (item.price * item.quantity),
     );
-    
+
     await _calculateShippingPreview();
     _updateDeliveryFee();
     total.value = subtotal.value + deliveryFee.value;
@@ -152,59 +172,65 @@ class CheckoutController extends GetxController {
 
   Future<void> _calculateShippingPreview() async {
     if (orderItems.isEmpty || selectedLocation.value == null) {
-      shippingPreview.value = {};
+      shippingDetails.value = null;
       return;
     }
 
     isCalculatingShipping.value = true;
     try {
-      final Map<int, Map<String, dynamic>> preview = {};
-      
-      // Calculate shipping for each merchant
-      for (final entry in merchantItems.value.entries) {
-        final merchantId = entry.key;
-        
-        if (selectedLocation.value?.id != null) {
-          final shippingData = await shippingService.calculateShipping(
-            userLocationId: selectedLocation.value!.id!,
-            merchantId: merchantId,
-          );
+      final locationId = selectedLocation.value?.id;
+      if (locationId == null) return;
 
-          if (shippingData != null) {
-            preview[merchantId] = {
-              'cost': (shippingData['delivery_cost'] as num).toDouble(),
-              'distance': shippingData['distance'],
-              'duration': shippingData['duration'],
-              'destination': shippingData['destination'],
-            };
+      final items = orderItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+      }).toList();
+
+      final response = await shippingService.getShippingPreview(
+        userLocationId: locationId,
+        items: items,
+      );
+
+      if (response != null) {
+        try {
+          // Check if response has the expected structure
+          if (response['data'] != null && 
+              response['data']['total_shipping_price'] != null &&
+              response['data']['merchant_deliveries'] != null &&
+              response['data']['route_summary'] != null) {
+            
+            shippingDetails.value = ShippingDetails.fromJson(response);
+            _updateDeliveryFee();
+          } else {
+            debugPrint('Invalid shipping preview response structure: $response');
+            shippingDetails.value = null;
           }
+        } catch (e) {
+          debugPrint('Error parsing shipping preview response: $e');
+          shippingDetails.value = null;
         }
       }
-
-      shippingPreview.value = preview;
-      debugPrint('Shipping preview calculated: $preview');
     } catch (e) {
       debugPrint('Error calculating shipping preview: $e');
-      shippingPreview.value = {};
+      shippingDetails.value = null;
     } finally {
       isCalculatingShipping.value = false;
     }
   }
 
   void _updateDeliveryFee() {
-    deliveryFee.value = shippingPreview.value.values
-        .fold(0.0, (sum, preview) => sum + (preview['cost'] as double? ?? 0.0));
+    if (shippingDetails.value != null) {
+      deliveryFee.value = shippingDetails.value!.totalShippingPrice;
+    } else {
+      deliveryFee.value = 0.0;
+    }
   }
 
   void setDeliveryLocation(UserLocationModel location) {
     selectedLocation.value = location;
     userLocationController.setSelectedLocation(location);
-    _calculateTotals();
+    _calculateShippingPreview();
     update();
-  }
-
-  void updateSelectedLocation(UserLocationModel location) {
-    setDeliveryLocation(location);
   }
 
   List<UserLocationModel> get availableLocations {
@@ -223,7 +249,8 @@ class CheckoutController extends GetxController {
     return selectedLocation.value != null &&
         orderItems.isNotEmpty &&
         selectedPaymentMethod.value != null &&
-        !isProcessingCheckout.value;
+        !isProcessingCheckout.value &&
+        (shippingDetails.value?.canProceedToCheckout ?? false);
   }
 
   String? get checkoutBlockReason {
@@ -236,8 +263,11 @@ class CheckoutController extends GetxController {
     if (selectedPaymentMethod.value == null) {
       return 'Pilih metode pembayaran';
     }
+    if (shippingDetails.value?.routeWarningMessage != null) {
+      return shippingDetails.value!.routeWarningMessage;
+    }
     if (isProcessingCheckout.value) {
-      return 'Sedang memproses checkout...';
+      return 'Sedang memproses checkout';
     }
     return null;
   }
@@ -252,33 +282,12 @@ class CheckoutController extends GetxController {
     isLoading.value = true;
 
     try {
-      debugPrint('Order Items before checkout: ${orderItems.length}');
-
       if (!_validateCheckoutData()) {
-        isLoading.value = false;
-        isProcessingCheckout.value = false;
         return;
       }
 
-      final transactionService = Get.find<TransactionService>();
-
-      // Create transaction payload without shipping costs
-      final Map<String, dynamic> transactionPayload = {
-        'user_location_id': selectedLocation.value?.id,
-        'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
-        'items': orderItems
-            .map((item) => {
-                  'product_id': item.product.id,
-                  'quantity': item.quantity,
-                })
-            .toList(),
-      };
-
-      debugPrint('Sending transaction payload');
-
-      // Create transaction
-      final createdTransaction =
-          await transactionService.createTransaction(transactionPayload);
+      final transactionPayload = _createTransactionPayload();
+      final createdTransaction = await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
         debugPrint('Transaction created successfully: ${createdTransaction.id}');
@@ -286,7 +295,6 @@ class CheckoutController extends GetxController {
         _navigateToSuccessPage(createdTransaction);
         Get.find<OrderController>().setTransactionData(createdTransaction);
       } else {
-        debugPrint('Failed to create transaction');
         showCustomSnackbar(
           title: 'Error',
           message: 'Gagal membuat transaksi',
@@ -299,6 +307,19 @@ class CheckoutController extends GetxController {
       isLoading.value = false;
       isProcessingCheckout.value = false;
     }
+  }
+
+  Map<String, dynamic> _createTransactionPayload() {
+    return {
+      'user_location_id': selectedLocation.value?.id,
+      'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
+      'items': orderItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+        'merchant_id': item.merchant.id,
+      }).toList(),
+      'shipping_details': shippingDetails.value?.toJson(),
+    };
   }
 
   String _mapPaymentMethod(String method) {
@@ -330,14 +351,17 @@ class CheckoutController extends GetxController {
       validationErrors.add('Pilih metode pembayaran');
     }
 
-    // Validate merchant IDs
-    final invalidItems =
-        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+    if (shippingDetails.value == null) {
+      validationErrors.add('Informasi pengiriman tidak tersedia');
+    } else if (!shippingDetails.value!.canProceedToCheckout) {
+      validationErrors.add(shippingDetails.value!.routeWarningMessage ?? 'Rute pengiriman tidak valid');
+    }
+
+    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
 
-    // Validate each item
     for (var item in orderItems) {
       if (!item.validate()) {
         validationErrors.add('Item pesanan tidak valid');
@@ -354,13 +378,10 @@ class CheckoutController extends GetxController {
   }
 
   void _showValidationErrorSnackbar(List<String> errors) {
-    Get.snackbar(
-      'Validasi Gagal',
-      errors.join('\n'),
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.7),
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
+    showCustomSnackbar(
+      title: 'Validasi Gagal',
+      message: errors.join('\n'),
+      isError: true,
     );
   }
 
@@ -374,7 +395,6 @@ class CheckoutController extends GetxController {
       'deliveryAddress': selectedLocation.value,
     });
 
-    // Set the transaction in OrderController
     Get.find<OrderController>().setTransactionData(transaction);
   }
 
@@ -396,7 +416,6 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      // Only clear cart if not a direct purchase
       if (Get.arguments == null || (Get.arguments as Map)['type'] != 'direct_buy') {
         cartController.clearCart();
       }
@@ -407,18 +426,6 @@ class CheckoutController extends GetxController {
 
   void setPaymentMethod(String method) {
     selectedPaymentMethod.value = method;
-    update();
-  }
-
-  void autoSetInitialValues() {
-    if (selectedLocation.value == null) {
-      _initializeCheckoutLocation();
-    }
-
-    if (selectedPaymentMethod.value == null && paymentMethods.isNotEmpty) {
-      setPaymentMethod(paymentMethods.first);
-    }
-
     update();
   }
 

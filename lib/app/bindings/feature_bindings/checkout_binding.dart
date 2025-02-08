@@ -4,6 +4,7 @@ import '../../controllers/user_location_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/order_controller.dart';
+import '../../controllers/user_main_controller.dart';
 import '../../services/shipping_service.dart';
 import '../../services/location_service.dart';
 import '../../services/merchant_service.dart';
@@ -72,14 +73,18 @@ class CheckoutBinding extends Bindings {
         permanent: true,
       );
     }
+    if (!Get.isRegistered<UserMainController>()) {
+      Get.put(UserMainController(), permanent: true);
+    }
 
     // Finally, put the CheckoutController
-    Get.lazyPut(
-      () => CheckoutController(
+    Get.put(
+      CheckoutController(
         userLocationController: Get.find<UserLocationController>(),
         authController: Get.find<AuthController>(),
         cartController: Get.find<CartController>(),
         shippingService: Get.find<ShippingService>(),
+        transactionService: Get.find<TransactionService>(),
       ),
     );
   }

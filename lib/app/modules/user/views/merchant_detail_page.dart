@@ -1,6 +1,5 @@
-import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/services/merchant_service.dart';
+import 'package:antarkanma/app/controllers/merchant_detail_controller.dart';
 import 'package:antarkanma/app/widgets/merchant_detail_section.dart';
 import 'package:antarkanma/app/widgets/product_grid_card.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
@@ -8,186 +7,113 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class MerchantDetailController extends GetxController {
-  final MerchantService _merchantService;
-
-  MerchantDetailController({required MerchantService merchantService})
-      : _merchantService = merchantService;
-
-  final merchantId = 0.obs;
-  final merchant = Rxn<MerchantModel>();
-  final products = <ProductModel>[].obs;
-  final isLoading = true.obs;
-  final searchController = TextEditingController();
-  final searchQuery = ''.obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-    if (Get.arguments != null && Get.arguments is Map) {
-      merchantId.value = Get.arguments['merchantId'] as int;
-      loadMerchantDetail();
-    }
-  }
-
-  Future<void> loadMerchantDetail() async {
-    try {
-      isLoading(true);
-      final merchantData =
-          await _merchantService.getMerchantById(merchantId.value);
-      merchant.value = merchantData;
-      await loadMerchantProducts();
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Gagal memuat detail merchant',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isLoading(false);
-    }
-  }
-
-  Future<void> loadMerchantProducts() async {
-    try {
-      final response = await _merchantService.getMerchantProducts(
-        merchantId.value,
-        query: searchQuery.value,
-      );
-      products.value = response.data;
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Gagal memuat produk merchant',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
-  Future<void> searchProducts(String query) async {
-    searchQuery.value = query;
-    await loadMerchantProducts();
-  }
-}
-
-class MerchantDetailPage extends StatelessWidget {
+class MerchantDetailPage extends GetView<MerchantDetailController> {
   const MerchantDetailPage({super.key});
+
+  Widget buildSearchBar() {
+    return Expanded(
+      child: Container(
+        height: 40,
+        margin: EdgeInsets.only(
+          left: Dimenssions.width2,
+          right: Dimenssions.width12,
+        ),
+        child: SearchInputField(
+          controller: controller.searchController,
+          hintText: 'Cari produk di toko ini',
+          onClear: () {
+            controller.searchController.clear();
+            controller.searchProducts('');
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
+          onChanged: (value) => controller.searchProducts(value),
+        ),
+      ),
+    );
+  }
+
+  Widget buildProductGrid() {
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return SizedBox(
+          height: 200,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: logoColorSecondary,
+            ),
+          ),
+        );
+      }
+
+      if (controller.products.isEmpty) {
+        return SizedBox(
+          height: 200,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.shopping_bag_outlined,
+                  size: Dimenssions.iconSize24 * 2,
+                  color: secondaryTextColor,
+                ),
+                SizedBox(height: Dimenssions.height10),
+                Text(
+                  'Tidak ada produk',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font16,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return GridView.builder(
+        padding: EdgeInsets.zero,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.65,
+          mainAxisSpacing: Dimenssions.height15,
+          crossAxisSpacing: Dimenssions.width15,
+        ),
+        itemCount: controller.products.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) {
+          final product = controller.products[index];
+          // Ensure product has merchant data before navigation
+          final productWithMerchant = ProductModel(
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            galleries: product.galleries,
+            price: product.price,
+            status: product.status,
+            merchant: controller.merchant.value,  // Include current merchant data
+            category: product.category,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+            variants: product.variants,
+            reviews: product.reviews,
+            averageRatingRaw: product.averageRatingRaw,
+            totalReviewsRaw: product.totalReviewsRaw,
+            ratingInfo: product.ratingInfo,
+          );
+          
+          return ProductGridCard(
+            product: productWithMerchant,
+            onTap: () => Get.toNamed('/product-detail', arguments: productWithMerchant),
+          );
+        },
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(
-      MerchantDetailController(
-        merchantService: Get.find<MerchantService>(),
-      ),
-      tag: Get.arguments?['merchantId']?.toString(),
-    );
-
-    Widget buildSearchBar() {
-      return Expanded(
-        child: Container(
-          height: 40,
-          margin: EdgeInsets.only(
-            left: Dimenssions.width2, // Very small left margin
-            right: Dimenssions.width12, // Right padding
-          ),
-          child: SearchInputField(
-            controller: controller.searchController,
-            hintText: 'Cari produk di toko ini',
-            onClear: () {
-              controller.searchController.clear();
-              controller.searchProducts('');
-              FocusManager.instance.primaryFocus?.unfocus();
-            },
-            onChanged: (value) => controller.searchProducts(value),
-          ),
-        ),
-      );
-    }
-
-    Widget buildProductGrid() {
-      return Obx(() {
-        if (controller.isLoading.value) {
-          return SizedBox(
-            height: 200,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: logoColorSecondary,
-              ),
-            ),
-          );
-        }
-
-        if (controller.products.isEmpty) {
-          return SizedBox(
-            height: 200,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.shopping_bag_outlined,
-                    size: Dimenssions.iconSize24 * 2,
-                    color: secondaryTextColor,
-                  ),
-                  SizedBox(height: Dimenssions.height10),
-                  Text(
-                    'Tidak ada produk',
-                    style: primaryTextStyle.copyWith(
-                      fontSize: Dimenssions.font16,
-                      color: secondaryTextColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return GridView.builder(
-          padding: EdgeInsets.zero,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            mainAxisSpacing: Dimenssions.height15,
-            crossAxisSpacing: Dimenssions.width15,
-          ),
-          itemCount: controller.products.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: (context, index) {
-            final product = controller.products[index];
-            // Ensure product has merchant data before navigation
-            final productWithMerchant = ProductModel(
-              id: product.id,
-              name: product.name,
-              description: product.description,
-              galleries: product.galleries,
-              price: product.price,
-              status: product.status,
-              merchant: controller.merchant.value,  // Include current merchant data
-              category: product.category,
-              createdAt: product.createdAt,
-              updatedAt: product.updatedAt,
-              variants: product.variants,
-              reviews: product.reviews,
-              averageRatingRaw: product.averageRatingRaw,
-              totalReviewsRaw: product.totalReviewsRaw,
-              ratingInfo: product.ratingInfo,
-            );
-            
-            return ProductGridCard(
-              product: productWithMerchant,
-              onTap: () => Get.toNamed('/product-detail', arguments: productWithMerchant),
-            );
-          },
-        );
-      });
-    }
-
     return Scaffold(
       backgroundColor: backgroundColor1,
       appBar: PreferredSize(
@@ -233,8 +159,7 @@ class MerchantDetailPage extends StatelessWidget {
           slivers: [
             if (controller.merchant.value != null)
               SliverToBoxAdapter(
-                child:
-                    MerchantDetailSection(merchant: controller.merchant.value!),
+                child: MerchantDetailSection(merchant: controller.merchant.value!),
               ),
             SliverPadding(
               padding: EdgeInsets.symmetric(

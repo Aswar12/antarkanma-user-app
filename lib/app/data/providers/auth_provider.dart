@@ -1,13 +1,24 @@
 import 'package:antarkanma/config.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthProvider {
-  final Dio _dio = Dio();
+  static AuthProvider? _instance;
+  late final Dio _dio;
   final String baseUrl = Config.baseUrl;
 
-  AuthProvider() {
+  // Private constructor
+  AuthProvider._() {
+    _dio = Dio();
     _setupBaseOptions();
     _setupInterceptors();
+    debugPrint('AuthProvider initialized with baseUrl: $baseUrl');
+  }
+
+  // Factory constructor to return the singleton instance
+  factory AuthProvider() {
+    _instance ??= AuthProvider._();
+    return _instance!;
   }
 
   void _setupBaseOptions() {
@@ -15,21 +26,34 @@ class AuthProvider {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => status! < 500,
+      sendTimeout: const Duration(seconds: 30),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      validateStatus: (status) {
+        return status != null && status < 500;
+      },
+      followRedirects: true,
+      maxRedirects: 5,
     );
   }
 
   void _setupInterceptors() {
+    _dio.interceptors.clear();
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          options.headers['Accept'] = 'application/json';
+          debugPrint('REQUEST[${options.method}] => PATH: ${options.path}');
           return handler.next(options);
         },
         onResponse: (response, handler) {
+          debugPrint('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
           return handler.next(response);
         },
         onError: (DioException error, handler) {
+          debugPrint('ERROR[${error.response?.statusCode}] => PATH: ${error.requestOptions.path}');
+          
           // Don't throw errors during silent requests
           if (error.requestOptions.extra['silent'] == true) {
             return handler.resolve(Response(
@@ -44,6 +68,17 @@ class AuthProvider {
         },
       ),
     );
+
+    // Add logging interceptor in debug mode
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        logPrint: (obj) {
+          debugPrint(obj.toString());
+        },
+      ));
+    }
   }
 
   Future<Response> getProfile(String token, {bool silent = false}) async {
@@ -67,6 +102,7 @@ class AuthProvider {
       );
       return response;
     } catch (e) {
+      debugPrint('Error in getProfile: $e');
       // For silent requests, return fake success response
       if (silent) {
         return Response(
@@ -75,7 +111,7 @@ class AuthProvider {
           data: {'data': null},
         );
       }
-      throw Exception('Failed to get profile: $e');
+      rethrow;
     }
   }
 
@@ -97,6 +133,7 @@ class AuthProvider {
       );
       return response;
     } catch (e) {
+      debugPrint('Error in login: $e');
       if (silent) {
         return Response(
           requestOptions: RequestOptions(path: Config.login),
@@ -104,7 +141,7 @@ class AuthProvider {
           data: {'data': null},
         );
       }
-      throw Exception('Login failed: $e');
+      rethrow;
     }
   }
 
@@ -112,7 +149,8 @@ class AuthProvider {
     try {
       return await _dio.post(Config.register, data: userData);
     } catch (e) {
-      throw Exception('Registration failed: $e');
+      debugPrint('Error in register: $e');
+      rethrow;
     }
   }
 
@@ -131,6 +169,7 @@ class AuthProvider {
       );
       return response;
     } catch (e) {
+      debugPrint('Error in refreshToken: $e');
       if (silent) {
         return Response(
           requestOptions: RequestOptions(path: '/auth/refresh'),
@@ -138,7 +177,7 @@ class AuthProvider {
           data: {'data': null},
         );
       }
-      throw Exception('Failed to refresh token: $e');
+      rethrow;
     }
   }
 
@@ -155,16 +194,17 @@ class AuthProvider {
         data: formData,
       );
     } on DioException catch (e) {
+      debugPrint('DioError in updateProfilePhoto: $e');
       if (e.response?.statusCode == 413) {
         throw Exception('File size too large. Maximum size is 2MB.');
       } else if (e.response?.statusCode == 415) {
         throw Exception('Invalid file type. Please upload an image file.');
       }
-      print('Error response: ${e.response?.data}');
-      throw Exception('Failed to update profile photo: ${e.message}');
+      debugPrint('Error response: ${e.response?.data}');
+      rethrow;
     } catch (e) {
-      print('Error updating photo: $e');
-      throw Exception('Failed to update profile photo: $e');
+      debugPrint('Error in updateProfilePhoto: $e');
+      rethrow;
     }
   }
 
@@ -181,6 +221,7 @@ class AuthProvider {
         data: data,
       );
     } on DioException catch (e) {
+      debugPrint('DioError in updateProfile: $e');
       if (e.response?.statusCode == 422) {
         final errors = e.response?.data['errors'];
         if (errors != null) {
@@ -192,9 +233,10 @@ class AuthProvider {
           }
         }
       }
-      throw Exception('Failed to update profile: ${e.message}');
+      rethrow;
     } catch (e) {
-      throw Exception('Failed to update profile: $e');
+      debugPrint('Error in updateProfile: $e');
+      rethrow;
     }
   }
 
@@ -207,7 +249,8 @@ class AuthProvider {
         data: data,
       );
     } catch (e) {
-      throw Exception('Failed to change password: $e');
+      debugPrint('Error in changePassword: $e');
+      rethrow;
     }
   }
 
@@ -226,6 +269,7 @@ class AuthProvider {
       );
       return response;
     } catch (e) {
+      debugPrint('Error in logout: $e');
       if (silent) {
         return Response(
           requestOptions: RequestOptions(path: '/auth/logout'),
@@ -233,7 +277,7 @@ class AuthProvider {
           data: {'data': null},
         );
       }
-      throw Exception('Logout failed: $e');
+      rethrow;
     }
   }
 
@@ -252,6 +296,7 @@ class AuthProvider {
       );
       return response;
     } catch (e) {
+      debugPrint('Error in getCurrentUser: $e');
       if (silent) {
         return Response(
           requestOptions: RequestOptions(path: '/auth/user'),
@@ -259,7 +304,7 @@ class AuthProvider {
           data: {'data': null},
         );
       }
-      throw Exception('Failed to get current user: $e');
+      rethrow;
     }
   }
 

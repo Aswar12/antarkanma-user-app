@@ -9,15 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
-class CartPage extends StatefulWidget {
+class CartPage extends GetView<CartController> {
   const CartPage({super.key});
-
-  @override
-  State<CartPage> createState() => _CartPageState();
-}
-
-class _CartPageState extends State<CartPage> {
-  final CartController cartController = Get.find<CartController>();
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +76,7 @@ class _CartPageState extends State<CartPage> {
           ),
           TextButton(
             onPressed: () {
-              cartController.clearCart();
+              controller.clearCart();
               Get.back();
             },
             child: const Text('Hapus'),
@@ -207,7 +200,7 @@ class _CartPageState extends State<CartPage> {
               ),
               TextButton(
                 onPressed: () {
-                  cartController.removeFromCart(merchantId, index);
+                  controller.removeFromCart(merchantId, index);
                   Get.back(result: true);
                 },
                 child: const Text('Hapus'),
@@ -223,7 +216,7 @@ class _CartPageState extends State<CartPage> {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () {
-                cartController.undoRemove(merchantId, index, item);
+                controller.undoRemove(merchantId, index, item);
               },
             ),
           ),
@@ -246,7 +239,7 @@ class _CartPageState extends State<CartPage> {
                     child: Checkbox(
                       value: item.isSelected,
                       onChanged: (bool? value) {
-                        cartController.toggleItemSelection(merchantId, index);
+                        controller.toggleItemSelection(merchantId, index);
                       },
                       activeColor: logoColorSecondary,
                       side: BorderSide(
@@ -348,7 +341,7 @@ class _CartPageState extends State<CartPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               InkWell(
-                                onTap: () => cartController.decrementQuantity(
+                                onTap: () => controller.decrementQuantity(
                                     merchantId, index),
                                 child: Container(
                                   padding: EdgeInsets.symmetric(
@@ -380,7 +373,7 @@ class _CartPageState extends State<CartPage> {
                                 ),
                               ),
                               InkWell(
-                                onTap: () => cartController.incrementQuantity(
+                                onTap: () => controller.incrementQuantity(
                                     merchantId, index),
                                 child: Container(
                                   padding: EdgeInsets.symmetric(

@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/data/models/user_model.dart';
+import 'package:antarkanma/app/data/models/shipping_details_model.dart';
 
 class OrderModel {
   final dynamic id;
@@ -8,6 +9,7 @@ class OrderModel {
   final double totalAmount;
   final DateTime? createdAt;
   final List<OrderItemModel> orderItems;
+  final int merchantId;
 
   OrderModel({
     this.id,
@@ -15,6 +17,7 @@ class OrderModel {
     required this.totalAmount,
     this.createdAt,
     required this.orderItems,
+    required this.merchantId,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +44,7 @@ class OrderModel {
       totalAmount: amount,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       orderItems: orderItems,
+      merchantId: json['merchant_id'] ?? 0,
     );
   }
 
@@ -51,6 +55,7 @@ class OrderModel {
       'total_amount': totalAmount,
       'created_at': createdAt?.toIso8601String(),
       'order_items': orderItems.map((item) => item.toJson()).toList(),
+      'merchant_id': merchantId,
     };
   }
 
@@ -77,6 +82,7 @@ class TransactionModel {
   final UserLocationModel? userLocation;
   final List<OrderModel> orders;
   final UserModel? user;
+  final ShippingDetails? shippingDetails;
 
   TransactionModel({
     this.id,
@@ -94,6 +100,7 @@ class TransactionModel {
     this.userLocation,
     required this.orders,
     this.user,
+    this.shippingDetails,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -132,6 +139,12 @@ class TransactionModel {
       UserModel? user;
       if (transactionData['user'] != null) {
         user = UserModel.fromJson(transactionData['user']);
+      }
+
+      // Parse shipping details
+      ShippingDetails? shippingDetails;
+      if (transactionData['shipping_details'] != null) {
+        shippingDetails = ShippingDetails.fromJson(transactionData['shipping_details']);
       }
 
       // Parse prices that could be string or number
@@ -173,6 +186,7 @@ class TransactionModel {
         userLocation: userLocation,
         orders: orders,
         user: user,
+        shippingDetails: shippingDetails,
       );
     } catch (e, stackTrace) {
       print('Error parsing TransactionModel: $e');
@@ -221,6 +235,7 @@ class TransactionModel {
       'user_location': userLocation?.toJson(),
       'orders': orders.map((order) => order.toJson()).toList(),
       'user': user?.toJson(),
+      'shipping_details': shippingDetails?.toJson(),
     };
   }
 
@@ -276,6 +291,7 @@ class TransactionModel {
     UserLocationModel? userLocation,
     List<OrderModel>? orders,
     UserModel? user,
+    ShippingDetails? shippingDetails,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -293,6 +309,7 @@ class TransactionModel {
       userLocation: userLocation ?? this.userLocation,
       orders: orders ?? this.orders,
       user: user ?? this.user,
+      shippingDetails: shippingDetails ?? this.shippingDetails,
     );
   }
 }

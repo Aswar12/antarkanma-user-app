@@ -6,16 +6,83 @@ import './storage_service.dart';
 
 class LocationService extends GetxService {
   final StorageService _storageService = StorageService.instance;
+
   final RxDouble latitude = 0.0.obs;
   final RxDouble longitude = 0.0.obs;
   final RxBool isLocationAvailable = false.obs;
+  final RxBool isInitialized = false.obs;
 
-  Future<LocationService> init() async {
-    await getCurrentLocation();
-    return this;
+  late double defaultLatitude;
+  late double defaultLongitude;
+
+  static const String _locationKey = 'user_default_location';
+
+  Future<void> init() async {
+    try {
+      // Load stored location if available
+      final storedLocation = _storageService.getMap(_locationKey);
+      if (storedLocation != null) {
+        defaultLatitude = storedLocation['latitude'];
+        defaultLongitude = storedLocation['longitude'];
+        debugPrint('Loaded default location from storage: $defaultLatitude, $defaultLongitude');
+      } else {
+        // Request current location if no stored location
+        await _requestCurrentLocation();
+      }
+
+      // Set initial values
+      latitude.value = defaultLatitude;
+      longitude.value = defaultLongitude;
+      isLocationAvailable.value = false;
+      isInitialized.value = true;
+
+      // Try to get current location in the background
+      getCurrentLocation().then((location) {
+        if (!location['isDefault']) {
+          latitude.value = location['latitude'];
+          longitude.value = location['longitude'];
+          isLocationAvailable.value = true;
+        }
+      }).catchError((e) {
+        debugPrint('Error getting location in background: $e');
+      });
+    } catch (e) {
+      debugPrint('Error in location service initialization: $e');
+      // Fallback to default coordinates
+      defaultLatitude = -6.2088;
+      defaultLongitude = 106.8456;
+      latitude.value = defaultLatitude;
+      longitude.value = defaultLongitude;
+      isLocationAvailable.value = false;
+      isInitialized.value = true;
+    }
   }
 
-  Future<Position?> getCurrentLocation({bool forceUpdate = false}) async {
+  Future<void> _requestCurrentLocation() async {
+    final hasPermission = await LocationPermissionHandler.handleLocationPermission();
+    if (hasPermission) {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Save as default location
+      await _storageService.saveMap(_locationKey, {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+      defaultLatitude = position.latitude;
+      defaultLongitude = position.longitude;
+      debugPrint('Saved new default location: $defaultLatitude, $defaultLongitude');
+    } else {
+      // Use Jakarta as fallback
+      defaultLatitude = -6.2088;
+      defaultLongitude = 106.8456;
+      debugPrint('Using Jakarta as fallback location');
+    }
+  }
+
+  Future<Map<String, dynamic>> getCurrentLocation({bool forceUpdate = false}) async {
     try {
       Position? mostAccuratePosition;
       double bestAccuracy = double.infinity;
@@ -59,7 +126,14 @@ class LocationService extends GetxService {
           latitude.value = mostAccuratePosition.latitude;
           longitude.value = mostAccuratePosition.longitude;
           isLocationAvailable.value = true;
-          return mostAccuratePosition;
+          return {
+            'position': mostAccuratePosition,
+            'latitude': mostAccuratePosition.latitude,
+            'longitude': mostAccuratePosition.longitude,
+            'accuracy': mostAccuratePosition.accuracy,
+            'isDefault': false,
+            'timestamp': DateTime.now().millisecondsSinceEpoch
+          };
         }
       }
 
@@ -67,7 +141,14 @@ class LocationService extends GetxService {
       bool hasPermission = await LocationPermissionHandler.handleLocationPermission();
       if (!hasPermission) {
         debugPrint('Location permission not granted');
-        return null;
+        return {
+          'latitude': latitude.value,
+          'longitude': longitude.value,
+          'accuracy': double.infinity,
+          'isDefault': true,
+          'error': 'Location permission not granted',
+          'timestamp': DateTime.now().millisecondsSinceEpoch
+        };
       }
 
       Position position = await Geolocator.getCurrentPosition(
@@ -80,42 +161,71 @@ class LocationService extends GetxService {
       isLocationAvailable.value = true;
 
       // Save to storage for future requests with accuracy info
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       await _storageService.saveMap('user_location', {
         'latitude': position.latitude,
         'longitude': position.longitude,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'timestamp': timestamp,
         'accuracy': position.accuracy,
       });
 
+      // Update default location if this is an accurate fix
+      if (position.accuracy < 50) {  // Less than 50 meters accuracy
+        await _storageService.saveMap(_locationKey, {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'timestamp': timestamp,
+        });
+        defaultLatitude = position.latitude;
+        defaultLongitude = position.longitude;
+        debugPrint('Updated default location with accurate position: ${position.latitude}, ${position.longitude}');
+      }
+
       debugPrint('New location obtained: ${position.latitude}, ${position.longitude}');
-      return position;
+      return {
+        'position': position,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+        'isDefault': false,
+        'timestamp': DateTime.now().millisecondsSinceEpoch
+      };
     } catch (e) {
       debugPrint('Error getting location: $e');
-      return null;
+      // Return default location on error
+      return {
+        'latitude': latitude.value,
+        'longitude': longitude.value,
+        'accuracy': double.infinity,
+        'isDefault': true,
+        'error': e.toString(),
+        'timestamp': DateTime.now().millisecondsSinceEpoch
+      };
     }
   }
 
-  Future<Map<String, double>?> getLastKnownLocation() async {
+  Future<Map<String, dynamic>> getLastKnownLocation() async {
     try {
       Position? mostAccuratePosition;
       double bestAccuracy = double.infinity;
-      
+
       // Try to get from device's last known position
       Position? devicePosition = await Geolocator.getLastKnownPosition();
       if (devicePosition != null && devicePosition.accuracy < bestAccuracy) {
         mostAccuratePosition = devicePosition;
         bestAccuracy = devicePosition.accuracy;
       }
-      
+
       // Check stored location
       final storedLocation = _storageService.getMap('user_location');
       if (storedLocation != null) {
         final timestamp = storedLocation['timestamp'] as int;
         final age = DateTime.now().millisecondsSinceEpoch - timestamp;
         final storedAccuracy = storedLocation['accuracy'] as double? ?? double.infinity;
-        
+
         // Only consider stored location if it's less than 1 hour old and more accurate
-        if (age <= 3600000 && storedAccuracy < bestAccuracy) { // 1 hour in milliseconds
+        if (age <= 3600000 && storedAccuracy < bestAccuracy) {
+          // 1 hour in milliseconds
           mostAccuratePosition = Position(
             latitude: storedLocation['latitude'] as double,
             longitude: storedLocation['longitude'] as double,
@@ -141,53 +251,83 @@ class LocationService extends GetxService {
         return {
           'latitude': mostAccuratePosition.latitude,
           'longitude': mostAccuratePosition.longitude,
+          'isDefault': false,
+          'accuracy': mostAccuratePosition.accuracy
         };
       }
 
-      // If no valid location found or accuracy not good enough, try to get current location
-      return getCurrentLocation(forceUpdate: true).then((position) {
-        if (position != null) {
-          return {
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-          };
-        }
-        return null;
-      });
-    } catch (e) {
-      debugPrint('Error getting last known location: $e');
-      return null;
-    }
-  }
-
-  Future<double?> calculateDistance(double targetLat, double targetLng) async {
-    try {
-      if (!isLocationAvailable.value) {
-        await getCurrentLocation();
+      // Try to get current location
+      final currentLocation = await getCurrentLocation(forceUpdate: true);
+      if (!currentLocation['isDefault']) {
+        return currentLocation;
       }
 
-      if (isLocationAvailable.value) {
-        return Geolocator.distanceBetween(
-          latitude.value,
-          longitude.value,
-          targetLat,
-          targetLng,
-        );
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error calculating distance: $e');
-      return null;
-    }
-  }
-
-  Map<String, double>? getCurrentCoordinates() {
-    if (isLocationAvailable.value) {
+      // Return default location if no actual location available
       return {
         'latitude': latitude.value,
         'longitude': longitude.value,
+        'isDefault': true,
+        'accuracy': double.infinity
+      };
+    } catch (e) {
+      debugPrint('Error getting last known location: $e');
+      // Return default location on error
+      return {
+        'latitude': latitude.value,
+        'longitude': longitude.value,
+        'isDefault': true,
+        'accuracy': double.infinity,
+        'error': e.toString()
       };
     }
-    return null;
+  }
+
+  Future<Map<String, dynamic>> calculateDistance(
+      double targetLat, double targetLng) async {
+    try {
+      if (!isLocationAvailable.value && !isInitialized.value) {
+        await getCurrentLocation();
+      }
+
+      final distance = Geolocator.distanceBetween(
+        latitude.value,
+        longitude.value,
+        targetLat,
+        targetLng,
+      );
+
+      return {
+        'distance': distance,
+        'isDefault': !isLocationAvailable.value,
+        'fromLocation': {
+          'latitude': latitude.value,
+          'longitude': longitude.value
+        }
+      };
+    } catch (e) {
+      debugPrint('Error calculating distance: $e');
+      return {
+        'error': e.toString(),
+        'isDefault': !isLocationAvailable.value,
+        'fromLocation': {
+          'latitude': latitude.value,
+          'longitude': longitude.value
+        }
+      };
+    }
+  }
+
+  Map<String, dynamic> getCurrentCoordinates() {
+    return {
+      'latitude': latitude.value,
+      'longitude': longitude.value,
+      'isDefault': !isLocationAvailable.value,
+    };
+  }
+
+  bool isUsingDefaultLocation() {
+    return isInitialized.value && !isLocationAvailable.value;
   }
 }
+
+

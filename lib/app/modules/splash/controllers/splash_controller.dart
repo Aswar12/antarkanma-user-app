@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,8 +9,8 @@ import '../../../routes/app_pages.dart';
 import '../../../data/models/user_model.dart';
 import '../../../utils/location_permission_handler.dart';
 import '../../../services/location_service.dart';
-import '../../../services/fcm_token_service.dart';
 import '../../../services/user_location_service.dart';
+import '../../../data/providers/auth_provider.dart';
 
 class SplashController extends GetxController {
   // State
@@ -18,160 +20,229 @@ class SplashController extends GetxController {
   String get currentState => _currentState.value;
 
   // Services
-  late final AuthService _authService;
   late final StorageService _storageService;
+  late final AuthService _authService;
+  late final LocationService _locationService;
+  late final UserLocationService _userLocationService;
 
   @override
   void onInit() {
     super.onInit();
-    _initializeServices();
-    _initializeApp();
-  }
-
-  void _initializeServices() {
-    try {
-      _authService = Get.find<AuthService>();
-      _storageService = StorageService.instance;
-    } catch (e) {
-      debugPrint('Error initializing services: $e');
-    }
+    // Start initialization after frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeApp();
+    });
   }
 
   Future<void> _initializeApp() async {
     try {
-      // Step 1: Check if this is first launch
-      final isFirstLaunch = _storageService.getBool('first_launch') ?? true;
-      
-      if (isFirstLaunch) {
-        _currentState.value = 'Requesting Permissions...';
-        // Request initial permissions on first launch
-        await _requestInitialPermissions();
-        // Mark first launch complete
-        await _storageService.saveBool('first_launch', false);
+      // Get services that were initialized in bindings
+      _currentState.value = 'Loading core services...';
+      await _initializeServices();
+
+      // Initialize storage and check first launch
+      _currentState.value = 'Loading app data...';
+      await _initializeStorage();
+
+      // Request permissions if needed
+      _currentState.value = 'Checking permissions...';
+      await _requestInitialPermissions();
+
+      // Initialize location services
+      _currentState.value = 'Setting up location services...';
+      await _initializeLocationServices();
+
+      // Initialize notifications if permitted
+      _currentState.value = 'Setting up notifications...';
+      await _initializeNotifications();
+
+      // Quick auth check
+      _currentState.value = 'Checking authentication...';
+      await _quickAuthCheck();
+
+      // Show splash for minimum time
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Navigate based on auth status
+      await _handleNavigation();
+    } catch (e) {
+      debugPrint('Error in splash initialization: $e');
+      _handleError(e);
+    }
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      // Get StorageService
+      _storageService = Get.find<StorageService>();
+
+      // Initialize AuthProvider if not already initialized
+      if (!Get.isRegistered<AuthProvider>()) {
+        Get.put(AuthProvider(), permanent: true);
       }
 
-      // Step 2: Check stored auth data
-      _currentState.value = 'Checking Authentication...';
-      await _checkStoredAuthData();
+      // Initialize AuthService if not already initialized
+      if (!Get.isRegistered<AuthService>()) {
+        Get.put(AuthService(), permanent: true);
+      }
+      _authService = Get.find<AuthService>();
 
-      // Step 3: Try auto login if needed
-      if (!_authService.isLoggedIn.value) {
-        await _tryAutoLogin();
+      // Initialize LocationService if not already initialized
+      if (!Get.isRegistered<LocationService>()) {
+        Get.put(LocationService(), permanent: true);
+      }
+      _locationService = Get.find<LocationService>();
+
+      // Initialize UserLocationService if not already initialized
+      if (!Get.isRegistered<UserLocationService>()) {
+        Get.put(UserLocationService(), permanent: true);
+      }
+      _userLocationService = Get.find<UserLocationService>();
+
+      debugPrint('All services initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing services: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeStorage() async {
+    try {
+      // Initialize storage keys if first launch
+      if (_storageService.getBool('first_launch') ?? true) {
+        await _initializeFirstLaunch();
+      }
+    } catch (e) {
+      debugPrint('Error initializing storage: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeFirstLaunch() async {
+    await _storageService.saveBool('first_launch', false);
+    await _storageService.saveMap('permissions', {
+      'location': false,
+      'storage': false,
+      'notification': false,
+    });
+    await _storageService.saveMap('app_state', {
+      'last_launch': DateTime.now().millisecondsSinceEpoch,
+      'version': '1.0.0',
+      'initialized': true,
+    });
+  }
+
+  Future<void> _initializeLocationServices() async {
+    try {
+      // Initialize location service
+      await _locationService.init();
+
+      // Initialize user location service if location permission granted
+      if (await Permission.location.isGranted) {
+        await _userLocationService.loadUserLocations();
+      }
+    } catch (e) {
+      debugPrint('Location service initialization error: $e');
+      // Don't rethrow as location services are not critical
+    }
+  }
+
+  Future<void> _requestInitialPermissions() async {
+    final permissions = <Permission>[
+      Permission.location,
+      Permission.storage,
+      Permission.notification,
+    ];
+
+    for (final permission in permissions) {
+      if (await permission.status.isDenied) {
+        _currentState.value = 'Requesting ${permission.toString()} Permission...';
+        await permission.request();
+      }
+    }
+
+    // Save permission states
+    await _storageService.saveMap('permissions', {
+      'location': await Permission.location.isGranted,
+      'storage': await Permission.storage.isGranted,
+      'notification': await Permission.notification.isGranted,
+    });
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      if (await Permission.notification.isDenied) {
+        final status = await Permission.notification.request();
+        if (!status.isGranted) return;
       }
 
-      // Step 4: If authenticated, initialize required services
+      await _storageService.saveMap('permissions', {
+        ..._storageService.getMap('permissions') ?? {},
+        'notification': true,
+      });
+    } catch (e) {
+      debugPrint('Notification initialization error: $e');
+    }
+  }
+
+  Future<void> _quickAuthCheck() async {
+    final token = _storageService.getToken();
+    final userData = _storageService.getUser();
+    
+    if (token != null && userData != null) {
+      try {
+        _authService.currentUser.value = UserModel.fromJson(userData);
+        _authService.isLoggedIn.value = true;
+      } catch (e) {
+        debugPrint('Error in quick auth check: $e');
+        await _storageService.clearAuth();
+      }
+    }
+  }
+
+  Future<void> _handleNavigation() async {
+    try {
       if (_authService.isLoggedIn.value) {
-        _currentState.value = 'Loading User Data...';
-        await _initializeAuthenticatedServices();
-        
-        // Navigate to main page
+        // Try auto login if remember me is enabled
+        if (_storageService.getRememberMe()) {
+          _currentState.value = 'Logging in...';
+          await _tryAutoLogin();
+        }
         Get.offAllNamed(Routes.userMainPage);
       } else {
-        // Navigate to login
         Get.offAllNamed(Routes.login);
       }
     } catch (e) {
-      debugPrint('Error in splash controller: $e');
+      debugPrint('Navigation error: $e');
       Get.offAllNamed(Routes.login);
     } finally {
       _isLoading.value = false;
     }
   }
 
-  Future<void> _checkStoredAuthData() async {
-    try {
-      final token = _storageService.getToken();
-      final userData = _storageService.getUser();
-
-      if (token != null && userData != null) {
-        final isValid = await _authService.verifyToken(token);
-        if (isValid) {
-          try {
-            _authService.currentUser.value = UserModel.fromJson(userData);
-            _authService.isLoggedIn.value = true;
-          } catch (e) {
-            debugPrint('Error loading stored user data: $e');
-            await _storageService.clearAuth();
-          }
-        } else {
-          await _storageService.clearAuth();
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking stored auth data: $e');
-      await _storageService.clearAuth();
-    }
-  }
-
   Future<void> _tryAutoLogin() async {
     try {
-      if (_storageService.getRememberMe()) {
-        _currentState.value = 'Attempting Auto-login...';
-        final credentials = _storageService.getSavedCredentials();
-        if (credentials != null) {
-          await _authService.login(
-            credentials['identifier']!,
-            credentials['password']!,
-            rememberMe: true,
-            isAutoLogin: true,
-            showError: false,
-          );
-        }
+      final credentials = _storageService.getSavedCredentials();
+      if (credentials != null) {
+        await _authService.login(
+          credentials['identifier']!,
+          credentials['password']!,
+          rememberMe: true,
+          isAutoLogin: true,
+          showError: false,
+        );
       }
     } catch (e) {
-      debugPrint('Error in auto login: $e');
+      debugPrint('Auto login error: $e');
     }
   }
 
-  Future<void> _initializeAuthenticatedServices() async {
-    try {
-      // Step 1: Update user profile
-      _currentState.value = 'Updating Profile...';
-      await _authService.getProfile(showError: false);
-
-      // Step 2: Check and initialize location services
-      _currentState.value = 'Checking Location Services...';
-      if (await LocationPermissionHandler.handleLocationPermission()) {
-        final locationService = Get.find<LocationService>();
-        final userLocationService = Get.find<UserLocationService>();
-        await locationService.getCurrentLocation();
-      }
-      
-      // Step 3: Initialize FCM token
-      _currentState.value = 'Initializing Notifications...';
-      final fcmService = Get.find<FCMTokenService>();
-      await fcmService.init();
-
-    } catch (e) {
-      debugPrint('Error initializing authenticated services: $e');
-      // Don't rethrow - we want to continue even if some services fail
-    }
-  }
-
-  Future<void> _requestInitialPermissions() async {
-    try {
-      // Request location permission
-      if (await Permission.location.status.isDenied) {
-        _currentState.value = 'Requesting Location Permission...';
-        await LocationPermissionHandler.handleLocationPermission();
-      }
-
-      // Request storage permission
-      if (await Permission.storage.status.isDenied) {
-        _currentState.value = 'Requesting Storage Permission...';
-        await Permission.storage.request();
-      }
-
-      // Save permission states
-      await _storageService.saveMap('permissions', {
-        'location': await Permission.location.isGranted,
-        'storage': await Permission.storage.isGranted,
-        'camera': await Permission.camera.isGranted,
-        'notification': await Permission.notification.isGranted,
-      });
-
-    } catch (e) {
-      debugPrint('Error requesting permissions: $e');
-    }
+  void _handleError(dynamic error) {
+    showCustomSnackbar(
+      title: 'Error',
+      message: 'Failed to initialize app: $error',
+      isError: true,
+    );
+    Get.offAllNamed(Routes.login);
   }
 }

@@ -46,7 +46,7 @@ void showCustomSnackbar({
               spreadRadius: 1,
               blurRadius: 10,
               offset: const Offset(0, 2),
-            ),
+            )
           ],
           borderColor: backgroundColor ?? (isError ? Colors.red : Colors.green),
           borderWidth: 1,

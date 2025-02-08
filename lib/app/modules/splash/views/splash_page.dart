@@ -9,7 +9,7 @@ class SplashPage extends GetView<SplashController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor1,
+      backgroundColor: logoColor,
       body: SafeArea(
         child: Center(
           child: Column(
@@ -22,19 +22,21 @@ class SplashPage extends GetView<SplashController> {
                 height: 200,
               ),
               SizedBox(height: Dimenssions.height30),
-              
+
               // Loading Indicator
               Obx(() {
                 if (controller.isLoading) {
                   return Column(
                     children: [
                       CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(logoColorSecondary),
                       ),
                       SizedBox(height: Dimenssions.height20),
                       // Loading State Text
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: Dimenssions.width20),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width20),
                         child: Text(
                           controller.currentState,
                           style: primaryTextStyle.copyWith(

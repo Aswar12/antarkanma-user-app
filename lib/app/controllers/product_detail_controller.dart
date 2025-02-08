@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/data/models/product_gallery_model.dart';
 import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
@@ -8,7 +7,6 @@ import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class ProductDetailController extends GetxController {
   final ReviewRepository reviewRepository;

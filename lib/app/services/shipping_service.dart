@@ -30,4 +30,27 @@ class ShippingService extends GetxService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> getShippingPreview({
+    required int userLocationId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final response = await _shippingProvider.getShippingPreview(
+        userLocationId: userLocationId,
+        items: items,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final responseData = response.data;
+        if (responseData['meta']['code'] == 200) {
+          return responseData;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting shipping preview: $e');
+      return null;
+    }
+  }
 }
