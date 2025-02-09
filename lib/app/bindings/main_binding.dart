@@ -1,5 +1,7 @@
 import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
+import 'package:antarkanma/app/data/providers/shipping_provider.dart';
+import 'package:antarkanma/app/services/image_service.dart';
 import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
 import 'package:get/get.dart';
@@ -22,7 +24,8 @@ import '../data/providers/product_category_provider.dart';
 class MainBinding extends Bindings {
   @override
   void dependencies() {
-    // Core Providers (Register first since services depend on them)
+    // Image Service
+    Get.put(ImageService(), permanent: true);
     Get.put(AuthProvider(), permanent: true);
     Get.put(MerchantProvider(), permanent: true);
     Get.put(ProductCategoryProvider(), permanent: true);
@@ -33,21 +36,24 @@ class MainBinding extends Bindings {
     // Auth Service and its dependencies
     Get.put(AuthService(), permanent: true);
 
-    // Location Services
-    Get.put(LocationService(), permanent: true);
-    Get.put(UserLocationService(), permanent: true);
-
-    // Feature Services
-    Get.put(ProductService(), permanent: true);
-    Get.put(MerchantService(), permanent: true);
-    Get.put(CategoryService(), permanent: true);
-    Get.put(ShippingService(), permanent: true);
-    Get.put(TransactionService(), permanent: true);
-    Get.put(CartController(), permanent: true);
-
-    // Controllers
-    Get.put(SplashController(), permanent: true);
+    // Core Controllers - Initialize first
     Get.put(AuthController(), permanent: true);
+    
+    // Basic Location Service (doesn't require auth)
+    Get.put(LocationService(), permanent: true);
+    
+    // Auth-dependent services will be initialized by AuthController after successful auth
+    Get.lazyPut(() => UserLocationService(), fenix: true);
+    Get.lazyPut(() => ShippingProvider(), fenix: true);
+    Get.lazyPut(() => ProductService(), fenix: true);
+    Get.lazyPut(() => MerchantService(), fenix: true);
+    Get.lazyPut(() => CategoryService(), fenix: true);
+    Get.lazyPut(() => ShippingService(), fenix: true);
+    Get.lazyPut(() => TransactionService(), fenix: true);
+    Get.lazyPut(() => CartController(), fenix: true);
+    
+    // Other Controllers
+    Get.put(SplashController(), permanent: true);
     Get.put(HomePageController(), permanent: true);
     Get.put(UserMainController(), permanent: true);
     Get.lazyPut(() => UserLocationController(), fenix: true);

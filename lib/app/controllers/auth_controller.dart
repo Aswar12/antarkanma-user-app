@@ -7,7 +7,8 @@ import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_snackbar.dart';
 import '../utils/validators.dart';
-import '../bindings/main_binding.dart';
+import '../services/user_location_service.dart';
+import '../services/location_service.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -31,6 +32,72 @@ class AuthController extends GetxController {
   void onInit() {
     super.onInit();
     rememberMe.value = _storageService.getRememberMe();
+  }
+
+  // Make this public so it can be called from SplashController
+  Future<void> checkAuthStatus() async {
+    try {
+      final token = _storageService.getToken();
+      final rememberMe = _storageService.getRememberMe();
+      
+      if (token != null && rememberMe) {
+        // Verify the token first
+        final isValid = await _authService.verifyToken(token);
+        if (isValid) {
+          // Set logged in state
+          _authService.isLoggedIn.value = true;
+          
+          // Try to get user profile
+          final user = await _authService.getProfile(showError: false);
+          
+          if (user != null) {
+            // Update current user in auth service
+            _authService.currentUser.value = user;
+            
+            // Initialize auth-dependent services
+            await _initializeAuthDependentServices();
+            
+            // Navigate to main page if not already there
+            if (Get.currentRoute != Routes.userMainPage) {
+              Get.offAllNamed(Routes.userMainPage);
+            }
+            return;
+          }
+        }
+      }
+
+      // Clear auth data if auto-login fails
+      if (Get.currentRoute != Routes.login) {
+        await _authService.logout();
+        Get.offAllNamed(Routes.login);
+      }
+    } catch (e) {
+      print('Error checking auth status: $e');
+      if (Get.currentRoute != Routes.login) {
+        Get.offAllNamed(Routes.login);
+      }
+    }
+  }
+
+  Future<void> _initializeAuthDependentServices() async {
+    try {
+      // Initialize basic location service first
+      final locationService = Get.find<LocationService>();
+      await locationService.init();
+
+      // Then initialize user location service which requires auth
+      if (!Get.isRegistered<UserLocationService>()) {
+        final userLocationService = Get.put(UserLocationService(), permanent: true);
+        // Load user locations from API
+        await userLocationService.loadUserLocations(forceRefresh: true);
+      }
+
+      // Sync locations if needed
+      final userLocationService = Get.find<UserLocationService>();
+      await userLocationService.syncLocations(forceRefresh: true);
+    } catch (e) {
+      print('Error initializing auth-dependent services: $e');
+    }
   }
 
   void togglePasswordVisibility() =>
@@ -103,8 +170,8 @@ class AuthController extends GetxController {
           return;
         }
 
-        // Initialize authenticated services
-        MainBinding().dependencies();
+        // Initialize auth-dependent services after successful login
+        await _initializeAuthDependentServices();
         
         print('Navigating to USER main page');
         Get.offAllNamed(Routes.userMainPage);

@@ -51,6 +51,7 @@ class AppPages {
       name: Routes.splash,
       page: () => const SplashPage(),
       binding: MainBinding(),
+      middlewares: [InitialAuthGuard()], // Add initial auth guard
     ),
     GetPage(
       name: Routes.login,
@@ -152,10 +153,33 @@ class AppPages {
   ];
 }
 
+class InitialAuthGuard extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    final authService = Get.find<AuthService>();
+    
+    // Check if we have a stored token and remember me is enabled
+    final token = authService.getToken();
+    final rememberMe = authService.isRememberMeEnabled;
+    
+    // If we have both token and remember me, let splash page handle the auth check
+    if (token != null && rememberMe) {
+      return null;
+    }
+    
+    // Otherwise, redirect to login
+    return const RouteSettings(name: Routes.login);
+  }
+}
+
 class AuthGuard extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     final authService = Get.find<AuthService>();
-    return authService.isLoggedIn.value ? null : const RouteSettings(name: Routes.login);
+    if (!authService.isLoggedIn.value) {
+      // If not logged in, redirect to login
+      return const RouteSettings(name: Routes.login);
+    }
+    return null;
   }
 }

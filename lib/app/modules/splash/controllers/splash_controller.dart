@@ -1,11 +1,9 @@
 import 'package:get/get.dart';
 import '../../../routes/app_pages.dart';
-import '../../../services/storage_service.dart';
-import '../../../services/auth_service.dart';
+import '../../../controllers/auth_controller.dart';
 
 class SplashController extends GetxController {
-  final StorageService _storageService = StorageService.instance;
-  final AuthService _authService = Get.find<AuthService>();
+  final AuthController _authController = Get.find<AuthController>();
   final isLoading = true.obs;
   final currentState = ''.obs;
 
@@ -21,19 +19,15 @@ class SplashController extends GetxController {
       currentState.value = 'Initializing...';
       await Future.delayed(const Duration(seconds: 2));
 
-      // Check if user is already logged in and attempt auto-login
-      currentState.value = 'Checking authentication...';
-      final autoLoginSuccess = await _authService.autoLogin();
+      // Let AuthController handle the auth check and navigation
+      // The InitialAuthGuard will have already checked if we have valid credentials
+      await _authController.checkAuthStatus();
       
-      if (autoLoginSuccess) {
-        currentState.value = 'Loading user data...';
-        Get.offAllNamed(Routes.userMainPage);
-        return;
-      }
-
-      // If auto-login fails, go to login page
+      isLoading.value = false;
+    } catch (e) {
+      print('Error in splash initialization: $e');
+      // If there's any error, go to login
       Get.offAllNamed(Routes.login);
-    } finally {
       isLoading.value = false;
     }
   }
