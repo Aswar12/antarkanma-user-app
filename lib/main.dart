@@ -1,127 +1,33 @@
-import 'dart:async';
-import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'app/constants/app_theme.dart';
-import 'app/constants/app_strings.dart';
-import 'app/bindings/initial_binding.dart';
-import 'package:get_storage/get_storage.dart';
-import 'app/utils/performance_config.dart';
-import 'app/utils/logger_config.dart';
+import 'app/routes/app_pages.dart';
+import 'app/bindings/main_binding.dart';
 
-Future<void> main() async {
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
-
-    // Set Get.testMode to true for testing
-    Get.testMode = true;
-
-    // Initialize logging
-    LoggerConfig.init();
-
-    // Initialize GetStorage before anything else
-    await GetStorage.init();
-
-    // Initialize Firebase
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-
-    // Initialize notifications
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-
-    if (GetPlatform.isAndroid) {
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'antarkanma_notification_channel',
-        'Antarkanma Notifications',
-        description: 'Notifications for Antarkanma app',
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
-      );
-
-      await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
-    }
-
-    // Configure GetX
-    Get.config(
-      enableLog: kDebugMode,
-      defaultTransition: Transition.fadeIn,
-      defaultPopGesture: false,
-      logWriterCallback: (String text, {bool isError = false}) {
-        // Filter out ViewRootImpl logs and other touch events
-        if (text.contains('ViewRootImpl') ||
-            text.contains('MotionEvent') ||
-            text.contains('dispatchPointerEvent') ||
-            text.contains('processMotionEvent')) {
-          return;
-        }
-        if (isError || kDebugMode) {
-          debugPrint('${isError ? 'ERROR: ' : ''}$text');
-        }
-      },
-    );
-
-    // Initialize system UI settings
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-      ),
-    );
-
-    // Run the app
-    runApp(const MyApp());
-  } catch (e, stackTrace) {
-    debugPrint('Error during initialization: $e');
-    debugPrint('Stack trace: $stackTrace');
-    rethrow;
-  }
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: AppStrings.appName,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      initialBinding: InitialBinding(),
-      initialRoute: Routes.splash,
+      title: 'Antarkanma',
+      theme: ThemeData(
+        primarySwatch: primarySwatch,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      initialRoute: AppPages.initial,
       getPages: AppPages.routes,
-      debugShowCheckedModeBanner: false,
-      defaultTransition: Transition.fadeIn,
-      transitionDuration: const Duration(milliseconds: 200),
-      popGesture: false,
-      enableLog: kDebugMode,
-      logWriterCallback: (String text, {bool isError = false}) {
-        // Filter out ViewRootImpl logs and other touch events
-        if (text.contains('ViewRootImpl') ||
-            text.contains('MotionEvent') ||
-            text.contains('dispatchPointerEvent') ||
-            text.contains('processMotionEvent')) {
-          return;
-        }
-        if (isError || kDebugMode) {
-          debugPrint('${isError ? 'ERROR: ' : ''}$text');
-        }
-      },
-      onInit: () {
-        // Additional initialization after GetMaterialApp is created
-        PerformanceConfig.initializeDebugMode();
-        PerformanceConfig.startPeriodicCleanup();
-      },
+      initialBinding: MainBinding(),
     );
   }
 }

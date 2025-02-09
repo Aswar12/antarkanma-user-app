@@ -1,212 +1,157 @@
-// ignore_for_file: avoid_print
-
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/services/user_location_service.dart';
-import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
 
 class UserLocationController extends GetxController {
-  final UserLocationService _locationService;
+  late final UserLocationService _locationService;
+  final AuthService _authService = Get.find<AuthService>();
 
-  UserLocationController({required UserLocationService locationService})
-      : _locationService = locationService;
+  final Rx<UserLocationModel?> _defaultAddress = Rx<UserLocationModel?>(null);
+  final RxList<UserLocationModel> _addresses = <UserLocationModel>[].obs;
+  final RxBool _isLoading = false.obs;
+  final RxString _errorMessage = ''.obs;
+  final Rx<UserLocationModel?> _selectedLocation = Rx<UserLocationModel?>(null);
 
-  // Observable properties
-  RxBool isLoading = false.obs;
-  RxString errorMessage = ''.obs;
-
-  // Observable list untuk memudahkan reaktivitas
-  RxList<UserLocationModel> userLocations = <UserLocationModel>[].obs;
-  Rx<UserLocationModel?> selectedLocation = Rx<UserLocationModel?>(null);
-
-  // Getter
-  List<UserLocationModel> get addresses => userLocations;
-  UserLocationModel? get defaultAddress =>
-      userLocations.firstWhereOrNull((loc) => loc.isDefault);
+  // Public getters
+  UserLocationModel? get defaultAddress => _defaultAddress.value;
+  List<UserLocationModel> get addresses => _addresses;
+  List<UserLocationModel> get userLocations => _addresses;
+  bool get isLoading => _isLoading.value;
+  String get errorMessage => _errorMessage.value;
+  UserLocationModel? get selectedLocation => _selectedLocation.value;
 
   @override
   void onInit() {
     super.onInit();
-    // Load addresses dan set default location
-    loadAddresses().then((_) {
-      print('Addresses Loaded: ${userLocations.length}');
-      print('Default Address: ${defaultAddress?.fullAddress}');
-      _setInitialDefaultLocation();
-    });
+    _initializeIfAuthenticated();
   }
 
-  void _setInitialDefaultLocation() {
-    if (userLocations.isNotEmpty) {
-      // Pilih alamat default, jika tidak ada pilih alamat pertama
-      selectedLocation.value = defaultAddress ?? userLocations.first;
+  void _initializeIfAuthenticated() {
+    if (_authService.isLoggedIn.value) {
+      try {
+        _locationService = Get.find<UserLocationService>();
+        loadAddresses();
+      } catch (e) {
+        print('Error initializing UserLocationService: $e');
+        _errorMessage.value = 'Error initializing location service: $e';
+      }
     }
   }
 
   Future<void> loadAddresses() async {
-    isLoading.value = true;
-    errorMessage.value = '';
+    if (!_authService.isLoggedIn.value) return;
+
     try {
+      _isLoading.value = true;
+      _errorMessage.value = '';
       await _locationService.loadUserLocations();
-      userLocations.value = _locationService.userLocations;
-      update(); // Memanggil update untuk memperbarui UI
-      print('User  locations loaded: ${userLocations.length}');
+      _addresses.value = _locationService.userLocations;
+      _defaultAddress.value = _locationService.defaultLocation.value;
+
+      // If no location is selected, select the default one
+      if (_selectedLocation.value == null && _defaultAddress.value != null) {
+        _selectedLocation.value = _defaultAddress.value;
+      }
     } catch (e) {
-      errorMessage.value = 'Gagal memuat alamat: $e';
-      showCustomSnackbar(
-          title: 'Error', message: errorMessage.value, isError: true);
+      print('Error loading addresses: $e');
+      _errorMessage.value = 'Error loading addresses: $e';
     } finally {
-      isLoading.value = false;
+      _isLoading.value = false;
     }
   }
 
   Future<bool> addAddress(UserLocationModel address) async {
-    isLoading.value = true;
+    if (!_authService.isLoggedIn.value) return false;
+
     try {
-      final result = await _locationService.addUserLocation(address);
-      if (result) {
-        // Refresh daftar alamat setelah berhasil menambahkan
+      _isLoading.value = true;
+      _errorMessage.value = '';
+      final success = await _locationService.addUserLocation(address);
+      if (success) {
         await loadAddresses();
-
-        showCustomSnackbar(
-            title: 'Sukses', message: 'Alamat berhasil ditambahkan');
-
-        // Jika ini alamat pertama, jadikan sebagai default
-        if (userLocations.length == 1) {
-          await setDefaultAddress(address.id!);
-        }
       }
-      return result;
+      return success;
     } catch (e) {
-      errorMessage.value = 'Terjadi kesalahan: $e';
-      showCustomSnackbar(
-          title: 'Error', message: errorMessage.value, isError: true);
+      _errorMessage.value = 'Error adding address: $e';
       return false;
     } finally {
-      isLoading.value = false;
+      _isLoading.value = false;
     }
   }
 
   Future<bool> updateAddress(UserLocationModel address) async {
-    isLoading.value = true;
-    try {
-      final result = await _locationService.updateUserLocation(address);
-      if (result) {
-        // Refresh daftar alamat setelah berhasil update
-        await loadAddresses();
+    if (!_authService.isLoggedIn.value) return false;
 
-        showCustomSnackbar(
-            title: 'Sukses', message: 'Alamat berhasil diperbarui');
+    try {
+      _isLoading.value = true;
+      _errorMessage.value = '';
+      final success = await _locationService.updateUserLocation(address);
+      if (success) {
+        await loadAddresses();
       }
-      return result;
+      return success;
     } catch (e) {
-      errorMessage.value = 'Terjadi kesalahan: $e';
-      showCustomSnackbar(
-          title: 'Error', message: errorMessage.value, isError: true);
+      _errorMessage.value = 'Error updating address: $e';
       return false;
     } finally {
-      isLoading.value = false;
+      _isLoading.value = false;
     }
   }
 
   Future<bool> deleteAddress(int addressId) async {
-    isLoading.value = true;
+    if (!_authService.isLoggedIn.value) return false;
+
     try {
-      final result = await _locationService.deleteUserLocation(addressId);
-      if (result) {
-        // Refresh daftar alamat setelah berhasil hapus
+      _isLoading.value = true;
+      _errorMessage.value = '';
+      final success = await _locationService.deleteUserLocation(addressId);
+      if (success) {
         await loadAddresses();
-
-        // Reset selected location jika perlu
-        _setInitialDefaultLocation();
-
-        showCustomSnackbar(title: 'Sukses', message: 'Alamat berhasil dihapus');
       }
-      return result;
+      return success;
     } catch (e) {
-      errorMessage.value = 'Terjadi kesalahan: $e';
-      showCustomSnackbar(
-          title: 'Error', message: errorMessage.value, isError: true);
+      _errorMessage.value = 'Error deleting address: $e';
       return false;
     } finally {
-      isLoading.value = false;
+      _isLoading.value = false;
     }
   }
 
   Future<bool> setDefaultAddress(int addressId) async {
-    isLoading.value = true;
+    if (!_authService.isLoggedIn.value) return false;
+
     try {
-      final result = await _locationService.setDefaultLocation(addressId);
-      if (result) {
-        // Refresh daftar alamat setelah berhasil set default
+      _isLoading.value = true;
+      _errorMessage.value = '';
+      final success = await _locationService.setDefaultLocation(addressId);
+      if (success) {
         await loadAddresses();
-
-        // Update selected location
-        selectedLocation.value = defaultAddress;
-
-        showCustomSnackbar(
-            title: 'Sukses', message: 'Alamat utama berhasil diatur');
       }
-      return result;
+      return success;
     } catch (e) {
-      errorMessage.value = 'Terjadi kesalahan: $e';
-      showCustomSnackbar(
-          title: 'Error', message: errorMessage.value, isError: true);
+      _errorMessage.value = 'Error setting default address: $e';
       return false;
     } finally {
-      isLoading.value = false;
+      _isLoading.value = false;
     }
   }
 
-  // Method untuk mencari dan filter lokasi
-  List<UserLocationModel> searchLocations(String keyword) {
-    return userLocations
-        .where((loc) =>
-            (loc.customerName?.toLowerCase().contains(keyword.toLowerCase()) ??
-                false) ||
-            (loc.address.toLowerCase().contains(keyword.toLowerCase())))
-        .toList();
-  }
-
-  // Method untuk mendapatkan lokasi berdasarkan tipe
-  List<UserLocationModel> getLocationsByType(String type) {
-    return userLocations.where((loc) => loc.addressType == type).toList();
-  }
-
-  // Method untuk mendapatkan lokasi berdasarkan ID
-  UserLocationModel? getLocationById(int id) {
-    return userLocations.firstWhereOrNull((loc) => loc.id == id);
-  }
-
-  // Method untuk memilih lokasi
   void selectLocation(UserLocationModel location) {
-    selectedLocation.value = location;
+    _selectedLocation.value = location;
+    update();
   }
 
   void setSelectedLocation(UserLocationModel location) {
-    // Pastikan lokasi yang dipilih ada dalam daftar lokasi
-    final existingLocation =
-        userLocations.firstWhereOrNull((loc) => loc.id == location.id);
-
-    if (existingLocation != null) {
-      selectedLocation.value = existingLocation;
-    } else {
-      // Jika lokasi tidak ditemukan, tambahkan ke daftar
-      addAddress(location).then((_) {
-        // Set lokasi yang baru ditambahkan sebagai lokasi terpilih
-        selectedLocation.value = location;
-      });
-    }
+    _selectedLocation.value = location;
+    update();
   }
 
-  // Method tambahan untuk sinkronisasi dan pembersihan
-  Future<void> syncLocations() async {
-    await _locationService.syncLocations();
-    await loadAddresses();
+  void refreshAddresses() {
+    loadAddresses();
   }
 
-  void clearLocalData() {
-    _locationService.clearLocalData();
-    userLocations.clear();
-    selectedLocation.value = null;
+  void clearError() {
+    _errorMessage.value = '';
   }
 }

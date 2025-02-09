@@ -12,9 +12,14 @@ import 'package:get/get.dart';
 
 class ProfilePage extends GetView<AuthController> {
   final AuthService authService = Get.find<AuthService>();
-  final UserLocationController locationController = Get.find<UserLocationController>();
+  late final UserLocationController locationController;
 
-  ProfilePage({super.key});
+  ProfilePage({super.key}) {
+    // Initialize location controller only if user is authenticated
+    if (authService.isLoggedIn.value) {
+      locationController = Get.find<UserLocationController>();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,7 @@ class ProfilePage extends GetView<AuthController> {
           child: Column(
             children: [
               _buildHeader(authService),
-              _buildAddressCard(),
+              if (authService.isLoggedIn.value) _buildAddressCard(),
               _buildMenuSection(),
               SizedBox(height: Dimenssions.height10),
             ],

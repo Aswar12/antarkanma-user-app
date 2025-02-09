@@ -52,7 +52,7 @@ class AddressPage extends GetView<UserLocationController> {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (controller.isLoading) {
           return Center(
             child: CircularProgressIndicator(
               color: logoColorSecondary,
@@ -66,7 +66,7 @@ class AddressPage extends GetView<UserLocationController> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  controller.errorMessage.value,
+                  controller.errorMessage,
                   style: secondaryTextStyle.copyWith(
                     fontSize: Dimenssions.font14,
                   ),
@@ -399,7 +399,7 @@ class AddressPage extends GetView<UserLocationController> {
     } else {
       showCustomSnackbar(
         title: 'Gagal',
-        message: controller.errorMessage.value,
+        message: controller.errorMessage,
         backgroundColor: Colors.red,
       );
     }
@@ -456,7 +456,7 @@ class AddressPage extends GetView<UserLocationController> {
       } else {
         showCustomSnackbar(
           title: 'Gagal',
-          message: controller.errorMessage.value,
+          message: controller.errorMessage,
           backgroundColor: Colors.red,
         );
       }

@@ -1,18 +1,5 @@
-import 'package:antarkanma/app/modules/splash/controllers/splash_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
-import '../bindings/auth_binding.dart';
-import '../bindings/initial_binding.dart';
-import '../bindings/feature_bindings/home_binding.dart';
-import '../bindings/feature_bindings/merchant_binding.dart';
-import '../bindings/feature_bindings/checkout_binding.dart';
-import '../bindings/feature_bindings/profile_binding.dart';
-import '../bindings/feature_bindings/product_detail_binding.dart';
-import '../bindings/feature_bindings/cart_binding.dart';
-import '../bindings/feature_bindings/splash_binding.dart';
-import '../bindings/user_main_binding.dart';
-
 import '../modules/auth/views/sign_in_page.dart';
 import '../modules/auth/views/sign_up_page.dart';
 import '../modules/checkout/views/checkout_success_page.dart';
@@ -31,7 +18,7 @@ import '../modules/user/views/product_detail_page.dart';
 import '../modules/user/views/profile_page.dart';
 import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
-
+import '../bindings/main_binding.dart';
 import '../services/auth_service.dart';
 
 abstract class Routes {
@@ -63,107 +50,102 @@ class AppPages {
     GetPage(
       name: Routes.splash,
       page: () => const SplashPage(),
-      bindings: [
-        InitialBinding(),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<SplashController>()) {
-            Get.put(SplashController(), permanent: true);
-          }
-        }),
-      ],
+      binding: MainBinding(),
     ),
     GetPage(
       name: Routes.login,
       page: () => SignInPage(),
-      binding: AuthBinding(),
+      binding: MainBinding(),
     ),
     GetPage(
       name: Routes.register,
       page: () => SignUpPage(),
-      binding: AuthBinding(),
+      binding: MainBinding(),
     ),
     GetPage(
       name: Routes.cart,
       page: () => const CartPage(),
-      binding: CartBinding(),
+      binding: MainBinding(),
       middlewares: [AuthGuard()],
     ),
     GetPage(
       name: Routes.checkoutSuccess,
       page: () => const CheckoutSuccessPage(),
-      binding: HomeBinding(),
+      binding: MainBinding(),
       middlewares: [AuthGuard()],
     ),
     GetPage(
       name: Routes.productDetail,
       page: () => const ProductDetailPage(),
-      binding: ProductDetailBinding(),
+      binding: MainBinding(),
       preventDuplicates: true,
       transition: Transition.fadeIn,
     ),
     GetPage(
       name: Routes.merchantDetail,
       page: () => const MerchantDetailPage(),
-      binding: MerchantBinding(),
+      binding: MainBinding(),
     ),
     GetPage(
       name: Routes.userMainPage,
       page: () => const UserMainPage(),
-      binding: UserMainBinding(),
+      binding: MainBinding(),
       middlewares: [AuthGuard()],
       children: [
         GetPage(
           name: '/profile',
           page: () => ProfilePage(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/chat',
           page: () => const ChatPage(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/order',
           page: () => const OrderPage(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/home',
           page: () => const HomePage(),
-          binding: HomeBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/address',
           page: () => const AddressPage(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/add-address',
           page: () => AddEditAddressPage(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/edit-address',
           page: () => AddEditAddressPage(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/select-address',
           page: () => AddressSelectionPage(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/map-picker',
           page: () => const MapPickerView(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/checkout',
           page: () => CheckoutPage(),
-          binding: CheckoutBinding(),
+          binding: MainBinding(),
         ),
         GetPage(
           name: '/edit-profile',
           page: () => const EditProfileView(),
-          binding: ProfileBinding(),
+          binding: MainBinding(),
         ),
       ],
     ),
@@ -174,6 +156,6 @@ class AuthGuard extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     final authService = Get.find<AuthService>();
-    return authService.isLoggedIn.value ? null : RouteSettings(name: Routes.login);
+    return authService.isLoggedIn.value ? null : const RouteSettings(name: Routes.login);
   }
 }

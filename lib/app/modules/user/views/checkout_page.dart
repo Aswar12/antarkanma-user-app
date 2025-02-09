@@ -176,7 +176,9 @@ class CheckoutPage extends GetView<CheckoutController> {
               ),
               const SizedBox(height: 8),
               Obx(() {
-                final location = locationCtrl.selectedLocation.value;
+                final selectedLocation = locationCtrl.selectedLocation;
+                if (selectedLocation == null) return _buildNoAddressWidget();
+                final location = selectedLocation.value;
                 return location != null
                     ? _buildAddressCard(location)
                     : _buildNoAddressWidget();

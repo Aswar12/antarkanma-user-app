@@ -1,13 +1,13 @@
 // ignore_for_file: avoid_print
 
-import 'package:antarkanma/app/routes/app_pages.dart';
-import 'package:antarkanma/app/services/storage_service.dart';
-import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import '../routes/app_pages.dart';
+import '../services/storage_service.dart';
 import '../services/auth_service.dart';
-import 'package:antarkanma/app/utils/validators.dart';
-import '../bindings/auth_binding.dart';
+import '../widgets/custom_snackbar.dart';
+import '../utils/validators.dart';
+import '../bindings/main_binding.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -24,6 +24,8 @@ class AuthController extends GetxController {
   final RxBool isPasswordHidden = true.obs;
   final rememberMe = false.obs;
   final StorageService _storageService = StorageService.instance;
+  final RxInt _rating = 0.obs;
+  int get rating => _rating.value;
 
   @override
   void onInit() {
@@ -41,6 +43,36 @@ class AuthController extends GetxController {
   void toggleRememberMe() {
     rememberMe.value = !rememberMe.value;
     _storageService.saveRememberMe(rememberMe.value);
+  }
+
+  void setRating(int value) {
+    if (value >= 1 && value <= 5) {
+      _rating.value = value;
+    }
+  }
+
+  Future<void> submitRating() async {
+    try {
+      if (_rating.value > 0) {
+        showCustomSnackbar(
+          title: 'Sukses',
+          message: 'Terima kasih atas penilaian Anda!',
+        );
+      } else {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Silakan berikan rating terlebih dahulu',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      print('Error submitting rating: $e');
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Gagal mengirim rating',
+        isError: true,
+      );
+    }
   }
 
   Future<void> login() async {
@@ -72,7 +104,7 @@ class AuthController extends GetxController {
         }
 
         // Initialize authenticated services
-        await AuthBinding.initializeAuthenticatedServices();
+        MainBinding().dependencies();
         
         print('Navigating to USER main page');
         Get.offAllNamed(Routes.userMainPage);
@@ -215,38 +247,5 @@ class AuthController extends GetxController {
     emailController.dispose();
     phoneNumberController.dispose();
     super.onClose();
-  }
-
-  final RxInt _rating = 0.obs;
-  int get rating => _rating.value;
-
-  void setRating(int value) {
-    if (value >= 1 && value <= 5) {
-      _rating.value = value;
-    }
-  }
-
-  Future<void> submitRating() async {
-    try {
-      if (_rating.value > 0) {
-        showCustomSnackbar(
-          title: 'Sukses',
-          message: 'Terima kasih atas penilaian Anda!',
-        );
-      } else {
-        showCustomSnackbar(
-          title: 'Error',
-          message: 'Silakan berikan rating terlebih dahulu',
-          isError: true,
-        );
-      }
-    } catch (e) {
-      print('Error submitting rating: $e');
-      showCustomSnackbar(
-        title: 'Error',
-        message: 'Gagal mengirim rating',
-        isError: true,
-      );
-    }
   }
 }

@@ -5,20 +5,18 @@ import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/theme.dart';
 
-class AddressSelectionPage extends StatelessWidget {
-  // Use Get.find instead of creating a new instance
-  final UserLocationController controller = Get.find<UserLocationController>();
-
-  AddressSelectionPage({super.key});
+class AddressSelectionPage extends GetView<UserLocationController> {
+  const AddressSelectionPage({super.key});
 
   void _handleAddressSelection(UserLocationModel address) {
     controller.selectLocation(address);
     
-    // Get the existing CheckoutController instead of creating a new one
-    final checkoutController = Get.find<CheckoutController>();
-    
-    // Update the selected location in the controller
-    checkoutController.setDeliveryLocation(address);
+    try {
+      final checkoutController = Get.find<CheckoutController>();
+      checkoutController.setDeliveryLocation(address);
+    } catch (e) {
+      debugPrint('Error updating checkout location: $e');
+    }
     
     Get.back(result: address);
   }
@@ -94,7 +92,7 @@ class AddressSelectionPage extends StatelessWidget {
         ),
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (controller.isLoading) {
           return Center(
             child: CircularProgressIndicator(
               color: logoColorSecondary,
@@ -102,18 +100,18 @@ class AddressSelectionPage extends StatelessWidget {
           );
         }
 
-        if (controller.userLocations.isEmpty) {
+        if (controller.addresses.isEmpty) {
           return _buildEmptyState();
         }
 
         return ListView.builder(
           padding: EdgeInsets.all(Dimenssions.height15),
-          itemCount: controller.userLocations.length + 1,
+          itemCount: controller.addresses.length + 1,
           itemBuilder: (context, index) {
-            if (index == controller.userLocations.length) {
+            if (index == controller.addresses.length) {
               return SizedBox(height: Dimenssions.height20);
             }
-            final address = controller.userLocations[index];
+            final address = controller.addresses[index];
             return _buildAddressItem(address);
           },
         );
@@ -197,7 +195,7 @@ class AddressSelectionPage extends StatelessWidget {
   }
 
   Widget _buildAddressItem(UserLocationModel address) {
-    final isSelected = controller.selectedLocation.value?.id == address.id;
+    final isSelected = controller.selectedLocation?.id == address.id;
 
     return Container(
       margin: EdgeInsets.only(bottom: Dimenssions.height15),

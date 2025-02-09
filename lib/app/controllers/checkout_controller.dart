@@ -1,19 +1,19 @@
-import 'package:antarkanma/app/controllers/order_controller.dart';
-import 'package:antarkanma/app/data/models/transaction_model.dart';
-import 'package:antarkanma/app/data/models/shipping_details_model.dart';
-import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
-import 'package:antarkanma/app/routes/app_pages.dart';
-import 'package:antarkanma/app/services/transaction_service.dart';
-import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:get/get.dart';
+import 'package:antarkanma/app/data/models/user_location_model.dart';
+import 'package:antarkanma/app/controllers/user_location_controller.dart';
+import 'package:antarkanma/app/controllers/auth_controller.dart';
+import 'package:antarkanma/app/controllers/cart_controller.dart';
+import 'package:antarkanma/app/controllers/order_controller.dart';
+import 'package:antarkanma/app/services/shipping_service.dart';
+import 'package:antarkanma/app/services/transaction_service.dart';
+import 'package:flutter/material.dart';
+import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
-import 'package:antarkanma/app/controllers/cart_controller.dart';
-import 'package:antarkanma/app/data/models/user_location_model.dart';
-import 'package:antarkanma/app/controllers/auth_controller.dart';
-import 'user_location_controller.dart';
-import 'package:antarkanma/app/widgets/custom_snackbar.dart';
-import 'package:flutter/material.dart';
+import 'package:antarkanma/app/data/models/transaction_model.dart';
+import 'package:antarkanma/app/data/models/shipping_details_model.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 
 class CheckoutController extends GetxController {
   final UserLocationController userLocationController;
@@ -35,19 +35,17 @@ class CheckoutController extends GetxController {
   final isProcessingCheckout = false.obs;
   final isCalculatingShipping = false.obs;
   final orderItems = <OrderItemModel>[].obs;
-  final selectedLocation = Rx<UserLocationModel?>(null);
-  final selectedPaymentMethod = Rx<String?>(null);
+  final selectedLocation = Rxn<UserLocationModel>();
+  final selectedPaymentMethod = Rxn<String>();
   final subtotal = 0.0.obs;
   final deliveryFee = 0.0.obs;
   final total = 0.0.obs;
-
-  // New shipping preview state
-  final shippingDetails = Rx<ShippingDetails?>(null);
+  final shippingDetails = Rxn<ShippingDetails>();
   final merchantItems = Rx<Map<int, List<OrderItemModel>>>({});
 
-  final List<String> paymentMethods = [
-    'COD',
-  ];
+  final List<String> paymentMethods = ['COD'];
+
+  List<Worker>? _workers;
 
   @override
   void onInit() {
@@ -55,18 +53,30 @@ class CheckoutController extends GetxController {
     _initializeCheckoutLocation();
     _initializeCheckout();
     setPaymentMethod('COD');
-    
-    // Listen to location changes
-    ever(userLocationController.selectedLocation, (location) {
-      if (location != null) {
-        setDeliveryLocation(location);
-      }
-    });
 
-    // Listen to cart changes
-    ever(cartController.merchantItems, (_) {
-      _calculateShippingPreview();
-    });
+    // Create workers to observe both location changes
+    _workers = [
+      // Observe our local selectedLocation changes
+      ever<UserLocationModel?>(
+        selectedLocation,
+        (location) {
+          if (location != null) {
+            _calculateShippingPreview();
+          }
+        },
+      ),
+      // Observe cart changes
+      ever(cartController.merchantItems, (_) {
+        _calculateShippingPreview();
+      }),
+    ];
+  }
+
+  @override
+  void onClose() {
+    _workers?.forEach((worker) => worker.dispose());
+    _workers = null;
+    super.onClose();
   }
 
   void autoSetInitialValues() {
@@ -82,16 +92,16 @@ class CheckoutController extends GetxController {
   }
 
   void _initializeCheckoutLocation() {
-    final selectedLocation = userLocationController.selectedLocation.value;
-    final defaultLocation = userLocationController.defaultAddress;
-    final firstLocation = userLocationController.userLocations.isNotEmpty
+    final selectedLoc = userLocationController.selectedLocation;
+    final defaultLoc = userLocationController.defaultAddress;
+    final firstLoc = userLocationController.userLocations.isNotEmpty
         ? userLocationController.userLocations.first
         : null;
 
-    UserLocationModel? priorityLocation = selectedLocation ?? defaultLocation ?? firstLocation;
+    UserLocationModel? priorityLocation = selectedLoc ?? defaultLoc ?? firstLoc;
 
     if (priorityLocation != null) {
-      this.selectedLocation.value = priorityLocation;
+      selectedLocation.value = priorityLocation;
       userLocationController.setSelectedLocation(priorityLocation);
     }
   }
@@ -104,7 +114,8 @@ class CheckoutController extends GetxController {
       if (Get.arguments != null && Get.arguments is Map) {
         final args = Get.arguments as Map;
         if (args['type'] == 'direct_buy' && args['merchantItems'] != null) {
-          merchantCartItems = args['merchantItems'] as Map<int, List<CartItemModel>>;
+          merchantCartItems =
+              args['merchantItems'] as Map<int, List<CartItemModel>>;
         }
       }
 
@@ -138,7 +149,7 @@ class CheckoutController extends GetxController {
   Map<int, List<CartItemModel>> _groupCartItemsByMerchant() {
     final selectedItems = cartController.selectedItems;
     final Map<int, List<CartItemModel>> merchantCartItems = {};
-    
+
     for (var item in selectedItems) {
       final merchantId = item.merchant.id ?? 0;
       if (!merchantCartItems.containsKey(merchantId)) {
@@ -146,7 +157,7 @@ class CheckoutController extends GetxController {
       }
       merchantCartItems[merchantId]!.add(item);
     }
-    
+
     return merchantCartItems;
   }
 
@@ -181,10 +192,12 @@ class CheckoutController extends GetxController {
       final locationId = selectedLocation.value?.id;
       if (locationId == null) return;
 
-      final items = orderItems.map((item) => {
-        'product_id': item.product.id,
-        'quantity': item.quantity,
-      }).toList();
+      final items = orderItems
+          .map((item) => {
+                'product_id': item.product.id,
+                'quantity': item.quantity,
+              })
+          .toList();
 
       final response = await shippingService.getShippingPreview(
         userLocationId: locationId,
@@ -192,21 +205,13 @@ class CheckoutController extends GetxController {
       );
 
       if (response != null) {
-        try {
-          // Check if response has the expected structure
-          if (response['data'] != null && 
-              response['data']['total_shipping_price'] != null &&
-              response['data']['merchant_deliveries'] != null &&
-              response['data']['route_summary'] != null) {
-            
-            shippingDetails.value = ShippingDetails.fromJson(response);
-            _updateDeliveryFee();
-          } else {
-            debugPrint('Invalid shipping preview response structure: $response');
-            shippingDetails.value = null;
-          }
-        } catch (e) {
-          debugPrint('Error parsing shipping preview response: $e');
+        if (response['data']?['total_shipping_price'] != null &&
+            response['data']?['merchant_deliveries'] != null &&
+            response['data']?['route_summary'] != null) {
+          shippingDetails.value = ShippingDetails.fromJson(response);
+          _updateDeliveryFee();
+        } else {
+          debugPrint('Invalid shipping preview response structure: $response');
           shippingDetails.value = null;
         }
       }
@@ -219,17 +224,12 @@ class CheckoutController extends GetxController {
   }
 
   void _updateDeliveryFee() {
-    if (shippingDetails.value != null) {
-      deliveryFee.value = shippingDetails.value!.totalShippingPrice;
-    } else {
-      deliveryFee.value = 0.0;
-    }
+    deliveryFee.value = shippingDetails.value?.totalShippingPrice ?? 0.0;
   }
 
   void setDeliveryLocation(UserLocationModel location) {
     selectedLocation.value = location;
     userLocationController.setSelectedLocation(location);
-    _calculateShippingPreview();
     update();
   }
 
@@ -287,7 +287,8 @@ class CheckoutController extends GetxController {
       }
 
       final transactionPayload = _createTransactionPayload();
-      final createdTransaction = await transactionService.createTransaction(transactionPayload);
+      final createdTransaction =
+          await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
         debugPrint('Transaction created successfully: ${createdTransaction.id}');
@@ -313,11 +314,13 @@ class CheckoutController extends GetxController {
     return {
       'user_location_id': selectedLocation.value?.id,
       'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
-      'items': orderItems.map((item) => {
-        'product_id': item.product.id,
-        'quantity': item.quantity,
-        'merchant_id': item.merchant.id,
-      }).toList(),
+      'items': orderItems
+          .map((item) => {
+                'product_id': item.product.id,
+                'quantity': item.quantity,
+                'merchant_id': item.merchant.id,
+              })
+          .toList(),
       'shipping_details': shippingDetails.value?.toJson(),
     };
   }
@@ -354,10 +357,12 @@ class CheckoutController extends GetxController {
     if (shippingDetails.value == null) {
       validationErrors.add('Informasi pengiriman tidak tersedia');
     } else if (!shippingDetails.value!.canProceedToCheckout) {
-      validationErrors.add(shippingDetails.value!.routeWarningMessage ?? 'Rute pengiriman tidak valid');
+      validationErrors.add(shippingDetails.value!.routeWarningMessage ??
+          'Rute pengiriman tidak valid');
     }
 
-    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+    final invalidItems =
+        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -416,7 +421,8 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      if (Get.arguments == null || (Get.arguments as Map)['type'] != 'direct_buy') {
+      if (Get.arguments == null ||
+          (Get.arguments as Map)['type'] != 'direct_buy') {
         cartController.clearCart();
       }
     } catch (e) {

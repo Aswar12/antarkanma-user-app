@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/theme.dart';
-import 'package:antarkanma/app/bindings/user_main_binding.dart';
+import 'package:antarkanma/app/bindings/main_binding.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/modules/checkout/widgets/transaction_card_widget.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
@@ -20,7 +20,7 @@ class CheckoutSuccessPage extends StatelessWidget {
     try {
       // Initialize binding first
       await Get.deleteAll(force: true);
-      final binding = UserMainBinding();
+      final binding = MainBinding();
       binding.dependencies();
 
       // Then navigate
@@ -45,7 +45,7 @@ class CheckoutSuccessPage extends StatelessWidget {
     try {
       // Initialize binding first
       Get.deleteAll(force: true);
-      final binding = UserMainBinding();
+      final binding = MainBinding();
       binding.dependencies();
 
       // Then navigate
@@ -69,7 +69,7 @@ class CheckoutSuccessPage extends StatelessWidget {
     
     // Initialize binding first
     Get.deleteAll(force: true);
-    final binding = UserMainBinding();
+    final binding = MainBinding();
     binding.dependencies();
 
     // Then navigate

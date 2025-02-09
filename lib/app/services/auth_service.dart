@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile, Response;
 import 'package:dio/dio.dart';
 import 'package:antarkanma/app/services/fcm_token_service.dart';
+import 'package:antarkanma/app/services/location_service.dart';
+import 'package:antarkanma/app/services/user_location_service.dart';
 
 class AuthService extends GetxService {
   late final StorageService _storageService;
@@ -111,6 +113,47 @@ class AuthService extends GetxService {
       return false;
     } catch (e) {
       print('Error refreshing token: $e');
+      return false;
+    }
+  }
+
+  Future<bool> autoLogin() async {
+    try {
+      final token = _storageService.getToken();
+      final rememberMe = _storageService.getRememberMe();
+      
+      if (token == null || !rememberMe) return false;
+
+      final isValid = await verifyToken(token);
+      if (!isValid) return false;
+
+      final credentials = _storageService.getSavedCredentials();
+      if (credentials == null) return false;
+
+      final loginSuccess = await login(
+        credentials['identifier']!,
+        credentials['password']!,
+        rememberMe: true,
+        isAutoLogin: true,
+        showError: false
+      );
+
+      if (loginSuccess) {
+        // Initialize location services after successful login
+        final locationService = Get.find<LocationService>();
+        await locationService.init();
+
+        // Initialize UserLocationService
+        if (!Get.isRegistered<UserLocationService>()) {
+          Get.put(UserLocationService(), permanent: true);
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Error during auto-login: $e');
       return false;
     }
   }
