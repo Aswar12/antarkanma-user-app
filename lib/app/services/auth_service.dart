@@ -8,152 +8,116 @@ import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile, Response;
 import 'package:dio/dio.dart';
-import 'package:antarkanma/app/services/fcm_token_service.dart';
-import 'package:antarkanma/app/services/location_service.dart';
-import 'package:antarkanma/app/services/user_location_service.dart';
 
 class AuthService extends GetxService {
-  late final StorageService _storageService;
-  late final AuthProvider _authProvider;
+  StorageService? _storageService;
+  AuthProvider? _authProvider;
+  final _isInitialized = false.obs;
+  final _isRefreshing = false.obs;
 
   final RxBool isLoggedIn = false.obs;
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
 
-  AuthService() {
+  // Getters for user info
+  String? get userName => currentUser.value?.name;
+  String? get userPhone => currentUser.value?.phoneNumber;
+  String? get userEmail => currentUser.value?.email;
+
+  // Token management
+  String? getToken() => _storageService?.getToken();
+  UserModel? getUser() => currentUser.value;
+
+  AuthService();
+
+  Future<void> _initializeService() async {
+    if (_isInitialized.value) return;
+
     try {
-      _storageService = Get.find<StorageService>();
+      _storageService = StorageService.instance;
+      await _storageService?.ensureInitialized();
+
+      if (!Get.isRegistered<AuthProvider>()) {
+        Get.put(AuthProvider(), permanent: true);
+      }
       _authProvider = Get.find<AuthProvider>();
+
+      // Check if there's a valid token and user data
+      final token = _storageService?.getToken();
+      final userData = _storageService?.getUser();
+
+      if (token != null && userData != null) {
+        try {
+          final user = UserModel.fromJson(userData);
+          if (user.role.toUpperCase() == 'USER') {
+            currentUser.value = user;
+            isLoggedIn.value = true;
+            debugPrint('Valid user found in storage, setting logged in state');
+          } else {
+            debugPrint('Non-user role found in storage, clearing auth data');
+            await _clearAuthData(fullClear: true);
+          }
+        } catch (e) {
+          debugPrint('Error parsing stored user data: $e');
+          await _clearAuthData(fullClear: true);
+        }
+      } else {
+        debugPrint('No valid auth data found in storage');
+        isLoggedIn.value = false;
+      }
+
+      _isInitialized.value = true;
+      debugPrint('AuthService initialized successfully');
     } catch (e) {
-      debugPrint('Error initializing AuthService dependencies: $e');
+      debugPrint('Error initializing AuthService: $e');
       rethrow;
     }
   }
 
-  // Getters
-  String? getToken() => _storageService.getToken();
-  UserModel? getUser() => currentUser.value;
-  String get userName => currentUser.value?.name ?? '';
-  String get userEmail => currentUser.value?.email ?? '';
-  String get userPhone => currentUser.value?.phoneNumber ?? '';
-  String get userRole => currentUser.value?.role ?? '';
-  bool get isUser => currentUser.value?.isUser ?? false;
-  int? get userId => currentUser.value?.id;
-  String? get userProfilePhotoUrl => currentUser.value?.profilePhotoUrl;
-  String? get userProfilePhotoPath => currentUser.value?.profilePhotoPath;
-  bool get isRememberMeEnabled => _storageService.getRememberMe();
-
-  Future<void> _handleFCMToken({bool register = true}) async {
-    if (Get.currentRoute.contains('splash')) {
-      print('Skipping FCM token handling during splash/initialization');
-      return;
+  Future<void> ensureInitialized() async {
+    if (!_isInitialized.value) {
+      await _initializeService();
     }
+  }
 
-    try {
-      FCMTokenService? fcmTokenService;
-      try {
-        if (!Get.isRegistered<FCMTokenService>()) {
-          print('FCMTokenService not registered yet, initializing...');
-          await Get.putAsync(() async {
-            final service = FCMTokenService();
-            await service.init();
-            return service;
-          });
-        }
-        fcmTokenService = Get.find<FCMTokenService>();
-      } catch (e) {
-        print('Error initializing FCMTokenService: $e');
-        return;
-      }
-
-      if (fcmTokenService == null) return;
-
-      if (register) {
-        final fcmToken = fcmTokenService.currentToken;
-        final userId = currentUser.value?.id;
-        if (fcmToken != null && userId != null) {
-          try {
-            await fcmTokenService.registerFCMToken(fcmToken);
-          } catch (e) {
-            print('Error registering FCM token: $e');
-          }
-        }
-      } else {
+  Future<void> handleAuthError(DioException error) async {
+    if (error.response?.statusCode == 401) {
+      debugPrint('Handling 401 error - attempting token refresh');
+      final token = _storageService?.getToken();
+      if (token != null) {
         try {
-          await fcmTokenService.unregisterToken();
+          final response = await _authProvider!.refreshToken(token);
+          if (response.statusCode == 200 && response.data != null) {
+            final newToken = response.data['data']['access_token'];
+            if (newToken != null) {
+              await _storageService!.saveToken(newToken);
+              debugPrint('Token refreshed successfully');
+              return;
+            }
+          }
         } catch (e) {
-          print('Error unregistering FCM token: $e');
+          debugPrint('Error refreshing token: $e');
         }
       }
-    } catch (e) {
-      print('Error in FCM token handling: $e');
+      debugPrint('Token refresh failed, logging out');
+      await logout();
     }
   }
 
   Future<bool> verifyToken(String token) async {
     try {
-      final response = await _authProvider.refreshToken(token);
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Error verifying token: $e');
-      return false;
-    }
-  }
+      if (!_isInitialized.value || _authProvider == null) return false;
 
-  Future<bool> refreshToken() async {
-    try {
-      final currentToken = _storageService.getToken();
-      if (currentToken == null) return false;
-
-      final response = await _authProvider.refreshToken(currentToken);
-      if (response.statusCode == 200) {
-        final newToken = response.data['data']['access_token'];
-        await _storageService.saveToken(newToken);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Error refreshing token: $e');
-      return false;
-    }
-  }
-
-  Future<bool> autoLogin() async {
-    try {
-      final token = _storageService.getToken();
-      final rememberMe = _storageService.getRememberMe();
-      
-      if (token == null || !rememberMe) return false;
-
-      final isValid = await verifyToken(token);
-      if (!isValid) return false;
-
-      final credentials = _storageService.getSavedCredentials();
-      if (credentials == null) return false;
-
-      final loginSuccess = await login(
-        credentials['identifier']!,
-        credentials['password']!,
-        rememberMe: true,
-        isAutoLogin: true,
-        showError: false
-      );
-
-      if (loginSuccess) {
-        // Initialize location services after successful login
-        final locationService = Get.find<LocationService>();
-        await locationService.init();
-
-        // Initialize UserLocationService
-        if (!Get.isRegistered<UserLocationService>()) {
-          Get.put(UserLocationService(), permanent: true);
+      final response = await _authProvider!.getProfile(token);
+      if (response.statusCode == 200 && response.data != null) {
+        final userData = response.data['data'];
+        if (userData != null) {
+          final user = UserModel.fromJson(userData);
+          return user.role.toUpperCase() == 'USER';
         }
-
-        return true;
       }
-
       return false;
     } catch (e) {
-      print('Error during auto-login: $e');
+      debugPrint('Error verifying token: $e');
       return false;
     }
   }
@@ -166,6 +130,14 @@ class AuthService extends GetxService {
     bool showError = true,
   }) async {
     try {
+      debugPrint('Login attempt - identifier: $identifier');
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) {
+        debugPrint('Services not initialized');
+        return false;
+      }
+
       if (!isAutoLogin) {
         final validationError = Validators.validateIdentifier(identifier);
         if (validationError != null && showError) {
@@ -175,12 +147,15 @@ class AuthService extends GetxService {
         }
       }
 
-      final response = await _authProvider.login(identifier, password);
-      if (response.statusCode != 200) {
+      final response = await _authProvider!.login(identifier, password);
+      debugPrint('Login response status: ${response.statusCode}');
+
+      if (response.statusCode != 200 || response.data == null) {
         if (!isAutoLogin && showError) {
           showCustomSnackbar(
               title: 'Login Gagal',
-              message: response.data['meta']['message'] ?? 'Terjadi kesalahan',
+              message:
+                  response.data?['meta']?['message'] ?? 'Terjadi kesalahan',
               isError: true);
         }
         return false;
@@ -192,7 +167,9 @@ class AuthService extends GetxService {
       if (token != null && userData != null) {
         try {
           final user = UserModel.fromJson(userData);
-          if (!user.isUser) {
+
+          // Check if user role is USER
+          if (user.role.toUpperCase() != 'USER') {
             if (!isAutoLogin && showError) {
               showCustomSnackbar(
                   title: 'Login Gagal',
@@ -202,14 +179,19 @@ class AuthService extends GetxService {
             return false;
           }
 
-          await _storageService.saveToken(token);
-          await _storageService.saveUser(userData);
+          // Save token and user data
+          await _storageService!.saveToken(token);
+          await _storageService!.saveUser(userData);
 
+          // Handle remember me
           if (rememberMe) {
-            await _storageService.saveRememberMe(true);
-            await _storageService.saveCredentials(identifier, password);
+            debugPrint('Saving credentials for auto-login');
+            await _storageService!.saveRememberMe(true);
+            await _storageService!.saveCredentials(identifier, password);
           } else {
-            await _storageService.clearCredentials();
+            debugPrint('Clearing saved credentials');
+            await _storageService!.clearCredentials();
+            await _storageService!.saveRememberMe(false);
           }
 
           currentUser.value = user;
@@ -217,31 +199,33 @@ class AuthService extends GetxService {
 
           if (!isAutoLogin) {
             await _handleFCMToken(register: true);
-          }
-
-          if (!isAutoLogin) {
             Get.offAllNamed(Routes.userMainPage);
             if (showError) {
               showCustomSnackbar(title: 'Sukses', message: 'Login berhasil');
             }
           }
+          debugPrint('Login successful - user: ${user.name}');
           return true;
         } catch (e) {
-          print('Error parsing user data: $e');
+          debugPrint('Error parsing user data: $e');
           if (!isAutoLogin && showError) {
             showCustomSnackbar(
-                title: 'Error', message: 'Data pengguna tidak valid', isError: true);
+                title: 'Error',
+                message: 'Data pengguna tidak valid',
+                isError: true);
           }
           return false;
         }
       }
 
+      debugPrint('Invalid token or user data');
       if (!isAutoLogin && showError) {
         showCustomSnackbar(
             title: 'Error', message: 'Token tidak valid.', isError: true);
       }
       return false;
     } catch (e) {
+      debugPrint('Error during login: $e');
       if (!isAutoLogin && showError) {
         showCustomSnackbar(
             title: 'Error',
@@ -255,6 +239,12 @@ class AuthService extends GetxService {
   Future<bool> register(String name, String email, String phoneNumber,
       String password, String confirmPassword) async {
     try {
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) {
+        return false;
+      }
+
       if ([name, email, phoneNumber, password].any((field) => field.isEmpty)) {
         showCustomSnackbar(
             title: 'Error', message: 'Semua field harus diisi.', isError: true);
@@ -267,26 +257,28 @@ class AuthService extends GetxService {
         'phone_number': phoneNumber,
         'password': password,
         'password_confirmation': confirmPassword,
-        'role': UserModel.ROLE_USER,
+        'role': 'USER',
       };
 
-      final response = await _authProvider.register(userData);
+      final response = await _authProvider!.register(userData);
       if (response.statusCode == 200) {
         final userData = response.data['data']['user'];
         final token = response.data['data']['access_token'];
         if (token != null && userData != null) {
           try {
             final user = UserModel.fromJson(userData);
-            await _storageService.saveToken(token);
-            await _storageService.saveUser(userData);
+            await _storageService!.saveToken(token);
+            await _storageService!.saveUser(userData);
             currentUser.value = user;
             isLoggedIn.value = true;
             Get.offAllNamed(Routes.userMainPage);
             return true;
           } catch (e) {
-            print('Error parsing user data: $e');
+            debugPrint('Error parsing user data: $e');
             showCustomSnackbar(
-                title: 'Error', message: 'Data pengguna tidak valid', isError: true);
+                title: 'Error',
+                message: 'Data pengguna tidak valid',
+                isError: true);
             return false;
           }
         }
@@ -311,20 +303,26 @@ class AuthService extends GetxService {
 
   Future<UserModel?> getProfile({bool showError = false}) async {
     try {
-      final token = _storageService.getToken();
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) {
+        return null;
+      }
+
+      final token = _storageService!.getToken();
       if (token == null) return null;
 
-      final response = await _authProvider.getProfile(token, silent: true);
+      final response = await _authProvider!.getProfile(token, silent: true);
       if (response.statusCode == 200 && response.data != null) {
         final userData = response.data['data'];
         if (userData != null) {
           try {
             final user = UserModel.fromJson(userData);
-            await _storageService.saveUser(userData);
+            await _storageService!.saveUser(userData);
             currentUser.value = user;
             return user;
           } catch (e) {
-            print('Error parsing user data: $e');
+            debugPrint('Error parsing user data: $e');
             if (showError) {
               showCustomSnackbar(
                   title: 'Error',
@@ -337,7 +335,7 @@ class AuthService extends GetxService {
       }
       return null;
     } catch (e) {
-      print('Error getting profile: $e');
+      debugPrint('Error getting profile: $e');
       if (showError) {
         showCustomSnackbar(
             title: 'Error',
@@ -350,7 +348,13 @@ class AuthService extends GetxService {
 
   Future<bool> updateProfilePhoto(File photo) async {
     try {
-      final token = _storageService.getToken();
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) {
+        return false;
+      }
+
+      final token = _storageService!.getToken();
       if (token == null) {
         showCustomSnackbar(
             title: 'Error', message: 'Token tidak valid', isError: true);
@@ -382,21 +386,21 @@ class AuthService extends GetxService {
         ),
       });
 
-      final response = await _authProvider.updateProfilePhoto(token, formData);
+      final response = await _authProvider!.updateProfilePhoto(token, formData);
       if (response.statusCode == 200) {
-        final userResponse = await _authProvider.getProfile(token);
+        final userResponse = await _authProvider!.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
           if (userData != null) {
             try {
               final user = UserModel.fromJson(userData);
-              await _storageService.saveUser(userData);
+              await _storageService!.saveUser(userData);
               currentUser.value = user;
               showCustomSnackbar(
                   title: 'Sukses', message: 'Foto profil berhasil diperbarui');
               return true;
             } catch (e) {
-              print('Error parsing user data: $e');
+              debugPrint('Error parsing user data: $e');
               showCustomSnackbar(
                   title: 'Error',
                   message: 'Data profil tidak valid',
@@ -427,7 +431,13 @@ class AuthService extends GetxService {
     String? phoneNumber,
   }) async {
     try {
-      final token = _storageService.getToken();
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) {
+        return false;
+      }
+
+      final token = _storageService!.getToken();
       if (token == null) {
         showCustomSnackbar(
             title: 'Error', message: 'Token tidak valid', isError: true);
@@ -441,21 +451,21 @@ class AuthService extends GetxService {
           'phone_number': phoneNumber,
       };
 
-      final response = await _authProvider.updateProfile(token, updateData);
+      final response = await _authProvider!.updateProfile(token, updateData);
       if (response.statusCode == 200) {
-        final userResponse = await _authProvider.getProfile(token);
+        final userResponse = await _authProvider!.getProfile(token);
         if (userResponse.statusCode == 200) {
           final userData = userResponse.data['data'];
           if (userData != null) {
             try {
               final user = UserModel.fromJson(userData);
-              await _storageService.saveUser(userData);
+              await _storageService!.saveUser(userData);
               currentUser.value = user;
               showCustomSnackbar(
                   title: 'Sukses', message: 'Profil berhasil diperbarui');
               return true;
             } catch (e) {
-              print('Error parsing user data: $e');
+              debugPrint('Error parsing user data: $e');
               showCustomSnackbar(
                   title: 'Error',
                   message: 'Data profil tidak valid',
@@ -482,13 +492,17 @@ class AuthService extends GetxService {
 
   Future<void> logout() async {
     try {
-      final token = _storageService.getToken();
+      if (!_isInitialized.value ||
+          _authProvider == null ||
+          _storageService == null) return;
+
+      final token = _storageService!.getToken();
       if (token != null) {
-        await _authProvider.logout(token);
+        await _authProvider!.logout(token);
         await _handleFCMToken(register: false);
       }
     } catch (e) {
-      print('Error during logout: $e');
+      debugPrint('Error during logout: $e');
     } finally {
       await _clearAuthData(fullClear: true);
       Get.offAllNamed(Routes.login);
@@ -496,36 +510,30 @@ class AuthService extends GetxService {
   }
 
   Future<void> _clearAuthData({bool fullClear = false}) async {
+    if (!_isInitialized.value || _storageService == null) return;
+
     if (fullClear) {
-      if (_storageService.getRememberMe()) {
-        final credentials = _storageService.getSavedCredentials();
-        await _storageService.clearAll();
+      if (_storageService!.getRememberMe()) {
+        // Keep credentials if remember me is enabled
+        final credentials = _storageService!.getSavedCredentials();
+        await _storageService!.clearAll();
         if (credentials != null) {
-          await _storageService.saveRememberMe(true);
-          await _storageService.saveCredentials(
+          await _storageService!.saveRememberMe(true);
+          await _storageService!.saveCredentials(
               credentials['identifier']!, credentials['password']!);
         }
       } else {
-        await _storageService.clearAll();
+        await _storageService!.clearAll();
       }
     } else {
-      await _storageService.clearAuth();
+      await _storageService!.clearAuth();
     }
 
     isLoggedIn.value = false;
     currentUser.value = null;
   }
 
-  void handleAuthError(dynamic error) {
-    if (error.toString().contains('401')) {
-      _clearAuthData(fullClear: true);
-      Get.offAllNamed(Routes.login);
-    }
-  }
-
-  @override
-  void onClose() {
-    currentUser.close();
-    super.onClose();
+  Future<void> _handleFCMToken({bool register = true}) async {
+    // ... rest of the code remains the same ...
   }
 }

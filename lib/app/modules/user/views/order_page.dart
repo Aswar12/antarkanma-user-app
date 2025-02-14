@@ -97,7 +97,6 @@ class _OrderPageState extends State<OrderPage>
                 child: Text(controller.errorMessage.value),
               );
             }
-
             return TabBarView(
               controller: _tabController,
               children: [

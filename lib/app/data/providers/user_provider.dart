@@ -1,5 +1,6 @@
 import 'package:antarkanma/config.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class UserProvider {
   final Dio _dio = Dio();
@@ -23,6 +24,9 @@ class UserProvider {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          debugPrint('🌐 Request URL: ${options.uri}');
+          debugPrint('📝 Request Query Parameters: ${options.queryParameters}');
+
           options.headers.addAll({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -30,9 +34,15 @@ class UserProvider {
           return handler.next(options);
         },
         onResponse: (response, handler) {
+          debugPrint('✅ Response Status Code: ${response.statusCode}');
+          debugPrint('✅ Response Data: ${response.data}');
           return handler.next(response);
         },
         onError: (DioException error, handler) {
+          debugPrint('❌ API Error:');
+          debugPrint('   Status Code: ${error.response?.statusCode}');
+          debugPrint('   Error Data: ${error.response?.data}');
+          debugPrint('   Request URL: ${error.requestOptions.uri}');
           _handleError(error);
           return handler.next(error);
         },
@@ -116,20 +126,14 @@ class UserProvider {
     }
   }
 
-  Future<Response> uploadProfileImage(String token, String imagePath) async {
+  Future<Response> uploadProfileImage(String token, FormData formData) async {
     try {
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(imagePath),
-      });
-
       final response = await _dio.post(
         '/user/profile/photo',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
-          },
-          validateStatus: (status) {
-            return status != null && status < 500;
+            'Accept': 'application/json',
           },
         ),
         data: formData,

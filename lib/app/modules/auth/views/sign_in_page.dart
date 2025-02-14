@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../widgets/custom_input_field.dart';
+import '../../../routes/app_pages.dart';
 
 class SignInPage extends GetView<AuthController> {
   final GlobalKey<FormState> _signInFormKey = GlobalKey<FormState>();
@@ -10,7 +11,7 @@ class SignInPage extends GetView<AuthController> {
   SignInPage({super.key}) {
     // Ensure AuthController is initialized
     if (!Get.isRegistered<AuthController>()) {
-      Get.put(AuthController());
+      Get.put(AuthController(), permanent: true);
     }
   }
 
@@ -155,9 +156,9 @@ class SignInPage extends GetView<AuthController> {
         () => ElevatedButton(
           onPressed: controller.isLoading.value
               ? null
-              : () {
+              : () async {
                   if (_signInFormKey.currentState!.validate()) {
-                    controller.login();
+                    await controller.login();
                   }
                 },
           style: ElevatedButton.styleFrom(
@@ -194,7 +195,7 @@ class SignInPage extends GetView<AuthController> {
           ),
         ),
         GestureDetector(
-          onTap: () => Get.toNamed('/register'),
+          onTap: () => Get.toNamed(Routes.register),
           child: Text(
             'Daftar',
             style: primaryTextOrange.copyWith(

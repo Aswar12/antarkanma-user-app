@@ -1,72 +1,126 @@
-import 'package:antarkanma/app/data/models/merchant_model.dart';
-import 'package:antarkanma/app/data/models/product_model.dart';
-import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../services/merchant_service.dart';
+import '../services/product_service.dart';
+import '../data/models/merchant_model.dart';
+import '../data/models/product_model.dart';
 
 class MerchantDetailController extends GetxController {
   final MerchantService _merchantService;
-
-  MerchantDetailController({required MerchantService merchantService})
-      : _merchantService = merchantService;
-
-  final merchantId = 0.obs;
-  final merchant = Rxn<MerchantModel>();
+  final ProductService _productService;
+  
+  final searchController = TextEditingController();
+  final merchant = Rx<MerchantModel?>(null);
   final products = <ProductModel>[].obs;
   final isLoading = true.obs;
-  final searchController = TextEditingController();
-  final searchQuery = ''.obs;
+
+  // Constructor with dependency injection
+  MerchantDetailController({
+    required MerchantService merchantService,
+    required ProductService productService,
+  }) : _merchantService = merchantService,
+       _productService = productService {
+    debugPrint('MerchantDetailController: Constructor called');
+  }
 
   @override
   void onInit() {
     super.onInit();
-    if (Get.arguments != null && Get.arguments is Map) {
-      merchantId.value = Get.arguments['merchantId'] as int;
-      loadMerchantDetail();
+    debugPrint('MerchantDetailController: onInit');
+    _loadMerchantData();
+  }
+
+  Future<void> _loadMerchantData() async {
+    try {
+      final Map<String, dynamic>? args = Get.arguments;
+      if (args != null && args.containsKey('merchantId')) {
+        final merchantId = args['merchantId'];
+        if (merchantId != null) {
+          await loadMerchantData(merchantId);
+        } else {
+          _handleError('Invalid merchant ID');
+        }
+      } else {
+        _handleError('Merchant ID not provided');
+      }
+    } catch (e) {
+      _handleError('Error loading merchant data: $e');
     }
   }
 
-  Future<void> loadMerchantDetail() async {
+  void _handleError(String message) {
+    debugPrint('MerchantDetailController: $message');
+    Get.snackbar(
+      'Error',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+    Get.back();
+  }
+
+  Future<void> loadMerchantData(dynamic merchantId) async {
     try {
-      isLoading(true);
-      final merchantData =
-          await _merchantService.getMerchantById(merchantId.value);
+      isLoading.value = true;
+      debugPrint('Loading merchant data for ID: $merchantId');
+      
+      final merchantData = await _merchantService.getMerchantById(merchantId);
       merchant.value = merchantData;
-      await loadMerchantProducts();
+      debugPrint('Merchant data loaded: ${merchantData.name}');
+
+      if (merchantData.id != null) {
+        final response = await _productService.getAllProducts(
+          query: '',
+          categoryId: null,
+          page: 1,
+          pageSize: 50,
+        );
+        products.assignAll(response.data.where(
+          (product) => product.merchant?.id == merchantData.id
+        ));
+        debugPrint('Loaded ${products.length} products for merchant');
+      }
     } catch (e) {
+      debugPrint('Error loading merchant data: $e');
       Get.snackbar(
         'Error',
-        'Gagal memuat detail merchant',
+        'Failed to load merchant data',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
       );
     } finally {
-      isLoading(false);
+      isLoading.value = false;
     }
   }
 
-  Future<void> loadMerchantProducts() async {
+  void searchProducts(String query) async {
+    if (merchant.value == null || merchant.value?.id == null) return;
+    
     try {
-      final response = await _merchantService.getMerchantProducts(
-        merchantId.value,
-        query: searchQuery.value,
+      if (query.isEmpty) {
+        await loadMerchantData(merchant.value!.id);
+        return;
+      }
+
+      isLoading.value = true;
+      final response = await _productService.getAllProducts(
+        query: query,
+        page: 1,
+        pageSize: 50,
       );
-      products.value = response.data;
+      products.assignAll(response.data.where(
+        (product) => product.merchant?.id == merchant.value!.id
+      ));
     } catch (e) {
+      debugPrint('Error searching products: $e');
       Get.snackbar(
         'Error',
-        'Gagal memuat produk merchant',
+        'Failed to search products',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
       );
+    } finally {
+      isLoading.value = false;
     }
-  }
-
-  Future<void> searchProducts(String query) async {
-    searchQuery.value = query;
-    await loadMerchantProducts();
   }
 
   @override

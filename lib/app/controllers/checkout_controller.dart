@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
@@ -46,36 +48,76 @@ class CheckoutController extends GetxController {
   final List<String> paymentMethods = ['COD'];
 
   List<Worker>? _workers;
+  Timer? _shippingDebouncer;
 
   @override
   void onInit() {
     super.onInit();
-    _initializeCheckoutLocation();
-    _initializeCheckout();
+    _initializeCheckoutAsync();
     setPaymentMethod('COD');
 
-    // Create workers to observe both location changes
     _workers = [
-      // Observe our local selectedLocation changes
       ever<UserLocationModel?>(
         selectedLocation,
         (location) {
           if (location != null) {
-            _calculateShippingPreview();
+            _debouncedCalculateShipping();
           }
         },
       ),
-      // Observe cart changes
       ever(cartController.merchantItems, (_) {
-        _calculateShippingPreview();
+        _debouncedCalculateShipping();
       }),
     ];
+  }
+
+  void _debouncedCalculateShipping() {
+    _shippingDebouncer?.cancel();
+    _shippingDebouncer = Timer(const Duration(milliseconds: 500), () {
+      _calculateShippingPreview();
+    });
+  }
+
+  Future<void> _initializeCheckoutAsync() async {
+    await _initializeCheckoutLocation();
+    _initializeCheckout();
+  }
+
+  Future<void> _initializeCheckoutLocation() async {
+    try {
+      // Wait for UserLocationController to initialize if needed
+      if (userLocationController.isLoading) {
+        await Future.doWhile(() => 
+          Future.delayed(const Duration(milliseconds: 100))
+          .then((_) => userLocationController.isLoading));
+      }
+
+      final selectedLoc = userLocationController.selectedLocation;
+      final defaultLoc = userLocationController.defaultAddress;
+      final firstLoc = userLocationController.userLocations.isNotEmpty
+          ? userLocationController.userLocations.first
+          : null;
+
+      UserLocationModel? priorityLocation = selectedLoc ?? defaultLoc ?? firstLoc;
+
+      if (priorityLocation != null) {
+        selectedLocation.value = priorityLocation;
+        // Only update if the location is different
+        if (userLocationController.selectedLocation != priorityLocation) {
+          // Update local state first
+          selectedLocation.value = priorityLocation;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing checkout location: $e');
+    }
   }
 
   @override
   void onClose() {
     _workers?.forEach((worker) => worker.dispose());
     _workers = null;
+    _shippingDebouncer?.cancel();
     super.onClose();
   }
 
@@ -89,21 +131,6 @@ class CheckoutController extends GetxController {
     }
 
     update();
-  }
-
-  void _initializeCheckoutLocation() {
-    final selectedLoc = userLocationController.selectedLocation;
-    final defaultLoc = userLocationController.defaultAddress;
-    final firstLoc = userLocationController.userLocations.isNotEmpty
-        ? userLocationController.userLocations.first
-        : null;
-
-    UserLocationModel? priorityLocation = selectedLoc ?? defaultLoc ?? firstLoc;
-
-    if (priorityLocation != null) {
-      selectedLocation.value = priorityLocation;
-      userLocationController.setSelectedLocation(priorityLocation);
-    }
   }
 
   void _initializeCheckout() {
@@ -187,22 +214,30 @@ class CheckoutController extends GetxController {
       return;
     }
 
+    // Prevent multiple simultaneous calculations
+    if (isCalculatingShipping.value) {
+      debugPrint('Shipping calculation already in progress, skipping...');
+      return;
+    }
+
     isCalculatingShipping.value = true;
     try {
       final locationId = selectedLocation.value?.id;
       if (locationId == null) return;
 
-      final items = orderItems
-          .map((item) => {
-                'product_id': item.product.id,
-                'quantity': item.quantity,
-              })
-          .toList();
+      final items = orderItems.map((item) => {
+        'product_id': item.product.id,
+        'quantity': item.quantity,
+      }).toList();
 
-      final response = await shippingService.getShippingPreview(
-        userLocationId: locationId,
-        items: items,
-      );
+      // Add timeout to prevent hanging
+      final response = await Future.any([
+        shippingService.getShippingPreview(
+          userLocationId: locationId,
+          items: items,
+        ),
+        Future.delayed(const Duration(seconds: 30), () => null),
+      ]);
 
       if (response != null) {
         if (response['data']?['total_shipping_price'] != null &&
@@ -214,6 +249,9 @@ class CheckoutController extends GetxController {
           debugPrint('Invalid shipping preview response structure: $response');
           shippingDetails.value = null;
         }
+      } else {
+        debugPrint('Shipping calculation timed out');
+        shippingDetails.value = null;
       }
     } catch (e) {
       debugPrint('Error calculating shipping preview: $e');
@@ -229,7 +267,6 @@ class CheckoutController extends GetxController {
 
   void setDeliveryLocation(UserLocationModel location) {
     selectedLocation.value = location;
-    userLocationController.setSelectedLocation(location);
     update();
   }
 

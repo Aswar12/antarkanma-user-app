@@ -9,8 +9,8 @@ import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:flutter/material.dart';
 
 class ProductDetailController extends GetxController {
-  final ReviewRepository reviewRepository;
-  final MerchantService _merchantService = Get.find<MerchantService>();
+  final ReviewRepository _reviewRepository;
+  final MerchantService _merchantService;
   
   final RxList<ProductReviewModel> apiReviews = <ProductReviewModel>[].obs;
   final isLoadingReviews = false.obs;
@@ -18,6 +18,13 @@ class ProductDetailController extends GetxController {
   final RxInt selectedRatingFilter = RxInt(0);
   final RxBool isExpanded = RxBool(false);
   final RxBool isLoadingMerchant = false.obs;
+
+  // Constructor with dependency injection
+  ProductDetailController({
+    required ReviewRepository reviewRepository,
+    required MerchantService merchantService,
+  }) : _reviewRepository = reviewRepository,
+       _merchantService = merchantService;
 
   List<ProductReviewModel> get visibleReviews =>
       isExpanded.value ? apiReviews : apiReviews.take(3).toList();
@@ -35,8 +42,6 @@ class ProductDetailController extends GetxController {
   void toggleReviews() {
     isExpanded.value = !isExpanded.value;
   }
-
-  ProductDetailController({required this.reviewRepository});
 
   var product = ProductModel(
     id: null,
@@ -223,7 +228,7 @@ class ProductDetailController extends GetxController {
       isLoadingReviews.value = true;
       final token = StorageService.instance.getToken();
 
-      final reviews = await reviewRepository.getProductReviews(
+      final reviews = await _reviewRepository.getProductReviews(
         product.value.id!,
         rating: selectedRatingFilter.value == 0 ? null : selectedRatingFilter.value,
         token: token,

@@ -1,6 +1,10 @@
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/services/product_service.dart';
+import 'package:antarkanma/app/services/merchant_service.dart';
+import 'package:antarkanma/app/services/category_service.dart';
+import 'package:antarkanma/app/services/location_service.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/widgets/category_widget.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
@@ -31,11 +35,20 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   @override
   void initState() {
     super.initState();
-    try {
-      controller = Get.find<HomePageController>();
-    } catch (e) {
-      controller = Get.put(HomePageController());
-    }
+    final productService = Get.find<ProductService>();
+    final merchantService = Get.find<MerchantService>();
+    final categoryService = Get.find<CategoryService>();
+    final authService = Get.find<AuthService>();
+    final locationService = Get.find<LocationService>();
+
+    controller = HomePageController(
+      productService: productService,
+      merchantService: merchantService,
+      categoryService: categoryService,
+      authService: authService,
+      locationService: locationService,
+    );
+
     // Ensure data is loaded when page is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.allMerchants.isEmpty) {
@@ -495,7 +508,8 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => maxHeight;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return SizedBox.expand(child: child);
   }
 

@@ -33,9 +33,9 @@ class CheckoutPage extends GetView<CheckoutController> {
     return Card(
       color: backgroundColor8,
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -152,10 +152,7 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   Widget _buildDeliveryAddressSection() {
-    return GetBuilder<UserLocationController>(
-      init: Get.find<UserLocationController>(),
-      initState: (_) => _initializeCheckout(Get.context!),
-      builder: (locationCtrl) => Card(
+    return Obx(() => Card(
         color: backgroundColor1,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -175,14 +172,14 @@ class CheckoutPage extends GetView<CheckoutController> {
                 ],
               ),
               const SizedBox(height: 8),
-              Obx(() {
-                final selectedLocation = locationCtrl.selectedLocation;
-                if (selectedLocation == null) return _buildNoAddressWidget();
-                final location = selectedLocation.value;
-                return location != null
-                    ? _buildAddressCard(location)
-                    : _buildNoAddressWidget();
-              }),
+              GetX<CheckoutController>(
+                builder: (controller) {
+                  final selectedLocation = controller.selectedLocation.value;
+                  return selectedLocation != null
+                      ? _buildAddressCard(selectedLocation)
+                      : _buildNoAddressWidget();
+                },
+              ),
             ],
           ),
         ),
@@ -265,7 +262,7 @@ class CheckoutPage extends GetView<CheckoutController> {
     return Card(
       color: backgroundColor1,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -295,8 +292,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      Container(
+                        padding: const EdgeInsets.only(top: 8, bottom: 4),
                         child: Text(
                           items.first.merchantName,
                           style: primaryTextStyle.copyWith(
@@ -306,7 +303,7 @@ class CheckoutPage extends GetView<CheckoutController> {
                         ),
                       ),
                       ...items.map((item) => _buildOrderItemCard(item)),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                     ],
                   );
                 }).toList(),
@@ -403,18 +400,51 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   Widget _buildTotalSection() {
-    return Card(
-      color: backgroundColor1,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildTotalRow('Subtotal', controller.subtotal.value),
-            _buildTotalRow('Biaya Pengiriman', controller.deliveryFee.value),
-            const Divider(height: 16),
-            _buildTotalRow('Total', controller.total.value, isTotal: true),
-          ],
+    return Obx(() {
+      final isCalculating = controller.isCalculatingShipping.value;
+      
+      return Card(
+        color: backgroundColor1,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildTotalRow('Subtotal', controller.subtotal.value),
+              isCalculating 
+                ? _buildSkeletonRow('Biaya Pengiriman')
+                : _buildTotalRow('Biaya Pengiriman', controller.deliveryFee.value),
+              const Divider(height: 16),
+              isCalculating
+                ? _buildSkeletonRow('Total', isTotal: true)
+                : _buildTotalRow('Total', controller.total.value, isTotal: true),
+            ],
+          ),
         ),
+      );
+    });
+  }
+
+  Widget _buildSkeletonRow(String label, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: primaryTextStyle.copyWith(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Container(
+            width: 100,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -474,18 +504,30 @@ class CheckoutPage extends GetView<CheckoutController> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Obx(() => Text(
-                    NumberFormat.currency(
-                      locale: 'id_ID',
-                      symbol: 'Rp ',
-                      decimalDigits: 0,
-                    ).format(controller.total.value),
-                    style: primaryTextStyle.copyWith(
-                      fontSize: Dimenssions.font18,
-                      fontWeight: FontWeight.bold,
-                      color: logoColorSecondary,
+              Obx(() {
+                if (controller.isCalculatingShipping.value) {
+                  return Container(
+                    width: 120,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                  )),
+                  );
+                }
+                return Text(
+                  NumberFormat.currency(
+                    locale: 'id_ID',
+                    symbol: 'Rp ',
+                    decimalDigits: 0,
+                  ).format(controller.total.value),
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font18,
+                    fontWeight: FontWeight.bold,
+                    color: logoColorSecondary,
+                  ),
+                );
+              }),
             ],
           ),
           const SizedBox(height: 16),
@@ -620,12 +662,13 @@ class CheckoutPage extends GetView<CheckoutController> {
                 );
               }
 
-              return Container(
-                height: 50,
+              return SizedBox(
+                height: 56, // Increased height
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: controller.isProcessingCheckout.value ||
-                          !controller.canCheckout
+                          !controller.canCheckout ||
+                          controller.isCalculatingShipping.value
                       ? null
                       : () => controller.processCheckout(),
                   style: ElevatedButton.styleFrom(
@@ -633,7 +676,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                     foregroundColor: Colors.white,
                     elevation: 3,
                     shadowColor: logoColorSecondary.withOpacity(0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14), // Adjusted padding
+                    minimumSize: const Size.fromHeight(56), // Added minimum height
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -662,6 +706,7 @@ class CheckoutPage extends GetView<CheckoutController> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.3,
+                                height: 1.2, // Added line height
                               ),
                             ),
                           ],
@@ -711,26 +756,36 @@ class CheckoutPage extends GetView<CheckoutController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDeliveryAddressSection(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8), // Reduced spacing
                   Obx(() {
+                    if (controller.isCalculatingShipping.value) {
+                      return Column(
+                        children: [
+                          const ShippingPreviewSkeletonLoading(),
+                          const SizedBox(height: 8),
+                        ],
+                      );
+                    }
+                    
                     final shippingDetails = controller.shippingDetails.value;
                     if (shippingDetails != null) {
-                      return ShippingDetailsSectionWidget(
-                        shippingDetails: shippingDetails,
+                      return Column(
+                        children: [
+                          ShippingDetailsSectionWidget(
+                            shippingDetails: shippingDetails,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                       );
                     }
                     return const SizedBox.shrink();
                   }),
-                  const SizedBox(height: 16),
-                  // Add the shipping preview skeleton loading here
-                  if (controller.isLoading.value) const ShippingPreviewSkeletonLoading(),
-                  const SizedBox(height: 16),
                   _buildOrderItemsSection(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8), // Reduced spacing
                   _buildPaymentSection(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8), // Reduced spacing
                   _buildTotalSection(),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 60), // Reduced bottom padding
                 ],
               ),
             );

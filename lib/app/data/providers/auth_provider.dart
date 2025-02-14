@@ -6,12 +6,14 @@ class AuthProvider {
   static AuthProvider? _instance;
   late final Dio _dio;
   final String baseUrl = Config.baseUrl;
+  bool _isInitialized = false;
 
   // Private constructor
   AuthProvider._() {
     _dio = Dio();
     _setupBaseOptions();
     _setupInterceptors();
+    _isInitialized = true;
     debugPrint('AuthProvider initialized with baseUrl: $baseUrl');
   }
 
@@ -21,12 +23,14 @@ class AuthProvider {
     return _instance!;
   }
 
+  bool get isInitialized => _isInitialized;
+
   void _setupBaseOptions() {
     _dio.options = BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      connectTimeout: Duration(milliseconds: Config.connectTimeout),
+      receiveTimeout: Duration(milliseconds: Config.receiveTimeout),
+      sendTimeout: Duration(milliseconds: Config.connectTimeout),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -44,32 +48,56 @@ class AuthProvider {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          debugPrint('REQUEST[${options.method}] => PATH: ${options.path}');
+          debugPrint('🌐 REQUEST[${options.method}] => PATH: ${options.path}');
+          debugPrint('🌐 Request URL: ${options.uri}');
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+          debugPrint(
+              '✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
           return handler.next(response);
         },
-        onError: (DioException error, handler) {
-          debugPrint('ERROR[${error.response?.statusCode}] => PATH: ${error.requestOptions.path}');
-          
-          // Don't throw errors during silent requests
+        onError: (DioException error, handler) async {
+          debugPrint(
+              '🔴 ERROR[${error.response?.statusCode}] => PATH: ${error.requestOptions.path}');
+          debugPrint('🔴 Error Type: ${error.type}');
+          debugPrint('🔴 Error Message: ${error.message}');
+
+          if (error.type == DioExceptionType.connectionError ||
+              error.type == DioExceptionType.unknown) {
+            debugPrint('🔄 Connection error occurred. Attempting retry...');
+
+            final retryCount =
+                (error.requestOptions.extra['retryCount'] ?? 0) as int;
+
+            if (retryCount < 3) {
+              error.requestOptions.extra['retryCount'] = retryCount + 1;
+              await Future.delayed(Duration(seconds: retryCount + 1));
+              debugPrint('🔄 Retrying request (${retryCount + 1}/3)');
+
+              try {
+                final response = await _dio.fetch(error.requestOptions);
+                return handler.resolve(response);
+              } catch (e) {
+                return handler.next(error);
+              }
+            }
+          }
+
           if (error.requestOptions.extra['silent'] == true) {
             return handler.resolve(Response(
               requestOptions: error.requestOptions,
-              statusCode: 200,  // Force success status
-              data: {'data': null},  // Return empty data
+              statusCode: 200,
+              data: {'data': null},
             ));
           }
-          
+
           _handleError(error);
           return handler.next(error);
         },
       ),
     );
 
-    // Add logging interceptor in debug mode
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
@@ -84,7 +112,7 @@ class AuthProvider {
   Future<Response> getProfile(String token, {bool silent = false}) async {
     try {
       final response = await _dio.get(
-        '/user/profile',
+        Config.profile,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -93,9 +121,7 @@ class AuthProvider {
             'silent': silent,
           },
           validateStatus: (status) {
-            // For silent requests, treat all responses as valid
             if (silent) return true;
-            // Otherwise only accept < 500
             return status! < 500;
           },
         ),
@@ -103,10 +129,9 @@ class AuthProvider {
       return response;
     } catch (e) {
       debugPrint('Error in getProfile: $e');
-      // For silent requests, return fake success response
       if (silent) {
         return Response(
-          requestOptions: RequestOptions(path: '/user/profile'),
+          requestOptions: RequestOptions(path: Config.profile),
           statusCode: 200,
           data: {'data': null},
         );
@@ -115,7 +140,8 @@ class AuthProvider {
     }
   }
 
-  Future<Response> login(String identifier, String password, {bool silent = false}) async {
+  Future<Response> login(String identifier, String password,
+      {bool silent = false}) async {
     try {
       final Map<String, dynamic> loginData = {
         'identifier': identifier,
@@ -123,7 +149,7 @@ class AuthProvider {
       };
 
       final response = await _dio.post(
-        Config.login, 
+        Config.login,
         data: loginData,
         options: Options(
           extra: {
@@ -157,10 +183,13 @@ class AuthProvider {
   Future<Response> refreshToken(String token, {bool silent = false}) async {
     try {
       final response = await _dio.post(
-        '/auth/refresh',
+        Config.refresh,
+        data: {
+          'token': token, // Include token in request body
+        },
         options: Options(
           headers: {
-            'Authorization': 'Bearer $token',
+            'Authorization': 'Bearer $token', // Include token in header
           },
           extra: {
             'silent': silent,
@@ -172,7 +201,7 @@ class AuthProvider {
       debugPrint('Error in refreshToken: $e');
       if (silent) {
         return Response(
-          requestOptions: RequestOptions(path: '/auth/refresh'),
+          requestOptions: RequestOptions(path: Config.refresh),
           statusCode: 200,
           data: {'data': null},
         );
@@ -184,7 +213,7 @@ class AuthProvider {
   Future<Response> updateProfilePhoto(String token, FormData formData) async {
     try {
       return await _dio.post(
-        '/user/profile/photo',
+        Config.profilePhoto,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -212,7 +241,7 @@ class AuthProvider {
       String token, Map<String, dynamic> data) async {
     try {
       return await _dio.put(
-        '/user/profile',
+        Config.profile,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -244,7 +273,7 @@ class AuthProvider {
       String token, Map<String, dynamic> data) async {
     try {
       return await _dio.put(
-        '/auth/change-password',
+        Config.changePassword,
         options: _getAuthOptions(token),
         data: data,
       );
@@ -257,7 +286,7 @@ class AuthProvider {
   Future<Response> logout(String token, {bool silent = false}) async {
     try {
       final response = await _dio.post(
-        '/auth/logout', 
+        Config.logout,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -272,7 +301,7 @@ class AuthProvider {
       debugPrint('Error in logout: $e');
       if (silent) {
         return Response(
-          requestOptions: RequestOptions(path: '/auth/logout'),
+          requestOptions: RequestOptions(path: Config.logout),
           statusCode: 200,
           data: {'data': null},
         );
@@ -284,7 +313,7 @@ class AuthProvider {
   Future<Response> getCurrentUser(String token, {bool silent = false}) async {
     try {
       final response = await _dio.get(
-        '/auth/user',
+        Config.profile,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -299,7 +328,7 @@ class AuthProvider {
       debugPrint('Error in getCurrentUser: $e');
       if (silent) {
         return Response(
-          requestOptions: RequestOptions(path: '/auth/user'),
+          requestOptions: RequestOptions(path: Config.profile),
           statusCode: 200,
           data: {'data': null},
         );
@@ -309,7 +338,6 @@ class AuthProvider {
   }
 
   void _handleError(DioException error) {
-    // Don't handle errors for silent requests
     if (error.requestOptions.extra['silent'] == true) {
       return;
     }

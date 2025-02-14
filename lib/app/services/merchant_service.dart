@@ -61,7 +61,7 @@ class MerchantService extends GetxService {
       if (response.statusCode == 200 && response.data != null) {
         debugPrint('Raw response data: ${response.data}');
         Map<String, dynamic> responseData;
-        
+
         // Handle response structure
         if (response.data is Map) {
           if (response.data['meta'] != null && response.data['data'] != null) {
@@ -96,7 +96,8 @@ class MerchantService extends GetxService {
           throw dio.DioException(
             requestOptions: response.requestOptions,
             response: response,
-            error: 'Unexpected response data type: ${response.data.runtimeType}',
+            error:
+                'Unexpected response data type: ${response.data.runtimeType}',
           );
         }
 
@@ -129,7 +130,8 @@ class MerchantService extends GetxService {
 
   Future<MerchantModel> getMerchantById(int id, {String? token}) async {
     try {
-      final response = await _merchantProvider.getMerchantById(id, token: token);
+      final response =
+          await _merchantProvider.getMerchantById(id, token: token);
 
       if (response.data != null) {
         final merchantData = response.data['data'] ?? response.data;

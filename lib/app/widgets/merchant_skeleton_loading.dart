@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:antarkanma/theme.dart';
 import 'home_skeleton_loading.dart';
 

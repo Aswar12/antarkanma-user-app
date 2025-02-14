@@ -18,168 +18,182 @@ import '../modules/user/views/product_detail_page.dart';
 import '../modules/user/views/profile_page.dart';
 import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
-import '../bindings/main_binding.dart';
+import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 
-abstract class Routes {
-  static const splash = '/splash';
-  static const login = '/login';
-  static const register = '/register';
-  static const cart = '/cart';
-  static const checkoutSuccess = '/checkout-success';
-  static const productDetail = '/product-detail';
-  static const merchantDetail = '/merchant-detail';
-  static const userMainPage = '/usermain';
-  static const userProfile = '/usermain/profile';
-  static const userChat = '/usermain/chat';
-  static const userOrder = '/usermain/order';
-  static const userHome = '/usermain/home';
-  static const userAddress = '/usermain/address';
-  static const userAddAddress = '/usermain/add-address';
-  static const userEditAddress = '/usermain/edit-address';
-  static const userSelectAddress = '/usermain/select-address';
-  static const userMapPicker = '/usermain/map-picker';
-  static const userCheckout = '/usermain/checkout';
-  static const userEditProfile = '/usermain/edit-profile';
-}
+part 'app_routes.dart';
 
 class AppPages {
+  AppPages._();
+
   static const initial = Routes.splash;
 
   static final routes = [
+    // Core Routes
     GetPage(
-      name: Routes.splash,
+      name: _Paths.splash,
       page: () => const SplashPage(),
-      binding: MainBinding(),
-      middlewares: [InitialAuthGuard()], // Add initial auth guard
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 500),
     ),
+
+    // Authentication Routes
     GetPage(
-      name: Routes.login,
+      name: _Paths.login,
       page: () => SignInPage(),
-      binding: MainBinding(),
+      middlewares: [LoginGuard()],
+      transition: Transition.fadeIn,
     ),
     GetPage(
-      name: Routes.register,
+      name: _Paths.register,
       page: () => SignUpPage(),
-      binding: MainBinding(),
+      middlewares: [LoginGuard()],
+      transition: Transition.fadeIn,
     ),
+
+    // Main User Routes
     GetPage(
-      name: Routes.cart,
+      name: _Paths.userMainPage,
+      page: () => const UserMainPage(),
+      middlewares: [AuthGuard()],
+      transition: Transition.fadeIn,
+      children: [
+        // Home Section
+        GetPage(
+          name: _Paths.home,
+          page: () => const HomePage(),
+          preventDuplicates: true,
+          transition: Transition.fadeIn,
+        ),
+
+        // Profile Section
+        GetPage(
+          name: _Paths.profile,
+          page: () => ProfilePage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.editProfile,
+          page: () => const EditProfileView(),
+          transition: Transition.rightToLeft,
+        ),
+
+        // Communication Section
+        GetPage(
+          name: _Paths.chat,
+          page: () => const ChatPage(),
+          transition: Transition.rightToLeft,
+        ),
+
+        // Order Management
+        GetPage(
+          name: _Paths.order,
+          page: () => const OrderPage(),
+          transition: Transition.rightToLeft,
+        ),
+
+        // Address Management
+        GetPage(
+          name: _Paths.address,
+          page: () => const AddressPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.addAddress,
+          page: () => AddEditAddressPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.editAddress,
+          page: () => AddEditAddressPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.selectAddress,
+          page: () => AddressSelectionPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.mapPicker,
+          page: () => const MapPickerView(),
+          transition: Transition.rightToLeft,
+        ),
+
+        // Shopping & Checkout
+        GetPage(
+          name: _Paths.checkout,
+          page: () => const CheckoutPage(),
+          transition: Transition.rightToLeft,
+        ),
+      ],
+    ),
+
+    // Shopping Routes
+    GetPage(
+      name: _Paths.cart,
       page: () => const CartPage(),
-      binding: MainBinding(),
       middlewares: [AuthGuard()],
+      transition: Transition.rightToLeft,
     ),
     GetPage(
-      name: Routes.checkoutSuccess,
+      name: _Paths.checkoutSuccess,
       page: () => const CheckoutSuccessPage(),
-      binding: MainBinding(),
       middlewares: [AuthGuard()],
+      transition: Transition.fadeIn,
     ),
     GetPage(
-      name: Routes.productDetail,
+      name: _Paths.productDetail,
       page: () => const ProductDetailPage(),
-      binding: MainBinding(),
       preventDuplicates: true,
       transition: Transition.fadeIn,
     ),
     GetPage(
-      name: Routes.merchantDetail,
+      name: _Paths.merchantDetail,
       page: () => const MerchantDetailPage(),
-      binding: MainBinding(),
-    ),
-    GetPage(
-      name: Routes.userMainPage,
-      page: () => const UserMainPage(),
-      binding: MainBinding(),
-      middlewares: [AuthGuard()],
-      children: [
-        GetPage(
-          name: '/profile',
-          page: () => ProfilePage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/chat',
-          page: () => const ChatPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/order',
-          page: () => const OrderPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/home',
-          page: () => const HomePage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/address',
-          page: () => const AddressPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/add-address',
-          page: () => AddEditAddressPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/edit-address',
-          page: () => AddEditAddressPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/select-address',
-          page: () => AddressSelectionPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/map-picker',
-          page: () => const MapPickerView(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/checkout',
-          page: () => CheckoutPage(),
-          binding: MainBinding(),
-        ),
-        GetPage(
-          name: '/edit-profile',
-          page: () => const EditProfileView(),
-          binding: MainBinding(),
-        ),
-      ],
+      preventDuplicates: true,
+      transition: Transition.rightToLeft,
     ),
   ];
-}
-
-class InitialAuthGuard extends GetMiddleware {
-  @override
-  RouteSettings? redirect(String? route) {
-    final authService = Get.find<AuthService>();
-    
-    // Check if we have a stored token and remember me is enabled
-    final token = authService.getToken();
-    final rememberMe = authService.isRememberMeEnabled;
-    
-    // If we have both token and remember me, let splash page handle the auth check
-    if (token != null && rememberMe) {
-      return null;
-    }
-    
-    // Otherwise, redirect to login
-    return const RouteSettings(name: Routes.login);
-  }
 }
 
 class AuthGuard extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
-    final authService = Get.find<AuthService>();
-    if (!authService.isLoggedIn.value) {
-      // If not logged in, redirect to login
-      return const RouteSettings(name: Routes.login);
+    try {
+      final authService = Get.find<AuthService>();
+      final storageService = Get.find<StorageService>();
+
+      final token = storageService.getToken();
+      final rememberMe = storageService.getRememberMe();
+
+      if (!authService.isLoggedIn.value || token == null || !rememberMe) {
+        return const RouteSettings(name: _Paths.splash);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('AuthGuard error: $e');
+      return const RouteSettings(name: _Paths.splash);
     }
-    return null;
+  }
+}
+
+class LoginGuard extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    try {
+      final authService = Get.find<AuthService>();
+      final storageService = Get.find<StorageService>();
+
+      final token = storageService.getToken();
+      final rememberMe = storageService.getRememberMe();
+
+      if (authService.isLoggedIn.value && token != null && rememberMe) {
+        return const RouteSettings(name: _Paths.userMainPage);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('LoginGuard error: $e');
+      return null;
+    }
   }
 }

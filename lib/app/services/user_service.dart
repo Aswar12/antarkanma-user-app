@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/data/models/user_model.dart';
 import 'package:antarkanma/app/data/providers/user_provider.dart';
-import 'package:get/get.dart';
+import 'package:dio/dio.dart' hide Response;
+import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import './storage_service.dart';
 import '../widgets/custom_snackbar.dart';
@@ -95,7 +96,12 @@ class UserService extends GetxService {
       final token = _storage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await _userProvider.uploadProfileImage(token, imagePath);
+      // Create FormData with the image file
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(imagePath),
+      });
+
+      final response = await _userProvider.uploadProfileImage(token, formData);
       if (response.statusCode == 200 && response.data != null) {
         final imageUrl = response.data['data']?['image_url'];
         if (imageUrl != null && imageUrl is String) {

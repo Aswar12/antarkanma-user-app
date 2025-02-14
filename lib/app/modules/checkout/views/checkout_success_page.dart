@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:antarkanma/app/modules/user/views/user_main_page.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/bindings/main_binding.dart';

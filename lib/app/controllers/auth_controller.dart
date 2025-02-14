@@ -1,7 +1,5 @@
-// ignore_for_file: avoid_print
-
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../routes/app_pages.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
@@ -9,6 +7,7 @@ import '../widgets/custom_snackbar.dart';
 import '../utils/validators.dart';
 import '../services/user_location_service.dart';
 import '../services/location_service.dart';
+import '../controllers/user_main_controller.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -24,39 +23,69 @@ class AuthController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxBool isPasswordHidden = true.obs;
   final rememberMe = false.obs;
-  final StorageService _storageService = StorageService.instance;
   final RxInt _rating = 0.obs;
   int get rating => _rating.value;
+
+  late final StorageService _storageService;
+  final _isInitialized = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    rememberMe.value = _storageService.getRememberMe();
+    _initializeController();
   }
 
-  // Make this public so it can be called from SplashController
+  Future<void> _initializeController() async {
+    try {
+      // Get storage instance
+      _storageService = StorageService.instance;
+
+      // Ensure storage is initialized
+      await _storageService.ensureInitialized();
+
+      // Load remember me state
+      rememberMe.value = _storageService.getRememberMe();
+
+      _isInitialized.value = true;
+    } catch (e) {
+      debugPrint('Error initializing AuthController: $e');
+    }
+  }
+
   Future<void> checkAuthStatus() async {
     try {
+      // Ensure controller is initialized
+      if (!_isInitialized.value) {
+        await _initializeController();
+      }
+
       final token = _storageService.getToken();
       final rememberMe = _storageService.getRememberMe();
-      
+
       if (token != null && rememberMe) {
         // Verify the token first
         final isValid = await _authService.verifyToken(token);
         if (isValid) {
           // Set logged in state
           _authService.isLoggedIn.value = true;
-          
+
           // Try to get user profile
           final user = await _authService.getProfile(showError: false);
-          
+
           if (user != null) {
             // Update current user in auth service
             _authService.currentUser.value = user;
-            
+
             // Initialize auth-dependent services
             await _initializeAuthDependentServices();
-            
+
+            // Initialize UserMainController if needed
+            if (!Get.isRegistered<UserMainController>()) {
+              final userMainController = UserMainController();
+              await userMainController.ensureInitialized();
+              Get.put(userMainController, permanent: true);
+            }
+
             // Navigate to main page if not already there
             if (Get.currentRoute != Routes.userMainPage) {
               Get.offAllNamed(Routes.userMainPage);
@@ -66,13 +95,13 @@ class AuthController extends GetxController {
         }
       }
 
-      // Clear auth data if auto-login fails
+      // Clear auth data if verification fails
       if (Get.currentRoute != Routes.login) {
         await _authService.logout();
         Get.offAllNamed(Routes.login);
       }
     } catch (e) {
-      print('Error checking auth status: $e');
+      debugPrint('Error checking auth status: $e');
       if (Get.currentRoute != Routes.login) {
         Get.offAllNamed(Routes.login);
       }
@@ -87,7 +116,8 @@ class AuthController extends GetxController {
 
       // Then initialize user location service which requires auth
       if (!Get.isRegistered<UserLocationService>()) {
-        final userLocationService = Get.put(UserLocationService(), permanent: true);
+        final userLocationService =
+            Get.put(UserLocationService(), permanent: true);
         // Load user locations from API
         await userLocationService.loadUserLocations(forceRefresh: true);
       }
@@ -96,7 +126,7 @@ class AuthController extends GetxController {
       final userLocationService = Get.find<UserLocationService>();
       await userLocationService.syncLocations(forceRefresh: true);
     } catch (e) {
-      print('Error initializing auth-dependent services: $e');
+      debugPrint('Error initializing auth-dependent services: $e');
     }
   }
 
@@ -107,9 +137,12 @@ class AuthController extends GetxController {
     isConfirmPasswordHidden.value = !isConfirmPasswordHidden.value;
   }
 
-  void toggleRememberMe() {
+  Future<void> toggleRememberMe() async {
+    if (!_isInitialized.value) {
+      await _initializeController();
+    }
     rememberMe.value = !rememberMe.value;
-    _storageService.saveRememberMe(rememberMe.value);
+    await _storageService.saveRememberMe(rememberMe.value);
   }
 
   void setRating(int value) {
@@ -133,7 +166,7 @@ class AuthController extends GetxController {
         );
       }
     } catch (e) {
-      print('Error submitting rating: $e');
+      debugPrint('Error submitting rating: $e');
       showCustomSnackbar(
         title: 'Error',
         message: 'Gagal mengirim rating',
@@ -172,8 +205,15 @@ class AuthController extends GetxController {
 
         // Initialize auth-dependent services after successful login
         await _initializeAuthDependentServices();
-        
-        print('Navigating to USER main page');
+
+        // Initialize UserMainController if needed
+        if (!Get.isRegistered<UserMainController>()) {
+          final userMainController = UserMainController();
+          await userMainController.ensureInitialized();
+          Get.put(userMainController, permanent: true);
+        }
+
+        debugPrint('Navigating to USER main page');
         Get.offAllNamed(Routes.userMainPage);
         showCustomSnackbar(
           title: 'Login Berhasil',
@@ -228,9 +268,14 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     try {
+      if (!_isInitialized.value) {
+        await _initializeController();
+      }
+
       // Store remember me state and credentials before logout
       final wasRememberMeEnabled = _storageService.getRememberMe();
-      final savedCredentials = wasRememberMeEnabled ? _storageService.getSavedCredentials() : null;
+      final savedCredentials =
+          wasRememberMeEnabled ? _storageService.getSavedCredentials() : null;
 
       await _authService.logout();
 
@@ -265,7 +310,7 @@ class AuthController extends GetxController {
         message: 'Anda telah berhasil keluar dari akun.',
       );
     } catch (e) {
-      print('Error during logout: $e');
+      debugPrint('Error during logout: $e');
       showCustomSnackbar(
         title: 'Logout Gagal',
         message: 'Gagal logout. Silakan coba lagi.',

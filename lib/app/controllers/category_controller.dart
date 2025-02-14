@@ -1,38 +1,52 @@
 import 'package:get/get.dart';
-import 'package:antarkanma/app/data/models/product_category_model.dart';  // Updated import
+import 'package:antarkanma/app/data/models/product_category_model.dart';
 import 'package:antarkanma/app/data/providers/category_provider.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 
 class CategoryController extends GetxController {
   final CategoryProvider _provider = CategoryProvider();
-  final AuthService _authService = Get.find<AuthService>();
   final StorageService _storage = StorageService.instance;
 
-  static const String CATEGORIES_STORAGE_KEY = 'categories';
-  final RxList<ProductCategory> categories = <ProductCategory>[].obs;  // Updated type
+  static const String CATEGORIES_STORAGE_KEY = 'categories_data';
+  final RxList<ProductCategory> categories = <ProductCategory>[].obs;
   final RxBool isLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    getCategories();  // Updated method name
+    _initializeStorage();
   }
 
-  Future<List<ProductCategory>> getCategories() async {
+  Future<void> _initializeStorage() async {
+    await _storage.ensureInitialized();
+    getCategories(silent: true); // Load silently on init
+  }
+
+  Future<List<ProductCategory>> getCategories({bool silent = false}) async {
     // Try to load from local storage first
-    final storedCategories = _storage.getList(CATEGORIES_STORAGE_KEY);
-    if (storedCategories != null) {
-      categories.value =
-          storedCategories.map((json) => ProductCategory.fromJson(json)).toList();
+    final storedData = _storage.getMap(CATEGORIES_STORAGE_KEY);
+    if (storedData != null) {
+      try {
+        final List<dynamic> storedCategories = storedData['categories'] ?? [];
+        categories.value = storedCategories
+            .map((json) => ProductCategory.fromJson(json))
+            .toList();
+      } catch (e) {
+        print('Error parsing stored categories: $e');
+      }
     }
 
     try {
-      isLoading.value = true;
-      final token = _authService.getToken();
-      if (token == null) return [];
+      if (!silent) isLoading.value = true;
+      final token = _storage.getString('token');
+      if (token == null) {
+        // If no token and not a silent request, redirect to login
+        if (!silent) Get.offAllNamed(Routes.login);
+        return categories;
+      }
 
-      final response = await _provider.getCategories(token);
+      final response = await _provider.getCategories(token, silent: silent);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         final List<ProductCategory> newCategories =
@@ -41,18 +55,27 @@ class CategoryController extends GetxController {
         categories.value = newCategories;
 
         // Save to local storage
-        await _storage.saveList(CATEGORIES_STORAGE_KEY,
-            newCategories.map((cat) => cat.toJson()).toList());
+        await _storage.saveMap(CATEGORIES_STORAGE_KEY, {
+          'categories': newCategories.map((cat) => cat.toJson()).toList(),
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
       }
     } catch (e) {
       print('Error loading categories: $e');
+      if (!silent) {
+        Get.snackbar(
+          'Error',
+          'Gagal memuat kategori',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     } finally {
-      isLoading.value = false;
+      if (!silent) isLoading.value = false;
     }
-    return categories; // Ensure we return the categories
+    return categories;
   }
 
   Future<void> refreshCategories() async {
-    await getCategories();
+    await getCategories(silent: false);
   }
 }

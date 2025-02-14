@@ -4,49 +4,19 @@ import 'package:antarkanma/app/controllers/homepage_controller.dart';
 import 'package:antarkanma/app/services/category_service.dart';
 import 'package:antarkanma/theme.dart';
 
-class CategoryWidget extends StatefulWidget {
+class CategoryWidget extends GetView<HomePageController> {
   const CategoryWidget({super.key});
-
-  @override
-  State<CategoryWidget> createState() => _CategoryWidgetState();
-}
-
-class _CategoryWidgetState extends State<CategoryWidget> {
-  final HomePageController homeController = Get.find<HomePageController>();
-  final CategoryService categoryService = Get.find<CategoryService>();
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (categoryService.categories.isEmpty) {
-        categoryService.getCategories(); // Updated method name
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   Widget _buildCategoryItem(String category) {
     return Container(
       margin: EdgeInsets.only(right: Dimenssions.width10),
       child: Obx(() {
-        bool isSelected = homeController.selectedCategory.value == category;
+        bool isSelected = controller.selectedCategory.value == category;
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              homeController.updateSelectedCategory(category);
-              _scrollController.animateTo(
-                0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
+              controller.updateSelectedCategory(category);
             },
             borderRadius: BorderRadius.circular(Dimenssions.radius15),
             child: Container(
@@ -83,6 +53,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final categoryService = Get.find<CategoryService>();
+
     return Obx(() {
       return Container(
         decoration: BoxDecoration(
@@ -104,22 +76,20 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 ),
               )
             : SingleChildScrollView(
-                controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(
                   horizontal: Dimenssions.width15,
                 ),
                 child: Row(
                   children: [
-                    if (homeController.selectedCategory.value != "Semua")
-                      _buildCategoryItem(homeController.selectedCategory.value),
+                    if (controller.selectedCategory.value != "Semua")
+                      _buildCategoryItem(controller.selectedCategory.value),
                     _buildCategoryItem("Semua"),
                     ...categoryService.categories
                         .where((category) =>
                             category.name !=
-                            homeController.selectedCategory.value)
-                        .map((category) => _buildCategoryItem(category.name))
-                        ,
+                            controller.selectedCategory.value)
+                        .map((category) => _buildCategoryItem(category.name)),
                   ],
                 ),
               ),

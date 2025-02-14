@@ -1,16 +1,22 @@
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Response;
+import 'package:dio/dio.dart';
 import '../data/models/product_category_model.dart';
 import '../data/providers/product_category_provider.dart';
 import 'auth_service.dart';
 import 'package:get_storage/get_storage.dart';
+import '../utils/logger_util.dart';
 
 class CategoryService extends GetxService {
   final RxList<ProductCategory> categories = <ProductCategory>[].obs;
   final RxBool isLoading = false.obs;
   final AuthService _authService = Get.find<AuthService>();
-  final ProductCategoryProvider _provider = ProductCategoryProvider();
+  late final ProductCategoryProvider _provider;
   final _storage = GetStorage();
   static const String _categoriesKey = 'categories';
+
+  CategoryService() {
+    _provider = Get.find<ProductCategoryProvider>();
+  }
 
   // Get categories from local storage or API
   Future<List<ProductCategory>> getCategories() async {
@@ -25,10 +31,10 @@ class CategoryService extends GetxService {
               .map((json) => ProductCategory.fromJson(json))
               .toList();
           categories.assignAll(loadedCategories);
-          print('Categories loaded from local storage: ${loadedCategories.length}');
+          LoggerUtil.info('Categories loaded from local storage: ${loadedCategories.length}');
           return loadedCategories;
         } catch (e) {
-          print('Error parsing stored categories: $e');
+          LoggerUtil.error('Error parsing stored categories', e);
           await _storage.remove(_categoriesKey);
         }
       }
@@ -36,18 +42,18 @@ class CategoryService extends GetxService {
       // If not in local storage or parsing failed, load from API
       final token = _authService.getToken();
       if (token == null) {
-        print('No token available, will try again later');
+        LoggerUtil.info('No token available, will try again later');
         return [];
       }
 
-      print('Fetching categories from API...');
+      LoggerUtil.debug('Fetching categories from API...');
       final response = await _provider.getCategories(token);
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Data: ${response.data}');
+      LoggerUtil.debug('API Response Status: ${response.statusCode}');
+      LoggerUtil.debug('API Response Data: ${response.data}');
       
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
-        print('Raw category data: $data');
+        LoggerUtil.debug('Raw category data: $data');
         
         final List<ProductCategory> loadedCategories = [];
         for (var json in data) {
@@ -55,33 +61,37 @@ class CategoryService extends GetxService {
             final category = ProductCategory.fromJson(json);
             loadedCategories.add(category);
           } catch (e) {
-            print('Error parsing category: $e');
-            print('Problematic JSON: $json');
+            LoggerUtil.error('Error parsing category', e);
+            LoggerUtil.debug('Problematic JSON: $json');
             continue;
           }
         }
 
-        print('Successfully parsed categories: ${loadedCategories.length}');
+        LoggerUtil.info('Successfully parsed categories: ${loadedCategories.length}');
         if (loadedCategories.isNotEmpty) {
           categories.assignAll(loadedCategories);
           await _storage.write(_categoriesKey, 
             loadedCategories.map((cat) => cat.toJson()).toList()
           );
-          print('Categories saved to local storage: ${loadedCategories.length}');
+          LoggerUtil.info('Categories saved to local storage: ${loadedCategories.length}');
           return loadedCategories;
         }
-      } else {
-        print('Failed to load categories. Status code: ${response.statusCode}');
-        print('Response data: ${response.data}');
-        
-        if (response.statusCode == 401) {
-          _authService.handleAuthError('401');
-        }
+      } else if (response.statusCode == 401) {
+        // Create a DioException for auth error handling
+        final dioError = DioException(
+          requestOptions: RequestOptions(path: '/categories'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/categories'),
+            statusCode: 401,
+            data: response.data,
+          ),
+          type: DioExceptionType.badResponse,
+        );
+        await _authService.handleAuthError(dioError);
       }
       return [];
     } catch (e, stackTrace) {
-      print('Error in getCategories: $e');
-      print('Stack trace: $stackTrace');
+      LoggerUtil.error('Error in getCategories', e, stackTrace);
       // Try to use cached data if available
       final storedCategories = _storage.read(_categoriesKey);
       if (storedCategories != null) {
@@ -90,16 +100,16 @@ class CategoryService extends GetxService {
               .map((json) => ProductCategory.fromJson(json))
               .toList();
           categories.assignAll(loadedCategories);
-          print('Using cached categories after error: ${loadedCategories.length}');
+          LoggerUtil.info('Using cached categories after error: ${loadedCategories.length}');
           return loadedCategories;
         } catch (e) {
-          print('Error parsing cached categories: $e');
+          LoggerUtil.error('Error parsing cached categories', e);
         }
       }
       return [];
     } finally {
       isLoading.value = false;
-      print('Final categories count: ${categories.length}');
+      LoggerUtil.debug('Final categories count: ${categories.length}');
     }
   }
 
@@ -120,21 +130,33 @@ class CategoryService extends GetxService {
     try {
       final token = _authService.getToken();
       if (token == null) {
-        print('No token available');
+        LoggerUtil.info('No token available');
         return null;
       }
 
       final response = await _provider.getCategory(token, id);
-      print('Get category by ID response: ${response.data}');
+      LoggerUtil.debug('Get category by ID response: ${response.data}');
       
       if (response.statusCode == 200) {
         final data = response.data['data'];
         if (data != null) {
           return ProductCategory.fromJson(data);
         }
+      } else if (response.statusCode == 401) {
+        // Create a DioException for auth error handling
+        final dioError = DioException(
+          requestOptions: RequestOptions(path: '/categories/$id'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/categories/$id'),
+            statusCode: 401,
+            data: response.data,
+          ),
+          type: DioExceptionType.badResponse,
+        );
+        await _authService.handleAuthError(dioError);
       }
     } catch (e) {
-      print('Error fetching category: $e');
+      LoggerUtil.error('Error fetching category', e);
     }
     return null;
   }

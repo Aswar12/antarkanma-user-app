@@ -87,11 +87,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         selectedVariant: controller.selectedVariant.value,
         merchant: merchant,
       );
-
-      showCustomSnackbar(
-        title: 'Berhasil',
-        message: 'Produk berhasil ditambahkan ke keranjang',
-      );
     } catch (e) {
       showCustomSnackbar(
         title: 'Error',

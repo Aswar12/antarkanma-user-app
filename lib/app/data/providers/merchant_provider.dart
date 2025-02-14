@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:antarkanma/config.dart';
 import 'package:flutter/foundation.dart';
@@ -14,8 +16,8 @@ class MerchantProvider {
   void _setupBaseOptions() {
     _dio.options = BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
       validateStatus: (status) => status! < 500,
     );
   }
@@ -66,32 +68,65 @@ class MerchantProvider {
       if (latitude != null) queryParams['latitude'] = latitude;
       if (longitude != null) queryParams['longitude'] = longitude;
 
-      final response = await _dio.get(
-        '/merchants',
-        queryParameters: queryParams,
-        options: token != null ? _getAuthOptions(token) : null,
-      );
+      // Create CancelToken for timeout handling
+      final cancelToken = CancelToken();
+      
+      // Set up timeout
+      Timer? timeoutTimer = Timer(const Duration(seconds: 60), () {
+        if (!cancelToken.isCancelled) {
+          cancelToken.cancel('Request timed out');
+        }
+      });
 
-      debugPrint('API Response Status: ${response.statusCode}');
-      debugPrint('API Response Data: ${response.data}');
+      try {
+        final response = await _dio.get(
+          '/merchants',
+          queryParameters: queryParams,
+          options: token != null ? _getAuthOptions(token) : null,
+          cancelToken: cancelToken,
+        );
 
-      return response;
+        debugPrint('API Response Status: ${response.statusCode}');
+        debugPrint('API Response Data: ${response.data}');
+
+        return response;
+      } finally {
+        timeoutTimer.cancel();
+      }
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        throw TimeoutException('Request timed out');
+      }
       debugPrint('Error fetching merchants: $e');
       rethrow;
     }
   }
 
   Future<Response> getMerchantById(int id, {String? token}) async {
+    final cancelToken = CancelToken();
+    Timer? timeoutTimer;
+
     try {
+      timeoutTimer = Timer(const Duration(seconds: 60), () {
+        if (!cancelToken.isCancelled) {
+          cancelToken.cancel('Request timed out');
+        }
+      });
+
       final response = await _dio.get(
         '/merchants/$id',
         options: token != null ? _getAuthOptions(token) : null,
+        cancelToken: cancelToken,
       );
       return response;
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        throw TimeoutException('Request timed out');
+      }
       debugPrint('Error fetching merchant: $e');
       rethrow;
+    } finally {
+      timeoutTimer?.cancel();
     }
   }
 
@@ -103,6 +138,9 @@ class MerchantProvider {
     int page = 1,
     int pageSize = 10,
   }) async {
+    final cancelToken = CancelToken();
+    Timer? timeoutTimer;
+
     try {
       Map<String, dynamic> queryParams = {
         'page': page,
@@ -112,15 +150,27 @@ class MerchantProvider {
       if (query != null && query.isNotEmpty) queryParams['search'] = query;
       if (category != null) queryParams['category'] = category;
 
+      timeoutTimer = Timer(const Duration(seconds: 60), () {
+        if (!cancelToken.isCancelled) {
+          cancelToken.cancel('Request timed out');
+        }
+      });
+
       final response = await _dio.get(
         '/merchants/$merchantId/products',
         queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
+        cancelToken: cancelToken,
       );
       return response;
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        throw TimeoutException('Request timed out');
+      }
       debugPrint('Error fetching merchant products: $e');
       rethrow;
+    } finally {
+      timeoutTimer?.cancel();
     }
   }
 
@@ -130,21 +180,36 @@ class MerchantProvider {
     double? latitude,
     double? longitude,
   }) async {
+    final cancelToken = CancelToken();
+    Timer? timeoutTimer;
+
     try {
       Map<String, dynamic> queryParams = {'limit': limit};
       
       if (latitude != null) queryParams['latitude'] = latitude;
       if (longitude != null) queryParams['longitude'] = longitude;
 
+      timeoutTimer = Timer(const Duration(seconds: 60), () {
+        if (!cancelToken.isCancelled) {
+          cancelToken.cancel('Request timed out');
+        }
+      });
+
       final response = await _dio.get(
         '/merchants/popular',
         queryParameters: queryParams,
         options: token != null ? _getAuthOptions(token) : null,
+        cancelToken: cancelToken,
       );
       return response;
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        throw TimeoutException('Request timed out');
+      }
       debugPrint('Error fetching popular merchants: $e');
       rethrow;
+    } finally {
+      timeoutTimer?.cancel();
     }
   }
 

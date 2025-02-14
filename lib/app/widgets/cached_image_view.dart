@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:antarkanma/theme.dart';
 
 class CachedImageView extends StatelessWidget {
@@ -55,14 +56,16 @@ class CachedImageView extends StatelessWidget {
   }
 
   Widget _buildLoadingState() {
-    return Container(
-      width: width,
-      height: height,
-      color: backgroundColor3.withOpacity(0.1),
-      child: Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
-          strokeWidth: 2,
+    return Shimmer.fromColors(
+      baseColor: backgroundColor3.withOpacity(0.1),
+      highlightColor: backgroundColor3.withOpacity(0.3),
+      period: const Duration(milliseconds: 1500),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: backgroundColor3,
+          borderRadius: borderRadius,
         ),
       ),
     );

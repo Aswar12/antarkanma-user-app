@@ -11,11 +11,21 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class HomePageController extends GetxController {
-  final ProductService productService = Get.find<ProductService>();
-  final MerchantService merchantService = Get.find<MerchantService>();
-  final CategoryService _categoryService = Get.find<CategoryService>();
-  final AuthService _authService = Get.find<AuthService>();
-  final LocationService _locationService = Get.find<LocationService>();
+  final ProductService productService;
+  final MerchantService merchantService;
+  final CategoryService _categoryService;
+  final AuthService _authService;
+  final LocationService _locationService;
+
+  HomePageController({
+    required this.productService,
+    required this.merchantService,
+    required CategoryService categoryService,
+    required AuthService authService,
+    required LocationService locationService,
+  })  : _categoryService = categoryService,
+        _authService = authService,
+        _locationService = locationService;
 
   // Observable state variables
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
@@ -165,14 +175,14 @@ class HomePageController extends GetxController {
 
     try {
       isLoadingMerchants.value = true;
-      final coordinates = _locationService.getCurrentCoordinates();
+      final locationData = await _locationService.getCurrentLocation();
       
       final paginatedResponse = await merchantService.getAllMerchants(
         page: _currentPage,
         pageSize: _pageSize,
         category: selectedCategory.value == "Semua" ? null : selectedCategory.value,
-        latitude: coordinates?['latitude'],
-        longitude: coordinates?['longitude'],
+        latitude: locationData['latitude'],
+        longitude: locationData['longitude'],
       );
 
       if (_currentPage == 1) {
@@ -209,14 +219,14 @@ class HomePageController extends GetxController {
 
     try {
       isLoadingMore.value = true;
-      final coordinates = _locationService.getCurrentCoordinates();
+      final locationData = await _locationService.getCurrentLocation();
 
       final merchantResponse = await merchantService.getAllMerchants(
         query: searchQuery.value,
         page: _currentPage,
         pageSize: _pageSize,
-        latitude: coordinates?['latitude'],
-        longitude: coordinates?['longitude'],
+        latitude: locationData['latitude'],
+        longitude: locationData['longitude'],
       );
 
       if (_currentPage == 1) {
@@ -300,7 +310,7 @@ class HomePageController extends GetxController {
       _retryAttempts = 0;
 
       // Refresh location in background
-      _locationService.getCurrentLocation();
+      await _locationService.getCurrentLocation();
 
       // Clear cached data
       await Future.wait([

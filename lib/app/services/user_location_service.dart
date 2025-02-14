@@ -4,15 +4,14 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/data/providers/user_location_provider.dart';
-import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 
 class UserLocationService extends GetxService {
   static UserLocationService? _instance;
-  late final StorageService _storageService;
-  late final AuthService _authService;
-  late final UserLocationProvider _userLocationProvider;
+  StorageService? _storageService;
+  UserLocationProvider? _userLocationProvider;
+  final RxBool _isInitialized = false.obs;
 
   // Observable state
   final RxList<UserLocationModel> userLocations = <UserLocationModel>[].obs;
@@ -25,18 +24,8 @@ class UserLocationService extends GetxService {
   static const String _lastSyncKey = 'last_locations_sync';
   static const Duration _cacheDuration = Duration(hours: 24);
 
-  // Private constructor
-  UserLocationService._() {
-    try {
-      _storageService = Get.find<StorageService>();
-      _authService = Get.find<AuthService>();
-      _userLocationProvider = UserLocationProvider();
-      debugPrint('UserLocationService initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing UserLocationService: $e');
-      rethrow;
-    }
-  }
+  // Private constructor without initialization
+  UserLocationService._();
 
   // Factory constructor to return the singleton instance
   factory UserLocationService() {
@@ -44,17 +33,67 @@ class UserLocationService extends GetxService {
     return _instance!;
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    loadUserLocationsFromLocal();
-    if (_shouldSyncWithBackend()) {
-      loadUserLocations();
+  bool canInitialize() {
+    try {
+      _storageService = StorageService.instance;
+      final token = _storageService?.getToken();
+      return token != null;
+    } catch (e) {
+      debugPrint('Error checking initialization status: $e');
+      return false;
+    }
+  }
+
+  Future<void> _initializeService() async {
+    if (_isInitialized.value) return;
+
+    try {
+      // Initialize StorageService first
+      _storageService = StorageService.instance;
+      await _storageService?.ensureInitialized();
+      
+      // Retrieve token directly from StorageService
+      final token = _storageService?.getToken();
+      if (token == null) {
+        debugPrint('UserLocationService: No valid token found, skipping initialization');
+        return;
+      }
+      
+      _userLocationProvider = UserLocationProvider();
+      
+      _isInitialized.value = true;
+      debugPrint('UserLocationService initialized successfully');
+      
+      // Load data after initialization
+      await _loadInitialData();
+    } catch (e) {
+      debugPrint('Error initializing UserLocationService: $e');
+      _isInitialized.value = false;
+      // Don't rethrow, just log the error
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    if (!_isInitialized.value) return;
+
+    try {
+      // Load local data first
+      loadUserLocationsFromLocal();
+      
+      // Then sync with backend if needed
+      if (_shouldSyncWithBackend()) {
+        await loadUserLocations(forceRefresh: true);
+      }
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+      // Don't rethrow here, just log the error
     }
   }
 
   bool _shouldSyncWithBackend() {
-    final lastSync = _storageService.getInt(_lastSyncKey);
+    if (!_isInitialized.value || _storageService == null) return false;
+    
+    final lastSync = _storageService!.getInt(_lastSyncKey);
     if (lastSync == null) return true;
 
     final lastSyncTime = DateTime.fromMillisecondsSinceEpoch(lastSync);
@@ -63,31 +102,38 @@ class UserLocationService extends GetxService {
   }
 
   void loadUserLocationsFromLocal() {
+    if (!_isInitialized.value || _storageService == null) return;
+
     try {
-      final localLocations = _storageService.getList(_userLocationsKey);
-      final localDefaultLocation = _storageService.getMap(_defaultLocationKey);
+      final localLocations = _storageService!.getList(_userLocationsKey);
+      final localDefaultLocation = _storageService!.getMap(_defaultLocationKey);
 
-      userLocations.value = localLocations != null
-          ? localLocations
-              .map((json) => UserLocationModel.fromJson(json))
-              .toList()
-          : [];
+      if (localLocations != null) {
+        userLocations.value = localLocations
+            .map((json) => UserLocationModel.fromJson(json))
+            .toList();
+      }
 
-      defaultLocation.value = localDefaultLocation != null
-          ? UserLocationModel.fromJson(localDefaultLocation)
-          : null;
+      if (localDefaultLocation != null) {
+        defaultLocation.value = UserLocationModel.fromJson(localDefaultLocation);
+      }
     } catch (e) {
-      errorMessage.value = 'Gagal memuat lokasi lokal: ${e.toString()}';
+      debugPrint('Error loading local locations: $e');
+      // Don't set error message here as it's just local data
     }
   }
 
   Future<void> loadUserLocations({bool forceRefresh = false}) async {
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
+
+    if (!_isInitialized.value) return;
+
     try {
       isLoading.value = true;
-      final token = _authService.getToken();
-      if (token == null) {
-        throw Exception('Token tidak valid');
-      }
+      final token = _storageService?.getToken();
+      if (token == null) return;
 
       if (!forceRefresh &&
           userLocations.isNotEmpty &&
@@ -95,9 +141,9 @@ class UserLocationService extends GetxService {
         return;
       }
 
-      final response = await _userLocationProvider.getUserLocations(token);
-      if (response.statusCode == 200) {
-        final List<dynamic> locationsData = response.data['data'];
+      final response = await _userLocationProvider?.getUserLocations(token);
+      if (response?.statusCode == 200) {
+        final List<dynamic> locationsData = response!.data['data'];
         userLocations.value = locationsData
             .map((data) => UserLocationModel.fromJson(data))
             .toList();
@@ -105,32 +151,40 @@ class UserLocationService extends GetxService {
         updateDefaultLocation();
         saveLocationsToLocal();
 
-        await _storageService.saveInt(
+        await _storageService?.saveInt(
             _lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-      } else {
-        throw Exception('Gagal memuat lokasi');
       }
     } catch (e) {
       errorMessage.value = e.toString();
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal memuat lokasi: ${e.toString()}',
-          isError: true);
+      debugPrint('Error loading user locations: $e');
+      // Only show snackbar for user-initiated loads
+      if (forceRefresh) {
+        showCustomSnackbar(
+            title: 'Error',
+            message: 'Gagal memuat lokasi: ${e.toString()}',
+            isError: true);
+      }
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<bool> addUserLocation(UserLocationModel location) async {
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
+
+    if (!_isInitialized.value) return false;
+
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token tidak valid');
+      final token = _storageService?.getToken();
+      if (token == null) return false;
 
       final response =
-          await _userLocationProvider.addUserLocation(token, location.toJson());
+          await _userLocationProvider?.addUserLocation(token, location.toJson());
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final newLocation = UserLocationModel.fromJson(response.data['data']);
+      if (response?.statusCode == 201 || response?.statusCode == 200) {
+        final newLocation = UserLocationModel.fromJson(response!.data['data']);
         userLocations.add(newLocation);
 
         if (newLocation.isDefault) {
@@ -146,7 +200,7 @@ class UserLocationService extends GetxService {
         return true;
       }
 
-      throw Exception(response.data['message'] ?? 'Gagal menambahkan lokasi');
+      throw Exception(response?.data['message'] ?? 'Gagal menambahkan lokasi');
     } catch (e) {
       showCustomSnackbar(title: 'Error', message: e.toString(), isError: true);
       return false;
@@ -154,16 +208,22 @@ class UserLocationService extends GetxService {
   }
 
   Future<bool> updateUserLocation(UserLocationModel location) async {
-    try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token tidak valid');
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
 
-      final response = await _userLocationProvider.updateUserLocation(
+    if (!_isInitialized.value) return false;
+
+    try {
+      final token = _storageService?.getToken();
+      if (token == null) return false;
+
+      final response = await _userLocationProvider?.updateUserLocation(
           token, location.id!, location.toJson());
 
-      if (response.statusCode == 200) {
+      if (response?.statusCode == 200) {
         final updatedLocation =
-            UserLocationModel.fromJson(response.data['data']);
+            UserLocationModel.fromJson(response!.data['data']);
 
         final index =
             userLocations.indexWhere((loc) => loc.id == updatedLocation.id);
@@ -185,7 +245,7 @@ class UserLocationService extends GetxService {
         return true;
       }
 
-      throw Exception(response.data['message'] ?? 'Gagal memperbarui lokasi');
+      throw Exception(response?.data['message'] ?? 'Gagal memperbarui lokasi');
     } catch (e) {
       showCustomSnackbar(title: 'Error', message: e.toString(), isError: true);
       return false;
@@ -193,14 +253,20 @@ class UserLocationService extends GetxService {
   }
 
   Future<bool> deleteUserLocation(int locationId) async {
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
+
+    if (!_isInitialized.value) return false;
+
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token tidak valid');
+      final token = _storageService?.getToken();
+      if (token == null) return false;
 
       final response =
-          await _userLocationProvider.deleteUserLocation(token, locationId);
+          await _userLocationProvider?.deleteUserLocation(token, locationId);
 
-      if (response.statusCode == 200) {
+      if (response?.statusCode == 200) {
         userLocations.removeWhere((loc) => loc.id == locationId);
         updateDefaultLocation();
         saveLocationsToLocal();
@@ -208,7 +274,7 @@ class UserLocationService extends GetxService {
         return true;
       }
 
-      throw Exception(response.data['message'] ?? 'Gagal menghapus lokasi');
+      throw Exception(response?.data['message'] ?? 'Gagal menghapus lokasi');
     } catch (e) {
       showCustomSnackbar(title: 'Error', message: e.toString(), isError: true);
       return false;
@@ -216,14 +282,20 @@ class UserLocationService extends GetxService {
   }
 
   Future<bool> setDefaultLocation(int locationId) async {
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
+
+    if (!_isInitialized.value) return false;
+
     try {
-      final token = _authService.getToken();
-      if (token == null) throw Exception('Token tidak valid');
+      final token = _storageService?.getToken();
+      if (token == null) return false;
 
       final response =
-          await _userLocationProvider.setDefaultLocation(token, locationId);
+          await _userLocationProvider?.setDefaultLocation(token, locationId);
 
-      if (response.statusCode == 200) {
+      if (response?.statusCode == 200) {
         for (var loc in userLocations) {
           loc.isDefault = loc.id == locationId;
         }
@@ -237,7 +309,7 @@ class UserLocationService extends GetxService {
       }
 
       throw Exception(
-          response.data['message'] ?? 'Gagal mengubah lokasi default');
+          response?.data['message'] ?? 'Gagal mengubah lokasi default');
     } catch (e) {
       showCustomSnackbar(title: 'Error', message: e.toString(), isError: true);
       return false;
@@ -245,6 +317,8 @@ class UserLocationService extends GetxService {
   }
 
   void updateDefaultLocation() {
+    if (!_isInitialized.value || _storageService == null) return;
+
     UserLocationModel? defaultLoc;
     defaultLoc = userLocations.firstWhereOrNull((loc) => loc.isDefault);
 
@@ -255,15 +329,16 @@ class UserLocationService extends GetxService {
 
     if (defaultLoc != null) {
       defaultLocation.value = defaultLoc;
-      _storageService.saveMap(_defaultLocationKey, defaultLoc.toJson());
+      _storageService!.saveMap(_defaultLocationKey, defaultLoc.toJson());
     } else {
       defaultLocation.value = null;
-      _storageService.remove(_defaultLocationKey);
+      _storageService!.remove(_defaultLocationKey);
     }
   }
 
   void saveLocationsToLocal() {
-    _storageService.saveList(
+    if (!_isInitialized.value || _storageService == null) return;
+    _storageService!.saveList(
         _userLocationsKey, userLocations.map((loc) => loc.toJson()).toList());
   }
 
@@ -271,17 +346,27 @@ class UserLocationService extends GetxService {
     try {
       await loadUserLocations(forceRefresh: forceRefresh);
     } catch (e) {
-      showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal menyinkronkan lokasi: ${e.toString()}',
-          isError: true);
+      debugPrint('Error syncing locations: $e');
+      if (forceRefresh) {
+        showCustomSnackbar(
+            title: 'Error',
+            message: 'Gagal menyinkronkan lokasi: ${e.toString()}',
+            isError: true);
+      }
     }
   }
 
   void clearLocalData() {
+    if (!_isInitialized.value || _storageService == null) return;
     userLocations.clear();
     defaultLocation.value = null;
-    _storageService.remove(_userLocationsKey);
-    _storageService.remove(_defaultLocationKey);
+    _storageService!.remove(_userLocationsKey);
+    _storageService!.remove(_defaultLocationKey);
+  }
+
+  Future<void> ensureInitialized() async {
+    if (!_isInitialized.value) {
+      await _initializeService();
+    }
   }
 }

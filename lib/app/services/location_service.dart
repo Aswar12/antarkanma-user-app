@@ -1,276 +1,602 @@
-import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../utils/location_permission_handler.dart';
-import './storage_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geolocator_android/geolocator_android.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import '../controllers/permission_controller.dart';
 
 class LocationService extends GetxService {
-  final StorageService _storageService = StorageService.instance;
+  final _permissionController = Get.find<PermissionController>();
+  final _connectivity = Connectivity();
+
+  StreamSubscription<Position>? _positionStream;
+  StreamSubscription<ConnectivityResult>? _connectivityStream;
+  Timer? _recoveryTimer;
 
   final RxDouble latitude = 0.0.obs;
   final RxDouble longitude = 0.0.obs;
   final RxBool isLocationAvailable = false.obs;
-  final RxBool isInitialized = false.obs;
   final RxBool isHighAccuracyLocation = false.obs;
+  final RxBool isNetworkAvailable = false.obs;
+  final RxBool _hasAccurateLocation = false.obs;
 
-  // Default coordinates for Sulawesi Selatan
-  static const double defaultLatitude = -4.62824460;
-  static const double defaultLongitude = 119.58851330;
+  final double defaultLatitude = -4.62824460;
+  final double defaultLongitude = 119.58851330;
 
-  static const String _locationKey = 'user_default_location';
-  static const String _lastAccurateLocationKey = 'last_accurate_location';
-  static const int _locationMaxAge = 3600000; // 1 hour in milliseconds
-  static const double _highAccuracyThreshold = 20.0; // 20 meters
-  static const double _acceptableAccuracyThreshold = 50.0; // 50 meters
+  final double _ultraHighAccuracyThreshold = 5.0;
+  final double _highAccuracyThreshold = 10.0;
+  final Duration _locationTimeout = const Duration(seconds: 30);
+  final Duration _retryDelay = const Duration(seconds: 3);
 
-  Future<void> init() async {
+  Future<LocationService> init() async {
     try {
-      // First try to load the last accurate location
-      final accurateLocation = await _loadLastAccurateLocation();
-      if (accurateLocation != null) {
-        // Use accurate location as initial position
-        latitude.value = accurateLocation['latitude'];
-        longitude.value = accurateLocation['longitude'];
-        isLocationAvailable.value = true;
-        isHighAccuracyLocation.value = accurateLocation['accuracy'] <= _highAccuracyThreshold;
-        debugPrint('Using stored accurate location: ${latitude.value}, ${longitude.value} (accuracy: ${accurateLocation['accuracy']}m)');
+      debugPrint('LocationService: Starting initialization...');
+
+      // Clean up any existing resources first
+      await _cleanupExistingResources();
+
+      // Initialize network monitoring first
+      await _initializeNetworkMonitoring();
+
+      // Initialize platform-specific settings with network check
+      if (isNetworkAvailable.value) {
+        await _initializePlatform();
       } else {
-        // Fall back to default location
-        final defaultLocation = _storageService.getMap(_locationKey);
-        if (defaultLocation != null) {
-          latitude.value = defaultLocation['latitude'];
-          longitude.value = defaultLocation['longitude'];
-          isLocationAvailable.value = true;
-          isHighAccuracyLocation.value = false;
-          debugPrint('Using default location: ${latitude.value}, ${longitude.value}');
-        } else {
-          // Use Sulawesi Selatan as fallback
-          latitude.value = defaultLatitude;
-          longitude.value = defaultLongitude;
-          isLocationAvailable.value = false;
-          isHighAccuracyLocation.value = false;
-          debugPrint('Using Sulawesi Selatan as fallback location');
+        debugPrint('Network unavailable, skipping platform initialization');
+      }
+
+      // Check and request permissions
+      if (!await _checkAndRequestPermissions()) {
+        _fallbackToDefault();
+        return this;
+      }
+
+      // Check location service
+      if (!await _checkAndRequestLocationService()) {
+        _fallbackToDefault();
+        return this;
+      }
+
+      // Try to get last known position with timeout
+      try {
+        if (isNetworkAvailable.value) {
+          final lastKnown = await Future.any([
+            Geolocator.getLastKnownPosition(),
+            Future.delayed(_locationTimeout, () => null),
+          ]);
+
+          if (lastKnown != null &&
+              lastKnown.latitude != 0 &&
+              lastKnown.longitude != 0) {
+            _updateLocation(lastKnown, isHighAccuracy: false);
+          }
         }
+      } catch (e) {
+        debugPrint('Error getting last known position: $e');
+        // Continue initialization even if last known position fails
       }
 
-      isInitialized.value = true;
+      // Start location updates in the background only if network is available
+      if (isNetworkAvailable.value) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          try {
+            await _startLocationUpdates();
+          } catch (e) {
+            debugPrint('Error starting location updates: $e');
+            // Don't fail initialization if updates can't start
+          }
+        });
+      } else {
+        debugPrint('Network unavailable, using default location');
+        _fallbackToDefault();
+      }
 
-      // Start background location update
-      _startBackgroundLocationUpdate();
+      debugPrint('LocationService: Initialization complete');
+      return this;
     } catch (e) {
-      debugPrint('Error in location service initialization: $e');
-      // Fallback to Sulawesi Selatan coordinates
-      latitude.value = defaultLatitude;
-      longitude.value = defaultLongitude;
-      isLocationAvailable.value = false;
-      isHighAccuracyLocation.value = false;
-      isInitialized.value = true;
+      debugPrint('Error initializing LocationService: $e');
+      await _cleanupExistingResources();
+      _fallbackToDefault();
+      return this;
     }
   }
 
-  Future<Map<String, dynamic>?> _loadLastAccurateLocation() async {
-    final storedLocation = _storageService.getMap(_lastAccurateLocationKey);
-    if (storedLocation != null) {
-      final timestamp = storedLocation['timestamp'] as int;
-      final age = DateTime.now().millisecondsSinceEpoch - timestamp;
-      
-      // Only use stored location if it's fresh enough
-      if (age <= _locationMaxAge) {
-        return storedLocation;
-      }
-    }
-    return null;
-  }
-
-  void _startBackgroundLocationUpdate() async {
+  Future<void> _initializeNetworkMonitoring() async {
     try {
-      // First try to get a quick fix using last known position
-      Position? lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
-        _updateLocation(lastKnown, isHighAccuracy: false);
-      }
+      _connectivityStream?.cancel();
+      _connectivityStream =
+          _connectivity.onConnectivityChanged.listen((result) {
+        final wasOffline = !isNetworkAvailable.value;
+        isNetworkAvailable.value = result != ConnectivityResult.none;
 
-      // Then try to get high accuracy location
-      bool hasPermission = await LocationPermissionHandler.handleLocationPermission();
-      if (hasPermission) {
-        // Request location with high accuracy
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best,
-          timeLimit: const Duration(seconds: 30),
-        );
-        
-        _updateLocation(position, isHighAccuracy: true);
-        
-        // If we got a high accuracy fix, start listening for location updates
-        if (position.accuracy <= _highAccuracyThreshold) {
+        // If coming back online, try to restart location updates
+        if (wasOffline && isNetworkAvailable.value) {
+          debugPrint('Network restored, restarting location updates');
           _startLocationUpdates();
         }
-      }
+      });
+
+      final result = await _connectivity.checkConnectivity();
+      isNetworkAvailable.value = result != ConnectivityResult.none;
     } catch (e) {
-      debugPrint('Error in background location update: $e');
+      debugPrint('Error initializing network monitoring: $e');
+      isNetworkAvailable.value = false;
     }
   }
 
-  void _startLocationUpdates() {
-    // Listen for location changes with both GPS and Network
-    Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 10, // minimum distance (meters) before updates
-      ),
-    ).listen(
-      (Position position) {
+  void _updateNetworkStatus(ConnectivityResult result) {
+    isNetworkAvailable.value = result != ConnectivityResult.none;
+  }
+
+  int _retryCount = 0;
+  static const int maxRetries = 3;
+  bool _isUpdating = false;
+
+  Future<void> _startLocationUpdates() async {
+    if (_isUpdating) {
+      debugPrint('Location updates already in progress');
+      return;
+    }
+
+    try {
+      _isUpdating = true;
+      await _cleanupExistingResources();
+
+      if (!await _checkAndRequestPermissions()) {
+        _isUpdating = false;
+        return;
+      }
+
+      if (!await _checkAndRequestLocationService()) {
+        _isUpdating = false;
+        return;
+      }
+
+      final locationSettings = _createLocationSettings();
+
+      // Use a completer to handle the first position
+      final completer = Completer<void>();
+      Timer? timeoutTimer;
+
+      // Set timeout for initial position
+      timeoutTimer = Timer(_locationTimeout, () {
+        if (!completer.isCompleted) {
+          debugPrint('Initial position timeout');
+          completer.complete(); // Complete anyway to continue stream
+        }
+      });
+
+      // Create and listen to position stream
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: locationSettings,
+      ).listen(
+        (position) {
+          // Cancel timeout on first position
+          if (!completer.isCompleted) {
+            timeoutTimer?.cancel();
+            completer.complete();
+          }
+
+          // Handle position update
+          if (position.latitude != 0 && position.longitude != 0) {
+            _handlePositionUpdate(position);
+          }
+        },
+        onError: (error) {
+          debugPrint('Position stream error: $error');
+          if (!completer.isCompleted) {
+            timeoutTimer?.cancel();
+            completer.complete(); // Complete to allow retry
+          }
+          _handleStreamError(error);
+        },
+        cancelOnError: false,
+      );
+
+      // Wait for initial position or timeout
+      await completer.future;
+
+      debugPrint('LocationService: Location updates started successfully');
+    } catch (e) {
+      debugPrint('Error starting location updates: $e');
+      _startRecoveryTimer();
+    }
+  }
+
+  Future<void> _cleanupExistingResources() async {
+    _recoveryTimer?.cancel();
+    _recoveryTimer = null;
+
+    if (_positionStream != null) {
+      await _positionStream!.cancel();
+      _positionStream = null;
+    }
+
+    _retryCount = 0;
+    _isUpdating = false;
+  }
+
+  Future<bool> _checkAndRequestPermissions() async {
+    if (!_permissionController.isLocationPermissionGranted.value) {
+      debugPrint('Location permission not granted, requesting...');
+      final granted = await _permissionController.checkLocationPermission();
+      if (!granted) {
+        debugPrint('Location permission denied');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<bool> _checkAndRequestLocationService() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      debugPrint('Location services disabled');
+      await _handleLocationServiceDisabled();
+      return false;
+    }
+    return true;
+  }
+
+  LocationSettings _createLocationSettings() {
+    if (Platform.isAndroid) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.best, // Maximum accuracy
+        distanceFilter: 3, // Smaller distance for more frequent updates
+        forceLocationManager: false, // Use Google Play Services for better accuracy
+        intervalDuration: const Duration(seconds: 5), // More frequent updates
+        timeLimit: const Duration(seconds: 60), // Longer timeout for better accuracy
+        foregroundNotificationConfig: null,
+      );
+    } else if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.fitness,
+        distanceFilter: 5,
+        pauseLocationUpdatesAutomatically: true,
+        // Prevent platform channel issues during background operation
+        allowBackgroundLocationUpdates: false,
+      );
+    } else {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      );
+    }
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Platform initialization is handled in init()
+  }
+
+  Future<void> _initializePlatform() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      debugPrint('Platform not supported');
+      return;
+    }
+
+    try {
+      // Initialize platform interface first
+      if (Platform.isAndroid) {
+        await _initializeAndroidPlatform();
+      }
+
+      // Check location service
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        debugPrint('Location service disabled');
+        await _handleLocationServiceDisabled();
+        return;
+      }
+
+      // Check accuracy mode
+      try {
+        final accuracy = await Geolocator.getLocationAccuracy();
+        debugPrint('Location accuracy: $accuracy');
+      } catch (e) {
+        debugPrint('Error checking location accuracy: $e');
+      }
+
+      debugPrint('Platform initialization complete');
+    } catch (e) {
+      debugPrint('Error initializing platform: $e');
+      throw Exception('Platform initialization failed: $e');
+    }
+  }
+
+  Future<void> _initializeAndroidPlatform() async {
+    try {
+      // Ensure we only register once
+      GeolocatorAndroid.registerWith();
+      debugPrint('Android platform registered');
+
+      // Small delay to ensure registration is complete
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      debugPrint('Error registering Android platform: $e');
+      throw Exception('Android platform registration failed: $e');
+    }
+  }
+
+  void _handlePositionUpdate(Position position) {
+    _updateLocation(position, isHighAccuracy: true);
+    if (!_hasAccurateLocation.value && isNetworkAvailable.value) {
+      _enhanceLocationAccuracy();
+    }
+  }
+
+  void _handleStreamError(dynamic error) {
+    debugPrint('Location stream error: $error');
+    if (error is LocationServiceDisabledException) {
+      _handleLocationServiceDisabled();
+    } else if (error is TimeoutException) {
+      debugPrint('Location stream timed out, restarting...');
+      _startRecoveryTimer();
+    } else {
+      debugPrint('Unknown location error: $error');
+      _startRecoveryTimer();
+    }
+  }
+
+  Future<void> _handleLocationServiceDisabled() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        Get.dialog(
+          AlertDialog(
+            title: const Text('Layanan Lokasi Nonaktif'),
+            content: const Text('Untuk mendapatkan lokasi yang akurat, '
+                'mohon aktifkan layanan lokasi di pengaturan perangkat Anda.'),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('BATAL'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Get.back();
+                  await Geolocator.openLocationSettings();
+                },
+                child: const Text('PENGATURAN'),
+              ),
+            ],
+          ),
+          barrierDismissible: false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling location service disabled: $e');
+    }
+  }
+
+  Future<void> _enhanceLocationAccuracy() async {
+    // Guard clauses
+    if (_hasAccurateLocation.value) {
+      debugPrint('Location already has high accuracy');
+      return;
+    }
+
+    if (!_permissionController.isLocationPermissionGranted.value) {
+      debugPrint('Location permission not granted, skipping enhancement');
+      return;
+    }
+
+    if (!isNetworkAvailable.value) {
+      debugPrint('Network not available, skipping enhancement');
+      return;
+    }
+
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      debugPrint('Location service disabled, skipping enhancement');
+      return;
+    }
+
+    Timer? timeoutTimer;
+    StreamSubscription<Position>? positionSubscription;
+
+    try {
+      final completer = Completer<Position>();
+
+      // Set up timeout
+      timeoutTimer = Timer(_locationTimeout, () {
+        if (!completer.isCompleted) {
+          debugPrint('Location enhancement timed out');
+          completer.completeError(TimeoutException('Location enhancement timed out'));
+          positionSubscription?.cancel();
+        }
+      });
+
+      // Set up error handler
+      void handleError(dynamic error) {
+        if (!completer.isCompleted) {
+          debugPrint('Location enhancement error: $error');
+          completer.completeError(error);
+        }
+      }
+
+      try {
+        // Try to get both GPS and network locations simultaneously
+        final Future<Position> gpsPosition = Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.best,
+          timeLimit: const Duration(seconds: 60),
+          forceAndroidLocationManager: false,
+        );
+
+        final Future<Position> networkPosition = Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.reduced,
+          timeLimit: const Duration(seconds: 30),
+          forceAndroidLocationManager: true,
+        );
+
+        // Wait for both positions with timeout
+        final List<Position?> positions = await Future.wait([
+          gpsPosition.catchError((e) {
+            debugPrint('GPS position error: $e');
+            return null;
+          }),
+          networkPosition.catchError((e) {
+            debugPrint('Network position error: $e');
+            return null;
+          }),
+        ], eagerError: false);
+
+        Position? bestPosition;
+        double bestAccuracy = double.infinity;
+
+        // Compare accuracies and choose the best position
+        for (final position in positions) {
+          if (position != null && 
+              position.latitude != 0 && 
+              position.longitude != 0 && 
+              position.accuracy < bestAccuracy) {
+            bestPosition = position;
+            bestAccuracy = position.accuracy;
+          }
+        }
+
+        if (bestPosition != null) {
+          debugPrint('Best position accuracy: ${bestPosition.accuracy}m');
+          if (!completer.isCompleted) {
+            completer.complete(bestPosition);
+          }
+        } else {
+          throw Exception('No valid position obtained');
+        }
+      } catch (e) {
+        handleError(e);
+      }
+
+      // Wait for result
+      final position = await completer.future;
+
+      if (position.accuracy <= _ultraHighAccuracyThreshold) {
         _updateLocation(position, isHighAccuracy: true);
-      },
-      onError: (error) {
-        debugPrint('Error in location stream: $error');
-      },
-    );
+        debugPrint('Location enhanced successfully with accuracy: ${position.accuracy}m');
+      } else {
+        debugPrint('Location accuracy not meeting threshold: ${position.accuracy}m');
+      }
+    } catch (e) {
+      debugPrint('Location enhancement failed: $e');
+      // Continue with current location
+    } finally {
+      timeoutTimer?.cancel();
+      positionSubscription?.cancel();
+    }
   }
 
   void _updateLocation(Position position, {required bool isHighAccuracy}) {
-    // Update current coordinates
     latitude.value = position.latitude;
     longitude.value = position.longitude;
     isLocationAvailable.value = true;
-    
-    // Update high accuracy status
+
     if (isHighAccuracy) {
-      isHighAccuracyLocation.value = position.accuracy <= _highAccuracyThreshold;
-    }
-
-    // Save as last accurate location if accuracy is good enough
-    if (position.accuracy <= _acceptableAccuracyThreshold) {
-      _storageService.saveMap(_lastAccurateLocationKey, {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'accuracy': position.accuracy,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
-
-      // If it's highly accurate, also save as default location
-      if (position.accuracy <= _highAccuracyThreshold) {
-        _storageService.saveMap(_locationKey, {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        });
+      isHighAccuracyLocation.value =
+          position.accuracy <= _highAccuracyThreshold;
+      if (position.accuracy <= _ultraHighAccuracyThreshold) {
+        _hasAccurateLocation.value = true;
       }
     }
-
-    debugPrint('Location updated: ${position.latitude}, ${position.longitude} (accuracy: ${position.accuracy}m)');
   }
 
-  Future<Map<String, dynamic>> getCurrentLocation({bool forceUpdate = false}) async {
+  void _fallbackToDefault() {
+    _positionStream?.cancel();
+    _recoveryTimer?.cancel();
+
+    latitude.value = defaultLatitude;
+    longitude.value = defaultLongitude;
+    isLocationAvailable.value = false;
+    isHighAccuracyLocation.value = false;
+    _hasAccurateLocation.value = false;
+  }
+
+  void _startRecoveryTimer() {
+    _recoveryTimer?.cancel();
+    _recoveryTimer = Timer.periodic(_retryDelay, (timer) {
+      _startLocationUpdates();
+    });
+  }
+
+  Future<Map<String, dynamic>> getCurrentLocation(
+      {bool forceUpdate = false}) async {
+    Timer? timeoutTimer;
+
     try {
-      if (!forceUpdate) {
-        // First try to use existing accurate location
-        final accurateLocation = await _loadLastAccurateLocation();
-        if (accurateLocation != null) {
-          return {
-            'latitude': accurateLocation['latitude'],
-            'longitude': accurateLocation['longitude'],
-            'accuracy': accurateLocation['accuracy'],
-            'isDefault': false,
-            'isHighAccuracy': accurateLocation['accuracy'] <= _highAccuracyThreshold,
-            'timestamp': accurateLocation['timestamp']
-          };
+      if (forceUpdate) {
+        final completer = Completer<void>();
+
+        // Set up timeout
+        timeoutTimer = Timer(_locationTimeout, () {
+          if (!completer.isCompleted) {
+            debugPrint('Location update timed out, using current location');
+            completer.complete();
+          }
+        });
+
+        // Try to enhance accuracy with timeout
+        try {
+          await _enhanceLocationAccuracy().timeout(_locationTimeout,
+              onTimeout: () {
+            debugPrint('Location enhancement timed out');
+          });
+        } catch (e) {
+          debugPrint('Error during location enhancement: $e');
+          // Continue with current location
         }
+
+        completer.complete();
+        await completer.future;
       }
 
-      // If no accurate location or force update requested, get new location
-      bool hasPermission = await LocationPermissionHandler.handleLocationPermission();
-      if (!hasPermission) {
+      // Check if we have valid location data
+      if (latitude.value != 0 &&
+          longitude.value != 0 &&
+          isLocationAvailable.value) {
         return {
           'latitude': latitude.value,
           'longitude': longitude.value,
-          'accuracy': double.infinity,
+          'isDefault': false,
+          'isHighAccuracy': isHighAccuracyLocation.value,
+          'hasNetwork': isNetworkAvailable.value,
+        };
+      } else {
+        debugPrint('Using default location');
+        return {
+          'latitude': defaultLatitude,
+          'longitude': defaultLongitude,
           'isDefault': true,
           'isHighAccuracy': false,
-          'error': 'Location permission not granted'
+          'hasNetwork': isNetworkAvailable.value,
         };
       }
-
-      // Try to get high accuracy location
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: const Duration(seconds: 30),
-      );
-
-      _updateLocation(position, isHighAccuracy: true);
-
-      return {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'accuracy': position.accuracy,
-        'isDefault': false,
-        'isHighAccuracy': position.accuracy <= _highAccuracyThreshold,
-        'timestamp': DateTime.now().millisecondsSinceEpoch
-      };
     } catch (e) {
-      debugPrint('Error getting location: $e');
+      debugPrint('Error getting current location: $e');
       return {
-        'latitude': latitude.value,
-        'longitude': longitude.value,
-        'accuracy': double.infinity,
-        'isDefault': !isLocationAvailable.value,
+        'latitude': defaultLatitude,
+        'longitude': defaultLongitude,
+        'isDefault': true,
         'isHighAccuracy': false,
+        'hasNetwork': isNetworkAvailable.value,
         'error': e.toString()
       };
+    } finally {
+      timeoutTimer?.cancel();
     }
   }
 
-  Future<Map<String, dynamic>> calculateDistance(
-      double targetLat, double targetLng) async {
-    try {
-      if (!isLocationAvailable.value && !isInitialized.value) {
-        await getCurrentLocation();
-      }
-
-      final distance = Geolocator.distanceBetween(
-        latitude.value,
-        longitude.value,
-        targetLat,
-        targetLng,
-      );
-
-      return {
-        'distance': distance,
-        'isDefault': !isLocationAvailable.value,
-        'isHighAccuracy': isHighAccuracyLocation.value,
-        'fromLocation': {
-          'latitude': latitude.value,
-          'longitude': longitude.value
-        }
-      };
-    } catch (e) {
-      debugPrint('Error calculating distance: $e');
-      return {
-        'error': e.toString(),
-        'isDefault': !isLocationAvailable.value,
-        'isHighAccuracy': false,
-        'fromLocation': {
-          'latitude': latitude.value,
-          'longitude': longitude.value
-        }
-      };
-    }
+  Future<void> forceLocationRefresh() async {
+    _hasAccurateLocation.value = false;
+    await _startLocationUpdates();
   }
 
-  Map<String, dynamic> getCurrentCoordinates() {
-    return {
-      'latitude': latitude.value,
-      'longitude': longitude.value,
-      'isDefault': !isLocationAvailable.value,
-      'isHighAccuracy': isHighAccuracyLocation.value,
-    };
-  }
-
-  bool isUsingDefaultLocation() {
-    return isInitialized.value && !isLocationAvailable.value;
-  }
-
-  bool hasHighAccuracyLocation() {
-    return isLocationAvailable.value && isHighAccuracyLocation.value;
+  @override
+  void onClose() {
+    _positionStream?.cancel();
+    _connectivityStream?.cancel();
+    _recoveryTimer?.cancel();
+    super.onClose();
   }
 }

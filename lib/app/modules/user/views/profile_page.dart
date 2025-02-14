@@ -12,12 +12,15 @@ import 'package:get/get.dart';
 
 class ProfilePage extends GetView<AuthController> {
   final AuthService authService = Get.find<AuthService>();
-  late final UserLocationController locationController;
 
-  ProfilePage({super.key}) {
-    // Initialize location controller only if user is authenticated
-    if (authService.isLoggedIn.value) {
-      locationController = Get.find<UserLocationController>();
+  ProfilePage({super.key});
+
+  UserLocationController? _getLocationController() {
+    if (!authService.isLoggedIn.value) return null;
+    try {
+      return Get.find<UserLocationController>();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -27,7 +30,7 @@ class ProfilePage extends GetView<AuthController> {
       backgroundColor: backgroundColor3,
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: BouncingScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               _buildHeader(authService),
@@ -82,7 +85,7 @@ class ProfilePage extends GetView<AuthController> {
                         Hero(
                           tag: 'profile_image',
                           child: Container(
-                            padding: EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
@@ -133,7 +136,7 @@ class ProfilePage extends GetView<AuthController> {
                 SizedBox(height: Dimenssions.height15),
                 // User Info
                 Text(
-                  authService.userName,
+                  authService.userName ?? 'Guest User',
                   style: primaryTextStyle.copyWith(
                     fontSize: Dimenssions.font20,
                     fontWeight: semiBold,
@@ -142,7 +145,7 @@ class ProfilePage extends GetView<AuthController> {
                 ),
                 SizedBox(height: Dimenssions.height5),
                 Text(
-                  authService.userPhone,
+                  authService.userPhone ?? 'No phone number',
                   style: secondaryTextStyle.copyWith(
                     fontSize: Dimenssions.font14,
                     color: Colors.white.withOpacity(0.8),
@@ -157,8 +160,11 @@ class ProfilePage extends GetView<AuthController> {
   }
 
   Widget _buildAddressCard() {
+    final locationController = _getLocationController();
+    if (locationController == null) return const SizedBox.shrink();
+
     return GetBuilder<UserLocationController>(
-      builder: (locationController) {
+      builder: (controller) {
         return Container(
           margin: EdgeInsets.all(Dimenssions.height15),
           padding: EdgeInsets.all(Dimenssions.height15),
@@ -210,7 +216,7 @@ class ProfilePage extends GetView<AuthController> {
                 ],
               ),
               SizedBox(height: Dimenssions.height10),
-              if (locationController.defaultAddress != null) ...[
+              if (controller.defaultAddress != null) ...[
                 Container(
                   padding: EdgeInsets.all(Dimenssions.height10),
                   decoration: BoxDecoration(
@@ -218,7 +224,7 @@ class ProfilePage extends GetView<AuthController> {
                     borderRadius: BorderRadius.circular(Dimenssions.radius15),
                   ),
                   child: Obx(() => Text(
-                        locationController.defaultAddress!.fullAddress,
+                        controller.defaultAddress!.fullAddress,
                         style: secondaryTextStyle.copyWith(
                           fontSize: Dimenssions.font14,
                         ),
