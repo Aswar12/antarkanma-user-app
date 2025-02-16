@@ -20,6 +20,7 @@ import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
+import '../bindings/main_binding.dart';
 
 part 'app_routes.dart';
 
@@ -138,6 +139,7 @@ class AppPages {
     GetPage(
       name: _Paths.checkoutSuccess,
       page: () => const CheckoutSuccessPage(),
+      binding: MainBinding(),
       middlewares: [AuthGuard()],
       transition: Transition.fadeIn,
     ),
@@ -160,6 +162,7 @@ class AuthGuard extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     try {
+      Get.find<AuthService>().ensureInitialized();
       final authService = Get.find<AuthService>();
       final storageService = Get.find<StorageService>();
 

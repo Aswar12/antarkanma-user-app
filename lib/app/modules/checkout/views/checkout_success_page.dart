@@ -1,5 +1,4 @@
-// ignore_for_file: deprecated_member_use
-
+import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
@@ -17,21 +16,19 @@ class CheckoutSuccessPage extends StatelessWidget {
   Future<void> _navigateToOrderPage() async {
     debugPrint('Navigating to order page...');
     try {
-      // Initialize binding first
-      await Get.deleteAll(force: true);
-      final binding = MainBinding();
-      binding.dependencies();
+      // Ensure AuthService is initialized
+      await Get.find<AuthService>().ensureInitialized();
 
-      // Then navigate
+      // Navigate directly to userMainPage
       await Get.offAllNamed(
         Routes.userMainPage,
         arguments: {'initialPage': 2},
       );
-      
+
       // Update the tab index after navigation
       final controller = Get.find<UserMainController>();
       controller.currentIndex.value = 2;
-      
+
       debugPrint('Navigation to order page complete');
     } catch (e) {
       debugPrint('Error navigating to order page: $e');
@@ -39,16 +36,14 @@ class CheckoutSuccessPage extends StatelessWidget {
     }
   }
 
-  void _navigateToHome() {
+  Future<void> _navigateToHome() async {
     debugPrint('Navigating to home...');
     try {
-      // Initialize binding first
-      Get.deleteAll(force: true);
-      final binding = MainBinding();
-      binding.dependencies();
+      // Ensure AuthService is initialized
+      await Get.find<AuthService>().ensureInitialized();
 
-      // Then navigate
-      Get.offAllNamed(
+      // Navigate directly to userMainPage
+      await Get.offAllNamed(
         Routes.userMainPage,
         arguments: {'initialPage': 0},
       );
@@ -65,13 +60,8 @@ class CheckoutSuccessPage extends StatelessWidget {
       message: message,
       isError: true,
     );
-    
-    // Initialize binding first
-    Get.deleteAll(force: true);
-    final binding = MainBinding();
-    binding.dependencies();
 
-    // Then navigate
+    // Navigate directly to userMainPage
     Get.offAllNamed(
       Routes.userMainPage,
       arguments: {'initialPage': 0},

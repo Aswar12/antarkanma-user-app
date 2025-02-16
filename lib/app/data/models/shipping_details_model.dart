@@ -134,6 +134,15 @@ class DirectionGroupMerchant {
       breakdown: json['breakdown'] != null ? CostBreakdown.fromJson(json['breakdown'] as Map<String, dynamic>) : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'distance': distance,
+      'cost': cost,
+      if (breakdown != null) 'breakdown': breakdown!.toJson(),
+    };
+  }
 }
 
 class DirectionGroupCostBreakdown {
@@ -152,6 +161,13 @@ class DirectionGroupCostBreakdown {
           .map((m) => DirectionGroupMerchant.fromJson(m as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'base_merchant': baseMerchant.toJson(),
+      'on_the_way': onTheWay.map((merchant) => merchant.toJson()).toList(),
+    };
   }
 }
 
@@ -198,6 +214,16 @@ class DirectionGroup {
             ),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'group_id': groupId,
+      'base_angle': baseAngle,
+      'merchants': merchants,
+      'total_cost': totalCost,
+      'cost_breakdown': costBreakdown.toJson(),
+    };
+  }
 }
 
 class RouteSummary {
@@ -210,6 +236,14 @@ class RouteSummary {
     required this.directionGroups,
     required this.baseMerchantDistance,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total_merchants': totalMerchants,
+      'direction_groups': directionGroups.map((group) => group.toJson()).toList(),
+      'base_merchant_distance': baseMerchantDistance,
+    };
+  }
 
   factory RouteSummary.fromJson(Map<String, dynamic> json) {
     // Handle potentially missing or malformed direction_groups
@@ -284,6 +318,23 @@ class CostComparison {
       savingsExplanation: savings['explanation'] as String,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'if_single_order': {
+        'total': singleOrderTotal,
+        'breakdown': singleOrderBreakdown,
+      },
+      'if_separate_orders': {
+        'total': separateOrdersTotal,
+        'breakdown': separateOrdersBreakdown,
+      },
+      'savings': {
+        'amount': savingsAmount,
+        'explanation': savingsExplanation,
+      },
+    };
+  }
 }
 
 class SplitOrderSuggestion {
@@ -306,6 +357,15 @@ class SplitOrderSuggestion {
       breakdown: DirectionGroupCostBreakdown.fromJson(json['breakdown'] as Map<String, dynamic>),
       createNewOrder: json['create_new_order'] as bool,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'merchants': merchants,
+      'total': total,
+      'breakdown': breakdown.toJson(),
+      'create_new_order': createNewOrder,
+    };
   }
 }
 
@@ -331,6 +391,15 @@ class ShippingRecommendations {
           .toList(),
       benefits: Map<String, String>.from(json['benefits'] as Map),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'should_split': shouldSplit,
+      'reason': reason,
+      'suggested_splits': suggestedSplits.map((split) => split.toJson()).toList(),
+      'benefits': benefits,
+    };
   }
 }
 
@@ -390,30 +459,9 @@ class ShippingDetails {
       'data': {
         'total_shipping_price': totalShippingPrice,
         'merchant_deliveries': merchantDeliveries.map((delivery) => delivery.toJson()).toList(),
-        'route_summary': {
-          'total_merchants': routeSummary.totalMerchants,
-          'direction_groups': routeSummary.directionGroups,
-        },
-        'cost_comparison': {
-          'if_single_order': {
-            'total': costComparison.singleOrderTotal,
-            'breakdown': costComparison.singleOrderBreakdown,
-          },
-          'if_separate_orders': {
-            'total': costComparison.separateOrdersTotal,
-            'breakdown': costComparison.separateOrdersBreakdown,
-          },
-          'savings': {
-            'amount': costComparison.savingsAmount,
-            'explanation': costComparison.savingsExplanation,
-          },
-        },
-        'recommendations': {
-          'should_split': recommendations.shouldSplit,
-          'reason': recommendations.reason,
-          'suggested_splits': recommendations.suggestedSplits,
-          'benefits': recommendations.benefits,
-        },
+        'route_summary': routeSummary.toJson(),
+        'cost_comparison': costComparison.toJson(),
+        'recommendations': recommendations.toJson(),
       },
     };
   }
@@ -422,6 +470,12 @@ class ShippingDetails {
     delivery.isInDifferentDirection || delivery.hasInvalidAngle);
 
   bool get canProceedToCheckout => !recommendations.shouldSplit;
+  
+  bool get isValidForShipping {
+    return merchantDeliveries.isNotEmpty && 
+           !hasInvalidRoute && 
+           canProceedToCheckout;
+  }
 
   String? get routeWarningMessage {
     if (recommendations.shouldSplit) {

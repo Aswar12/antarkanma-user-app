@@ -28,18 +28,23 @@ class AuthProvider {
   void _setupBaseOptions() {
     _dio.options = BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: Duration(milliseconds: Config.connectTimeout),
-      receiveTimeout: Duration(milliseconds: Config.receiveTimeout),
-      sendTimeout: Duration(milliseconds: Config.connectTimeout),
+      connectTimeout: const Duration(seconds: 45),
+      receiveTimeout: const Duration(seconds: 45),
+      sendTimeout: const Duration(seconds: 45),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'Connection': 'keep-alive',
       },
       validateStatus: (status) {
         return status != null && status < 500;
       },
       followRedirects: true,
       maxRedirects: 5,
+      extra: {
+        'retryAttempts': 3,
+        'retryDelay': const Duration(seconds: 2),
+      },
     );
   }
 
@@ -63,22 +68,35 @@ class AuthProvider {
           debugPrint('🔴 Error Type: ${error.type}');
           debugPrint('🔴 Error Message: ${error.message}');
 
-          if (error.type == DioExceptionType.connectionError ||
+          if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.sendTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              error.type == DioExceptionType.connectionError ||
               error.type == DioExceptionType.unknown) {
             debugPrint('🔄 Connection error occurred. Attempting retry...');
 
             final retryCount =
                 (error.requestOptions.extra['retryCount'] ?? 0) as int;
+            final maxRetries = error.requestOptions.extra['retryAttempts'] ?? 3;
 
-            if (retryCount < 3) {
+            if (retryCount < maxRetries) {
               error.requestOptions.extra['retryCount'] = retryCount + 1;
-              await Future.delayed(Duration(seconds: retryCount + 1));
-              debugPrint('🔄 Retrying request (${retryCount + 1}/3)');
+              
+              // Calculate delay with exponential backoff starting at 2 seconds
+              final delay = Duration(seconds: 2 * (1 << retryCount));
+              debugPrint('🔄 Waiting ${delay.inSeconds}s before retry ${retryCount + 1}/$maxRetries');
+              await Future.delayed(delay);
 
               try {
+                // Keep timeouts consistent at 45 seconds
+                error.requestOptions.connectTimeout = const Duration(seconds: 45);
+                error.requestOptions.sendTimeout = const Duration(seconds: 45);
+                error.requestOptions.receiveTimeout = const Duration(seconds: 45);
+
                 final response = await _dio.fetch(error.requestOptions);
                 return handler.resolve(response);
               } catch (e) {
+                debugPrint('🔴 Retry failed: $e');
                 return handler.next(error);
               }
             }
@@ -185,11 +203,11 @@ class AuthProvider {
       final response = await _dio.post(
         Config.refresh,
         data: {
-          'token': token, // Include token in request body
+          'token': token,
         },
         options: Options(
           headers: {
-            'Authorization': 'Bearer $token', // Include token in header
+            'Authorization': 'Bearer $token',
           },
           extra: {
             'silent': silent,

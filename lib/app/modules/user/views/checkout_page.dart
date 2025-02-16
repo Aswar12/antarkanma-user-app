@@ -12,21 +12,42 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/modules/checkout/widgets/shipping_details_section_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/widgets/shipping_preview_skeleton_loading.dart';
+import 'package:antarkanma/app/data/models/shipping_details_model.dart';
 
-class CheckoutPage extends GetView<CheckoutController> {
+class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
 
-  UserLocationController get locationController => Get.find<UserLocationController>();
+  @override
+  State<CheckoutPage> createState() => _CheckoutPageState();
+}
 
-  void _initializeCheckout(BuildContext context) {
+class _CheckoutPageState extends State<CheckoutPage> {
+  late CheckoutController controller;
+  late UserLocationController locationController;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<CheckoutController>();
+    locationController = Get.find<UserLocationController>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        final controller = Get.find<CheckoutController>();
-        controller.autoSetInitialValues();
-      } catch (e) {
-        debugPrint('Error initializing checkout: $e');
-      }
+      _initializeCheckoutAndCalculateShipping();
     });
+  }
+
+  bool _isFirstLoad = true;
+
+  void _initializeCheckoutAndCalculateShipping() {
+    try {
+      controller.autoSetInitialValues();
+      // Calculate shipping only on first load
+      if (_isFirstLoad && controller.selectedLocation.value != null && controller.orderItems.isNotEmpty) {
+        controller.calculateShippingPreview();
+        _isFirstLoad = false;
+      }
+    } catch (e) {
+      debugPrint('Error initializing checkout: $e');
+    }
   }
 
   Widget _buildOrderItemCard(OrderItemModel item) {
@@ -152,7 +173,8 @@ class CheckoutPage extends GetView<CheckoutController> {
   }
 
   Widget _buildDeliveryAddressSection() {
-    return Obx(() => Card(
+    return Obx(
+      () => Card(
         color: backgroundColor1,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -276,7 +298,7 @@ class CheckoutPage extends GetView<CheckoutController> {
             const SizedBox(height: 8),
             Obx(() {
               final merchantItems = controller.merchantItems.value;
-              
+
               if (merchantItems.isEmpty) {
                 return Center(
                   child: Text(
@@ -402,7 +424,7 @@ class CheckoutPage extends GetView<CheckoutController> {
   Widget _buildTotalSection() {
     return Obx(() {
       final isCalculating = controller.isCalculatingShipping.value;
-      
+
       return Card(
         color: backgroundColor1,
         child: Padding(
@@ -410,13 +432,15 @@ class CheckoutPage extends GetView<CheckoutController> {
           child: Column(
             children: [
               _buildTotalRow('Subtotal', controller.subtotal.value),
-              isCalculating 
-                ? _buildSkeletonRow('Biaya Pengiriman')
-                : _buildTotalRow('Biaya Pengiriman', controller.deliveryFee.value),
+              isCalculating
+                  ? _buildSkeletonRow('Biaya Pengiriman')
+                  : _buildTotalRow(
+                      'Biaya Pengiriman', controller.deliveryFee.value),
               const Divider(height: 16),
               isCalculating
-                ? _buildSkeletonRow('Total', isTotal: true)
-                : _buildTotalRow('Total', controller.total.value, isTotal: true),
+                  ? _buildSkeletonRow('Total', isTotal: true)
+                  : _buildTotalRow('Total', controller.total.value,
+                      isTotal: true),
             ],
           ),
         ),
@@ -477,6 +501,134 @@ class CheckoutPage extends GetView<CheckoutController> {
     );
   }
 
+  Widget _buildTotalPaymentRow(CheckoutController ctrl) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Total Pembayaran',
+          style: primaryTextStyle.copyWith(
+            fontSize: Dimenssions.font16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Obx(() {
+          if (ctrl.isCalculatingShipping.value) {
+            return Container(
+              width: 120,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }
+          return Text(
+            NumberFormat.currency(
+              locale: 'id_ID',
+              symbol: 'Rp ',
+              decimalDigits: 0,
+            ).format(ctrl.total.value),
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font18,
+              fontWeight: FontWeight.bold,
+              color: logoColorSecondary,
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(CheckoutController ctrl) {
+    return Obx(() {
+      final shippingDetails = ctrl.shippingDetails.value;
+      final shouldSplit = shippingDetails?.recommendations.shouldSplit ?? false;
+
+      if (shouldSplit) {
+        return ElevatedButton(
+          onPressed: () => Get.back(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: logoColorSecondary,
+            elevation: 2,
+            shadowColor: Colors.grey.withOpacity(0.3),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            minimumSize: const Size.fromHeight(56),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: logoColorSecondary.withOpacity(0.5),
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.shopping_cart_outlined, size: 20, color: logoColorSecondary),
+              const SizedBox(width: 8),
+              Text(
+                'Kembali ke Keranjang',
+                style: primaryTextStyle.copyWith(
+                  color: logoColorSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return ElevatedButton(
+        onPressed: ctrl.isProcessingCheckout.value ||
+                !ctrl.canCheckout ||
+                ctrl.isCalculatingShipping.value
+            ? null
+            : () => ctrl.processCheckout(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: logoColorSecondary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          shadowColor: logoColorSecondary.withOpacity(0.5),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          minimumSize: const Size.fromHeight(56),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: ctrl.isProcessingCheckout.value
+            ? SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.shopping_bag_outlined, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pesan Sekarang',
+                    style: primaryTextStyle.copyWith(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+      );
+    });
+  }
+
   Widget _buildCheckoutButton() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -494,227 +646,9 @@ class CheckoutPage extends GetView<CheckoutController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Pembayaran',
-                style: primaryTextStyle.copyWith(
-                  fontSize: Dimenssions.font16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Obx(() {
-                if (controller.isCalculatingShipping.value) {
-                  return Container(
-                    width: 120,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  );
-                }
-                return Text(
-                  NumberFormat.currency(
-                    locale: 'id_ID',
-                    symbol: 'Rp ',
-                    decimalDigits: 0,
-                  ).format(controller.total.value),
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font18,
-                    fontWeight: FontWeight.bold,
-                    color: logoColorSecondary,
-                  ),
-                );
-              }),
-            ],
-          ),
+          _buildTotalPaymentRow(controller),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: Obx(() {
-              final shippingDetails = controller.shippingDetails.value;
-              final shouldSplit = shippingDetails?.recommendations.shouldSplit ?? false;
-
-              if (shouldSplit) {
-                return Column(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.orange[50]!,
-                            Colors.orange[100]!.withOpacity(0.7),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withOpacity(0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.orange.withOpacity(0.2),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.route_rounded,
-                                  color: Colors.orange[700],
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Rute Pengiriman Tidak Optimal',
-                                      style: primaryTextStyle.copyWith(
-                                        color: Colors.orange[900],
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Beberapa merchant berada di arah yang berbeda. Anda dapat memisahkan pesanan untuk pengiriman yang lebih efisien.',
-                                      style: primaryTextStyle.copyWith(
-                                        color: Colors.orange[800],
-                                        fontSize: 14,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity,
-                      height: 50,
-                      margin: const EdgeInsets.only(top: 8),
-                      child: ElevatedButton(
-                        onPressed: () => Get.back(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: logoColorSecondary,
-                          elevation: 2,
-                          shadowColor: Colors.grey.withOpacity(0.3),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: logoColorSecondary.withOpacity(0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 20,
-                              color: logoColorSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Kembali ke Keranjang',
-                              style: primaryTextStyle.copyWith(
-                                color: logoColorSecondary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              return SizedBox(
-                height: 56, // Increased height
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: controller.isProcessingCheckout.value ||
-                          !controller.canCheckout ||
-                          controller.isCalculatingShipping.value
-                      ? null
-                      : () => controller.processCheckout(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: logoColorSecondary,
-                    foregroundColor: Colors.white,
-                    elevation: 3,
-                    shadowColor: logoColorSecondary.withOpacity(0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 14), // Adjusted padding
-                    minimumSize: const Size.fromHeight(56), // Added minimum height
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: controller.isProcessingCheckout.value
-                      ? SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_bag_outlined,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Pesan Sekarang',
-                              style: primaryTextStyle.copyWith(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                                height: 1.2, // Added line height
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              );
-            }),
-          ),
+          _buildActionButton(controller),
         ],
       ),
     );
@@ -744,7 +678,8 @@ class CheckoutPage extends GetView<CheckoutController> {
                   onPressed: () => Get.back(),
                 ),
         ),
-        body: GetX<CheckoutController>(
+        body: GetBuilder<CheckoutController>(
+          init: controller,
           builder: (controller) {
             if (controller.isLoading.value) {
               return const Center(child: CircularProgressIndicator());
@@ -759,14 +694,9 @@ class CheckoutPage extends GetView<CheckoutController> {
                   const SizedBox(height: 8), // Reduced spacing
                   Obx(() {
                     if (controller.isCalculatingShipping.value) {
-                      return Column(
-                        children: [
-                          const ShippingPreviewSkeletonLoading(),
-                          const SizedBox(height: 8),
-                        ],
-                      );
+                      return const ShippingPreviewSkeletonLoading();
                     }
-                    
+
                     final shippingDetails = controller.shippingDetails.value;
                     if (shippingDetails != null) {
                       return Column(

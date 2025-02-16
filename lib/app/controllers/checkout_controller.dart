@@ -1,6 +1,7 @@
 import 'dart:async';
-
+import 'package:dio/dio.dart' as dio;
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/controllers/auth_controller.dart';
@@ -8,7 +9,6 @@ import 'package:antarkanma/app/controllers/cart_controller.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/services/transaction_service.dart';
-import 'package:flutter/material.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
@@ -48,48 +48,55 @@ class CheckoutController extends GetxController {
   final List<String> paymentMethods = ['COD'];
 
   List<Worker>? _workers;
-  Timer? _shippingDebouncer;
+  dio.CancelToken? _shippingCancelToken;
+
+  void validateShipping() {
+    if (shippingDetails.value?.isValidForShipping != true) {
+      showCustomSnackbar(
+        title: 'Error',
+        message: 'Shipping validation failed',
+        isError: true,
+      );
+      return;
+    }
+    calculateShippingPreview();
+  }
 
   @override
   void onInit() {
     super.onInit();
-    _initializeCheckoutAsync();
     setPaymentMethod('COD');
+    _initializeCheckoutAsync();
 
     _workers = [
-      ever<UserLocationModel?>(
-        selectedLocation,
-        (location) {
-          if (location != null) {
-            _debouncedCalculateShipping();
-          }
-        },
-      ),
+      ever<UserLocationModel?>(selectedLocation, (location) {
+        if (location != null) {
+          _reinitializeCheckout();
+        }
+      }),
       ever(cartController.merchantItems, (_) {
-        _debouncedCalculateShipping();
+        _reinitializeCheckout();
       }),
     ];
   }
 
-  void _debouncedCalculateShipping() {
-    _shippingDebouncer?.cancel();
-    _shippingDebouncer = Timer(const Duration(milliseconds: 500), () {
-      _calculateShippingPreview();
-    });
+  void _reinitializeCheckout() {
+    _initializeCheckout();
   }
 
   Future<void> _initializeCheckoutAsync() async {
-    await _initializeCheckoutLocation();
-    _initializeCheckout();
+    try {
+      await _initializeCheckoutLocation();
+      _initializeCheckout();
+    } catch (e) {
+      debugPrint('Error in initialization: $e');
+    }
   }
 
   Future<void> _initializeCheckoutLocation() async {
     try {
-      // Wait for UserLocationController to initialize if needed
-      if (userLocationController.isLoading) {
-        await Future.doWhile(() => 
-          Future.delayed(const Duration(milliseconds: 100))
-          .then((_) => userLocationController.isLoading));
+      if (userLocationController.userLocations.isEmpty) {
+        await userLocationController.loadAddresses();
       }
 
       final selectedLoc = userLocationController.selectedLocation;
@@ -102,14 +109,18 @@ class CheckoutController extends GetxController {
 
       if (priorityLocation != null) {
         selectedLocation.value = priorityLocation;
-        // Only update if the location is different
-        if (userLocationController.selectedLocation != priorityLocation) {
-          // Update local state first
-          selectedLocation.value = priorityLocation;
-        }
+        debugPrint('Location set successfully: ${priorityLocation.id}');
+      } else {
+        debugPrint('No valid location found');
+        showCustomSnackbar(
+          title: 'Warning',
+          message: 'Alamat pengiriman tidak tersedia. Silakan tambahkan alamat baru.',
+          isError: true,
+        );
       }
     } catch (e) {
       debugPrint('Error initializing checkout location: $e');
+      _handleInitializationError(e);
     }
   }
 
@@ -117,7 +128,8 @@ class CheckoutController extends GetxController {
   void onClose() {
     _workers?.forEach((worker) => worker.dispose());
     _workers = null;
-    _shippingDebouncer?.cancel();
+    _shippingCancelToken?.cancel('Controller disposed');
+    _shippingCancelToken = null;
     super.onClose();
   }
 
@@ -130,26 +142,22 @@ class CheckoutController extends GetxController {
       setPaymentMethod(paymentMethods.first);
     }
 
-    update();
+    _initializeCheckout();
   }
 
   void _initializeCheckout() {
     try {
       Map<int, List<CartItemModel>>? merchantCartItems;
 
-      // Check if this is a direct purchase
       if (Get.arguments != null && Get.arguments is Map) {
         final args = Get.arguments as Map;
         if (args['type'] == 'direct_buy' && args['merchantItems'] != null) {
-          merchantCartItems =
-              args['merchantItems'] as Map<int, List<CartItemModel>>;
+          merchantCartItems = args['merchantItems'] as Map<int, List<CartItemModel>>;
         }
       }
 
-      // If not a direct purchase, get items from cart
       merchantCartItems ??= _groupCartItemsByMerchant();
 
-      // Convert cart items to order items and group by merchant
       final Map<int, List<OrderItemModel>> groupedItems = {};
       final List<OrderItemModel> allItems = [];
 
@@ -167,7 +175,13 @@ class CheckoutController extends GetxController {
 
       merchantItems.value = groupedItems;
       orderItems.value = allItems;
-      _calculateTotals();
+
+      subtotal.value = orderItems.fold(
+        0.0,
+        (sum, item) => sum + (item.price * item.quantity),
+      );
+
+      total.value = subtotal.value;
     } catch (e) {
       _handleInitializationError(e);
     }
@@ -197,72 +211,111 @@ class CheckoutController extends GetxController {
     );
   }
 
-  Future<void> _calculateTotals() async {
-    subtotal.value = orderItems.fold(
-      0.0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
-
-    await _calculateShippingPreview();
-    _updateDeliveryFee();
-    total.value = subtotal.value + deliveryFee.value;
-  }
-
-  Future<void> _calculateShippingPreview() async {
+  Future<void> calculateShippingPreview() async {
     if (orderItems.isEmpty || selectedLocation.value == null) {
       shippingDetails.value = null;
       return;
     }
 
-    // Prevent multiple simultaneous calculations
     if (isCalculatingShipping.value) {
-      debugPrint('Shipping calculation already in progress, skipping...');
-      return;
+      _shippingCancelToken?.cancel('New calculation requested');
+      _shippingCancelToken = null;
     }
 
     isCalculatingShipping.value = true;
+    _shippingCancelToken = dio.CancelToken();
+
     try {
       final locationId = selectedLocation.value?.id;
-      if (locationId == null) return;
+      if (locationId == null) {
+        debugPrint('No location ID available for shipping calculation');
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Alamat pengiriman tidak valid',
+          isError: true,
+        );
+        return;
+      }
 
       final items = orderItems.map((item) => {
         'product_id': item.product.id,
         'quantity': item.quantity,
       }).toList();
 
-      // Add timeout to prevent hanging
-      final response = await Future.any([
-        shippingService.getShippingPreview(
-          userLocationId: locationId,
-          items: items,
-        ),
-        Future.delayed(const Duration(seconds: 30), () => null),
-      ]);
+      final response = await shippingService.getShippingPreview(
+        userLocationId: locationId,
+        items: items,
+        cancelToken: _shippingCancelToken,
+      );
 
-      if (response != null) {
-        if (response['data']?['total_shipping_price'] != null &&
-            response['data']?['merchant_deliveries'] != null &&
-            response['data']?['route_summary'] != null) {
-          shippingDetails.value = ShippingDetails.fromJson(response);
-          _updateDeliveryFee();
-        } else {
-          debugPrint('Invalid shipping preview response structure: $response');
-          shippingDetails.value = null;
-        }
+      if (_shippingCancelToken?.isCancelled ?? true) {
+        debugPrint('Shipping calculation was cancelled');
+        return;
+      }
+
+      if (response != null && response['data'] != null) {
+        shippingDetails.value = ShippingDetails.fromJson(response);
+        _updateDeliveryFee();
+        debugPrint('Shipping calculation completed successfully');
       } else {
-        debugPrint('Shipping calculation timed out');
+        debugPrint('Invalid shipping preview response');
         shippingDetails.value = null;
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Gagal mendapatkan informasi pengiriman',
+          isError: true,
+        );
+      }
+    } on TimeoutException catch (e) {
+      debugPrint('Shipping calculation timeout: ${e.message}');
+      if (!(_shippingCancelToken?.isCancelled ?? true)) {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Kalkulasi biaya pengiriman timeout. Silakan coba lagi.',
+          isError: true,
+        );
+      }
+    } on dio.DioException catch (e) {
+      if (e.type == dio.DioExceptionType.cancel) {
+        debugPrint('Shipping calculation cancelled');
+        return;
+      }
+      
+      if (!(_shippingCancelToken?.isCancelled ?? true)) {
+        String errorMessage = 'Gagal menghitung biaya pengiriman';
+        if (e.type == dio.DioExceptionType.connectionTimeout ||
+            e.type == dio.DioExceptionType.sendTimeout ||
+            e.type == dio.DioExceptionType.receiveTimeout) {
+          errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+        }
+        
+        debugPrint('Dio error in shipping calculation: ${e.message}');
+        showCustomSnackbar(
+          title: 'Error',
+          message: errorMessage,
+          isError: true,
+        );
       }
     } catch (e) {
       debugPrint('Error calculating shipping preview: $e');
-      shippingDetails.value = null;
+      if (!(_shippingCancelToken?.isCancelled ?? true)) {
+        showCustomSnackbar(
+          title: 'Error',
+          message: 'Terjadi kesalahan saat menghitung biaya pengiriman',
+          isError: true,
+        );
+      }
     } finally {
-      isCalculatingShipping.value = false;
+      if (!(_shippingCancelToken?.isCancelled ?? true)) {
+        isCalculatingShipping.value = false;
+        _shippingCancelToken = null;
+      }
     }
   }
 
   void _updateDeliveryFee() {
     deliveryFee.value = shippingDetails.value?.totalShippingPrice ?? 0.0;
+    total.value = subtotal.value + deliveryFee.value;
   }
 
   void setDeliveryLocation(UserLocationModel location) {
@@ -324,8 +377,7 @@ class CheckoutController extends GetxController {
       }
 
       final transactionPayload = _createTransactionPayload();
-      final createdTransaction =
-          await transactionService.createTransaction(transactionPayload);
+      final createdTransaction = await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
         debugPrint('Transaction created successfully: ${createdTransaction.id}');
@@ -339,6 +391,20 @@ class CheckoutController extends GetxController {
           isError: true,
         );
       }
+    } on dio.DioException catch (e) {
+      String errorMessage = 'Gagal memproses checkout';
+      if (e.type == dio.DioExceptionType.connectionTimeout ||
+          e.type == dio.DioExceptionType.sendTimeout ||
+          e.type == dio.DioExceptionType.receiveTimeout) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      }
+      
+      debugPrint('Dio error in checkout: ${e.message}');
+      showCustomSnackbar(
+        title: 'Error',
+        message: errorMessage,
+        isError: true,
+      );
     } catch (e) {
       _handleCheckoutError(e);
     } finally {
@@ -358,7 +424,6 @@ class CheckoutController extends GetxController {
                 'merchant_id': item.merchant.id,
               })
           .toList(),
-      'shipping_details': shippingDetails.value?.toJson(),
     };
   }
 
@@ -394,12 +459,10 @@ class CheckoutController extends GetxController {
     if (shippingDetails.value == null) {
       validationErrors.add('Informasi pengiriman tidak tersedia');
     } else if (!shippingDetails.value!.canProceedToCheckout) {
-      validationErrors.add(shippingDetails.value!.routeWarningMessage ??
-          'Rute pengiriman tidak valid');
+      validationErrors.add(shippingDetails.value!.routeWarningMessage ?? 'Rute pengiriman tidak valid');
     }
 
-    final invalidItems =
-        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -458,8 +521,7 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      if (Get.arguments == null ||
-          (Get.arguments as Map)['type'] != 'direct_buy') {
+      if (Get.arguments == null || (Get.arguments as Map)['type'] != 'direct_buy') {
         cartController.clearCart();
       }
     } catch (e) {

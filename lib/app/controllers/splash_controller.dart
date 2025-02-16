@@ -36,12 +36,37 @@ class SplashController extends GetxController {
         // If token exists and remember me is enabled, verify token
         final isValid = await _authService.verifyToken(token);
         if (isValid) {
-          // Get latest profile data
-          final profile = await _authService.getProfile(showError: false);
-          if (profile != null) {
-            _isInitializing.value = false;
-            Get.offAllNamed(Routes.userMainPage);
-            return;
+          // Get latest profile data with retry
+          int attempts = 0;
+          const maxAttempts = 3;
+          while (attempts < maxAttempts) {
+            try {
+              final profile = await _authService.getProfile(showError: false)
+                .timeout(
+                  Duration(seconds: 30 + (attempts * 5)),
+                  onTimeout: () {
+                    debugPrint('Profile fetch timed out (Attempt ${attempts + 1}/$maxAttempts)');
+                    return null;
+                  },
+                );
+              
+              if (profile != null) {
+                _isInitializing.value = false;
+                Get.offAllNamed(Routes.userMainPage);
+                return;
+              }
+              
+              // If profile is null but no exception, break the loop
+              break;
+            } catch (e) {
+              attempts++;
+              if (attempts >= maxAttempts) {
+                debugPrint('Max attempts reached for profile fetch');
+                break;
+              }
+              debugPrint('Retrying profile fetch... Attempt: $attempts');
+              await Future.delayed(Duration(seconds: attempts));
+            }
           }
         }
       }

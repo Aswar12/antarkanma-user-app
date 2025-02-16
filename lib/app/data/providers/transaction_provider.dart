@@ -10,6 +10,7 @@ class TransactionProvider {
   final dio.Dio _dio = dio.Dio();
   final String baseUrl = Config.baseUrl;
   final StorageService _storageService = StorageService.instance;
+  static const int maxRetries = 3;
 
   TransactionProvider() {
     _setupBaseOptions();
@@ -19,8 +20,10 @@ class TransactionProvider {
   void _setupBaseOptions() {
     _dio.options = dio.BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      // Increased timeouts for slower connections
+      connectTimeout: const Duration(seconds: 120),  // 2 minutes
+      receiveTimeout: const Duration(seconds: 120),  // 2 minutes
+      sendTimeout: const Duration(seconds: 120),     // 2 minutes
       validateStatus: (status) => true,
     );
   }
@@ -61,6 +64,24 @@ class TransactionProvider {
           debugPrint('Error message: ${error.message}');
           debugPrint('Error type: ${error.type}');
           debugPrint('Error stacktrace: ${error.stackTrace}');
+
+          // Get the request options to check retry count
+          final options = error.requestOptions;
+          final retryCount = options.extra['retryCount'] ?? 0;
+
+          // Check if error is due to timeout and we haven't exceeded max retries
+          if ((error.type == dio.DioExceptionType.connectionTimeout ||
+              error.type == dio.DioExceptionType.receiveTimeout ||
+              error.type == dio.DioExceptionType.sendTimeout) &&
+              retryCount < maxRetries) {
+            debugPrint('\nRetrying request (${retryCount + 1}/$maxRetries)...');
+            
+            // Increment retry count
+            options.extra['retryCount'] = retryCount + 1;
+
+            // Create new request with same options
+            return handler.resolve(await _dio.fetch(options));
+          }
 
           if (error.response?.statusCode == 401) {
             try {
@@ -130,9 +151,11 @@ class TransactionProvider {
         break;
       default:
         if (error.type == dio.DioExceptionType.connectionTimeout) {
-          message = 'Koneksi timeout. Silakan periksa koneksi internet Anda.';
+          message = 'Koneksi timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
         } else if (error.type == dio.DioExceptionType.receiveTimeout) {
-          message = 'Server tidak merespons. Silakan coba lagi.';
+          message = 'Server merespons lambat. Silakan coba lagi dalam beberapa saat.';
+        } else if (error.type == dio.DioExceptionType.sendTimeout) {
+          message = 'Pengiriman data timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
         } else {
           message = error.response?.data?['message'] ??
               error.message ??
@@ -203,17 +226,7 @@ class TransactionProvider {
       final queryParameters = <String, dynamic>{
         'page': page,
         'page_size': pageSize,
-        'include': 'items.product,items.merchant,user_location',
       };
-
-      if (status != null && status.isNotEmpty) {
-        final statuses = status.split(',');
-        if (statuses.length > 1) {
-          queryParameters['status[]'] = statuses;
-        } else {
-          queryParameters['status'] = status;
-        }
-      }
 
       debugPrint('\n=== Transaction Provider Debug ===');
       debugPrint('Making GET request to: $baseUrl/transactions');
