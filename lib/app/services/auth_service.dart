@@ -198,6 +198,7 @@ class AuthService extends GetxService {
           isLoggedIn.value = true;
 
           if (!isAutoLogin) {
+            // Register FCM token after successful login
             await _handleFCMToken(register: true);
             Get.offAllNamed(Routes.userMainPage);
             if (showError) {

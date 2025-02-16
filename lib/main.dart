@@ -11,6 +11,7 @@ import 'app/routes/app_pages.dart';
 import 'app/bindings/main_binding.dart';
 import 'app/services/auth_service.dart';
 import 'app/services/storage_service.dart';
+import 'app/services/fcm_token_service.dart';
 
 class CustomHttpOverrides extends HttpOverrides {
   @override
@@ -89,6 +90,14 @@ Future<void> initializeApp() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // Initialize AuthService
+    final authService = AuthService();
+    await authService.ensureInitialized();
+    Get.put(authService, permanent: true);
+
+    // Initialize FCM Token Service
+    await Get.put(FCMTokenService().init());
 
     // Initialize core services and wait for completion
     await initializeServices();
