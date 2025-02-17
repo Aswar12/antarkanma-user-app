@@ -65,20 +65,13 @@ class MerchantDetailController extends GetxController {
       isLoading.value = true;
       debugPrint('Loading merchant data for ID: $merchantId');
       
-      final merchantData = await _merchantService.getMerchantById(merchantId);
+      final merchantData = await _merchantService.getMerchantById(merchantId as int);
       merchant.value = merchantData;
       debugPrint('Merchant data loaded: ${merchantData.name}');
 
       if (merchantData.id != null) {
-        final response = await _productService.getAllProducts(
-          query: '',
-          categoryId: null,
-          page: 1,
-          pageSize: 50,
-        );
-        products.assignAll(response.data.where(
-          (product) => product.merchant?.id == merchantData.id
-        ));
+        final productsResponse = await _merchantService.getMerchantProducts(merchantData.id!);
+        products.assignAll(productsResponse.data);
         debugPrint('Loaded ${products.length} products for merchant');
       }
     } catch (e) {
@@ -97,20 +90,18 @@ class MerchantDetailController extends GetxController {
     if (merchant.value == null || merchant.value?.id == null) return;
     
     try {
+      isLoading.value = true;
       if (query.isEmpty) {
-        await loadMerchantData(merchant.value!.id);
+        final productsResponse = await _merchantService.getMerchantProducts(merchant.value!.id!);
+        products.assignAll(productsResponse.data);
         return;
       }
 
-      isLoading.value = true;
-      final response = await _productService.getAllProducts(
+      final productsResponse = await _merchantService.getMerchantProducts(
+        merchant.value!.id!,
         query: query,
-        page: 1,
-        pageSize: 50,
       );
-      products.assignAll(response.data.where(
-        (product) => product.merchant?.id == merchant.value!.id
-      ));
+      products.assignAll(productsResponse.data);
     } catch (e) {
       debugPrint('Error searching products: $e');
       Get.snackbar(

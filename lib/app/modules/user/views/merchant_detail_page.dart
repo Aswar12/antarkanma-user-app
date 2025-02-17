@@ -481,19 +481,28 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
           );
         }
 
-        return SingleChildScrollView(
-          child: Column(
-            children: [
-              if (controller.merchant.value != null)
-                buildMerchantHeader(controller.merchant.value!),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Dimenssions.width15,
-                  vertical: Dimenssions.height10,
+        return RefreshIndicator(
+          onRefresh: () async {
+            if (controller.merchant.value?.id != null) {
+              await controller.loadMerchantData(controller.merchant.value!.id);
+            }
+          },
+          color: logoColorSecondary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                if (controller.merchant.value != null)
+                  buildMerchantHeader(controller.merchant.value!),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimenssions.width15,
+                    vertical: Dimenssions.height10,
+                  ),
+                  child: buildProductGrid(),
                 ),
-                child: buildProductGrid(),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }),

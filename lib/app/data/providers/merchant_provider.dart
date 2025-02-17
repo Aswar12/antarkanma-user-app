@@ -70,7 +70,7 @@ class MerchantProvider {
 
       // Create CancelToken for timeout handling
       final cancelToken = CancelToken();
-      
+
       // Set up timeout
       Timer? timeoutTimer = Timer(const Duration(seconds: 60), () {
         if (!cancelToken.isCancelled) {
@@ -175,7 +175,7 @@ class MerchantProvider {
   }
 
   Future<Response> getPopularMerchants({
-    String? token, 
+    String? token,
     int limit = 5,
     double? latitude,
     double? longitude,
@@ -185,7 +185,7 @@ class MerchantProvider {
 
     try {
       Map<String, dynamic> queryParams = {'limit': limit};
-      
+
       if (latitude != null) queryParams['latitude'] = latitude;
       if (longitude != null) queryParams['longitude'] = longitude;
 
