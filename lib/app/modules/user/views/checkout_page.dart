@@ -509,6 +509,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget _buildTotalSection() {
     return Obx(() {
       final isCalculating = controller.isCalculatingShipping.value;
+      final isSingleMerchant = controller.merchantItems.value.length == 1;
 
       return Card(
         color: backgroundColor1,
@@ -517,10 +518,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Column(
             children: [
               _buildTotalRow('Subtotal', controller.subtotal.value),
-              isCalculating
-                  ? _buildSkeletonRow('Biaya Pengiriman')
-                  : _buildTotalRow(
-                      'Biaya Pengiriman', controller.deliveryFee.value),
+              if (isCalculating)
+                _buildSkeletonRow('Biaya Pengiriman')
+              else if (isSingleMerchant)
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: logoColorSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Biaya Pengiriman',
+                        style: primaryTextStyle.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp ',
+                          decimalDigits: 0,
+                        ).format(controller.deliveryFee.value),
+                        style: primaryTextStyle.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: logoColorSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                _buildTotalRow('Biaya Pengiriman', controller.deliveryFee.value),
               const Divider(height: 16),
               isCalculating
                   ? _buildSkeletonRow('Total', isTotal: true)
@@ -800,26 +832,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 children: [
                   _buildDeliveryAddressSection(),
                   const SizedBox(height: 8), // Reduced spacing
-                  // Only show shipping details section for multiple merchants
-                  if (controller.merchantItems.value.length > 1)
-                    Obx(() {
-                      if (controller.isCalculatingShipping.value) {
-                        return const ShippingPreviewSkeletonLoading();
-                      }
+                  // Show shipping details section based on shipping details merchant count
+                  Obx(() {
+                    if (controller.isCalculatingShipping.value) {
+                      return const ShippingPreviewSkeletonLoading();
+                    }
 
-                      final shippingDetails = controller.shippingDetails.value;
-                      if (shippingDetails != null) {
-                        return Column(
-                          children: [
-                            ShippingDetailsSectionWidget(
-                              shippingDetails: shippingDetails,
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    }),
+                    final shippingDetails = controller.shippingDetails.value;
+                    if (shippingDetails != null && 
+                        shippingDetails.routeSummary.totalMerchants > 1) {
+                      return Column(
+                        children: [
+                          ShippingDetailsSectionWidget(
+                            shippingDetails: shippingDetails,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
                   _buildOrderItemsSection(),
                   const SizedBox(height: 8), // Reduced spacing
                   _buildPaymentSection(),

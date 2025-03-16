@@ -19,6 +19,12 @@ class ShippingDetailsSectionWidget extends StatelessWidget {
 
     final merchantCount = shippingDetails!.routeSummary.totalMerchants;
 
+    // For single merchant, don't show the section at all
+    if (merchantCount <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    // For multiple merchants, show the full section
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor1,
@@ -67,9 +73,7 @@ class ShippingDetailsSectionWidget extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        merchantCount > 1
-                            ? '$merchantCount merchant dalam satu pengiriman'
-                            : 'Pengiriman dari 1 merchant',
+                        '$merchantCount merchant dalam satu pengiriman',
                         style: secondaryTextStyle.copyWith(
                           fontSize: 12,
                         ),

@@ -13,6 +13,40 @@ class ShippingDetailsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // For single merchant, only show total shipping cost
+    if (shippingDetails.routeSummary.totalMerchants <= 1) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: logoColorSecondary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total Ongkir',
+              style: primaryTextStyle.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              NumberFormat.currency(
+                locale: 'id_ID',
+                symbol: 'Rp ',
+                decimalDigits: 0,
+              ).format(shippingDetails.totalShippingPrice),
+              style: primaryTextStyle.copyWith(
+                fontWeight: FontWeight.bold,
+                color: logoColorSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // For multiple merchants, show full shipping details
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
