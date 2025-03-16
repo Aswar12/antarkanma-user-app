@@ -234,6 +234,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 onAddToCart: _addToCart,
                 onBuyNow: _buyNow,
                 isProductActive: controller.product.value.status == 'ACTIVE',
+                hasRequiredVariant: controller.product.value.variants.isNotEmpty,
+                isVariantSelected: controller.selectedVariant.value != null,
               )),
         );
       },

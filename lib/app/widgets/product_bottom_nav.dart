@@ -10,6 +10,8 @@ class ProductBottomNav extends StatelessWidget {
   final VoidCallback onAddToCart;
   final VoidCallback onBuyNow;
   final bool isProductActive;
+  final bool hasRequiredVariant;
+  final bool isVariantSelected;
 
   const ProductBottomNav({
     super.key,
@@ -19,7 +21,25 @@ class ProductBottomNav extends StatelessWidget {
     required this.onAddToCart,
     required this.onBuyNow,
     required this.isProductActive,
+    required this.hasRequiredVariant,
+    required this.isVariantSelected,
   });
+
+  bool get canProceed {
+    if (!isProductActive) return false;
+    if (quantity <= 0) return false;
+    if (hasRequiredVariant && !isVariantSelected) return false;
+    return true;
+  }
+
+  void _showVariantRequiredMessage() {
+    Get.snackbar(
+      'Pilih Varian',
+      'Silakan pilih varian produk terlebih dahulu',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +86,11 @@ class ProductBottomNav extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: quantity > 0 ? onAddToCart : null,
+                      onPressed: canProceed 
+                        ? onAddToCart 
+                        : hasRequiredVariant && !isVariantSelected 
+                          ? _showVariantRequiredMessage 
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: logoColorSecondary,
@@ -92,19 +116,10 @@ class ProductBottomNav extends StatelessWidget {
                   SizedBox(width: Dimenssions.width12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: quantity > 0
-                          ? () {
-                              if (!isProductActive) {
-                                Get.snackbar(
-                                  'Tidak Tersedia',
-                                  'Produk ini sedang tidak tersedia',
-                                  backgroundColor: Colors.red,
-                                  colorText: Colors.white,
-                                );
-                                return;
-                              }
-                              onBuyNow();
-                            }
+                      onPressed: canProceed 
+                        ? onBuyNow 
+                        : hasRequiredVariant && !isVariantSelected 
+                          ? _showVariantRequiredMessage 
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: logoColorSecondary,

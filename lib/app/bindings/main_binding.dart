@@ -1,5 +1,6 @@
 import 'dart:async';
-
+import 'package:antarkanma/app/modules/user/controllers/edit_profile_controller.dart';
+import 'package:flutter/material.dart';
 import 'package:antarkanma/app/controllers/merchant_detail_controller.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/controllers/checkout_controller.dart';
@@ -324,19 +325,39 @@ class MainBinding extends Bindings {
         permanent: true,
       );
 
+      // Pre-initialize services needed by HomePage
+      await Future.wait([
+        Get.find<ProductService>().clearLocalStorage(),
+        Get.find<MerchantService>().clearLocalStorage(),
+        Get.find<CategoryService>().getCategories(),
+      ]);
+
+      // Initialize HomePageController with optimized loading
+      final homePageController = HomePageController(
+        productService: Get.find<ProductService>(),
+        merchantService: Get.find<MerchantService>(),
+        categoryService: Get.find<CategoryService>(),
+        authService: Get.find<AuthService>(),
+        locationService: Get.find<LocationService>(),
+      );
+      
+      // Put controller with permanent flag to maintain state
       Get.put<HomePageController>(
-        HomePageController(
-          productService: Get.find<ProductService>(),
-          merchantService: Get.find<MerchantService>(),
-          categoryService: Get.find<CategoryService>(),
-          authService: Get.find<AuthService>(),
-          locationService: Get.find<LocationService>(),
-        ),
+        homePageController,
         permanent: true,
       );
 
-      // Initialize CheckoutController lazily when needed
-      Get.lazyPut<ShippingService>(() => ShippingService(), fenix: true);
+      // Start loading data in background
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        homePageController.loadInitialData();
+      });
+
+      // Initialize ShippingService
+      final shippingService = ShippingService();
+      Get.put<ShippingService>(
+        shippingService,
+        permanent: true,
+      );
       
       Get.lazyPut<CheckoutController>(
         () => CheckoutController(
@@ -371,6 +392,13 @@ class MainBinding extends Bindings {
 
 
       debugPrint('Controllers initialized successfully');
+
+      // Initialize EditProfileController lazily
+      Get.lazyPut<EditProfileController>(
+        () => EditProfileController(),
+        fenix: true,
+      );
+
     } catch (e) {
       debugPrint('Error initializing controllers: $e');
       rethrow;

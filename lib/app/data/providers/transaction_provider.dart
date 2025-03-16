@@ -21,9 +21,9 @@ class TransactionProvider {
     _dio.options = dio.BaseOptions(
       baseUrl: baseUrl,
       // Increased timeouts for slower connections
-      connectTimeout: const Duration(seconds: 120),  // 2 minutes
-      receiveTimeout: const Duration(seconds: 120),  // 2 minutes
-      sendTimeout: const Duration(seconds: 120),     // 2 minutes
+      connectTimeout: const Duration(seconds: 120), // 2 minutes
+      receiveTimeout: const Duration(seconds: 120), // 2 minutes
+      sendTimeout: const Duration(seconds: 120), // 2 minutes
       validateStatus: (status) => true,
     );
   }
@@ -71,11 +71,11 @@ class TransactionProvider {
 
           // Check if error is due to timeout and we haven't exceeded max retries
           if ((error.type == dio.DioExceptionType.connectionTimeout ||
-              error.type == dio.DioExceptionType.receiveTimeout ||
-              error.type == dio.DioExceptionType.sendTimeout) &&
+                  error.type == dio.DioExceptionType.receiveTimeout ||
+                  error.type == dio.DioExceptionType.sendTimeout) &&
               retryCount < maxRetries) {
             debugPrint('\nRetrying request (${retryCount + 1}/$maxRetries)...');
-            
+
             // Increment retry count
             options.extra['retryCount'] = retryCount + 1;
 
@@ -151,11 +151,14 @@ class TransactionProvider {
         break;
       default:
         if (error.type == dio.DioExceptionType.connectionTimeout) {
-          message = 'Koneksi timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
+          message =
+              'Koneksi timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
         } else if (error.type == dio.DioExceptionType.receiveTimeout) {
-          message = 'Server merespons lambat. Silakan coba lagi dalam beberapa saat.';
+          message =
+              'Server merespons lambat. Silakan coba lagi dalam beberapa saat.';
         } else if (error.type == dio.DioExceptionType.sendTimeout) {
-          message = 'Pengiriman data timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
+          message =
+              'Pengiriman data timeout. Silakan periksa koneksi internet Anda dan coba lagi.';
         } else {
           message = error.response?.data?['message'] ??
               error.message ??

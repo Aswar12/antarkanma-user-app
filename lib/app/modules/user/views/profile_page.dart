@@ -294,11 +294,6 @@ class ProfilePage extends GetView<AuthController> {
               onTap: () => Get.toNamed(Routes.userEditProfile),
             ),
             _MenuItem(
-              icon: Icons.shopping_bag_outlined,
-              title: 'Orderan Kamu',
-              onTap: () => Get.toNamed(Routes.userOrder),
-            ),
-            _MenuItem(
               icon: Icons.headset_mic_outlined,
               title: 'Bantuan',
               onTap: () {

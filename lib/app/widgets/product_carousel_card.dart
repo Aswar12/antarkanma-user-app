@@ -35,143 +35,132 @@ class ProductCarouselCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(Dimenssions.radius15),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Product Image
-              if (product.galleries.isNotEmpty &&
-                  product.imageUrls[0].isNotEmpty)
-                Hero(
-                  tag: 'product-${product.id}',
-                  child: CachedImageView(
-                    imageUrl: product.imageUrls[0],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
-                )
-              else
-                Image.asset(
-                  'assets/image_shoes.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-
-              // Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.3),
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Content
-              Padding(
-                padding: EdgeInsets.all(Dimenssions.width15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Product Name and Merchant
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.name,
-                          style: primaryTextStyle.copyWith(
-                            color: backgroundColor1,
-                            fontSize: Dimenssions.font18,
-                            fontWeight: semiBold,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: Stack(
+              children: [
+                // Product Image Container
+                Positioned.fill(
+                  child: product.galleries.isNotEmpty && product.imageUrls[0].isNotEmpty
+                      ? Hero(
+                          tag: 'product-${product.id}',
+                          child: CachedImageView(
+                            imageUrl: product.imageUrls[0],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        )
+                      : Image.asset(
+                          'assets/image_shoes.png',
+                          fit: BoxFit.cover,
                         ),
-                        if (product.merchant?.name != null) ...[
-                          SizedBox(height: Dimenssions.height4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.store,
-                                color: backgroundColor1,
-                                size: Dimenssions.iconSize16,
+                ),
+
+                // Gradient Overlay
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.65),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Content
+                Positioned(
+                  left: Dimenssions.width15,
+                  right: Dimenssions.width15,
+                  bottom: Dimenssions.width15,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Product Name and Merchant
+                      Text(
+                        product.name,
+                        style: primaryTextStyle.copyWith(
+                          color: backgroundColor1,
+                          fontSize: Dimenssions.font18,
+                          fontWeight: semiBold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (product.merchant?.name != null) ...[
+                        SizedBox(height: Dimenssions.height4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.store,
+                              color: backgroundColor1,
+                              size: Dimenssions.iconSize16,
+                            ),
+                            SizedBox(width: Dimenssions.width4),
+                            Expanded(
+                              child: Text(
+                                product.merchant!.name,
+                                style: primaryTextStyle.copyWith(
+                                  color: backgroundColor1.withOpacity(0.8),
+                                  fontSize: Dimenssions.font12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              SizedBox(width: Dimenssions.width4),
-                              Expanded(
-                                child: Text(
-                                  product.merchant!.name,
-                                  style: primaryTextStyle.copyWith(
-                                    color: backgroundColor1.withOpacity(0.8),
-                                    fontSize: Dimenssions.font12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ],
+                      SizedBox(height: Dimenssions.height8),
+                      // Price and Rating
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Price
+                          Text(
+                            NumberFormat.currency(
+                              locale: 'id',
+                              symbol: 'Rp ',
+                              decimalDigits: 0,
+                            ).format(product.price),
+                            style: priceTextStyle.copyWith(
+                              color: backgroundColor1,
+                              fontSize: Dimenssions.font16,
+                              fontWeight: semiBold,
+                            ),
+                          ),
+                          // Rating
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              StarRating(
+                                rating: product.ratingInfo != null
+                                    ? (product.ratingInfo!['average_rating'] as num).toDouble()
+                                    : product.averageRating,
+                                size: Dimenssions.height15,
+                              ),
+                              SizedBox(height: Dimenssions.height2),
+                              Text(
+                                '${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews} ulasan',
+                                style: primaryTextStyle.copyWith(
+                                  color: backgroundColor1.withOpacity(0.8),
+                                  fontSize: Dimenssions.font12,
                                 ),
                               ),
                             ],
                           ),
                         ],
-                      ],
-                    ),
-                    // Price and Rating
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // Price
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              NumberFormat.currency(
-                                locale: 'id',
-                                symbol: 'Rp ',
-                                decimalDigits: 0,
-                              ).format(product.price),
-                              style: priceTextStyle.copyWith(
-                                color: backgroundColor1,
-                                fontSize: Dimenssions.font16,
-                                fontWeight: semiBold,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Rating
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            StarRating(
-                              rating: product.ratingInfo != null
-                                  ? (product.ratingInfo!['average_rating']
-                                          as num)
-                                      .toDouble()
-                                  : product.averageRating,
-                              size: Dimenssions.height15,
-                            ),
-                            SizedBox(height: Dimenssions.height2),
-                            Text(
-                              '${product.ratingInfo != null ? product.ratingInfo!['total_reviews'] : product.totalReviews} ulasan',
-                              style: primaryTextStyle.copyWith(
-                                color: backgroundColor1.withOpacity(0.8),
-                                fontSize: Dimenssions.font12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

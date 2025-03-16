@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
-import 'package:antarkanma/app/data/models/transaction_model.dart';
+import 'package:antarkanma/app/data/models/transaction_model.dart'
+    as transaction;
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
@@ -110,7 +111,7 @@ class _OrderPageState extends State<OrderPage>
     );
   }
 
-  Widget _buildOrderList(List<TransactionModel> transactions) {
+  Widget _buildOrderList(List<transaction.TransactionModel> transactions) {
     if (transactions.isEmpty) {
       return Center(
         child: Text('Tidak ada pesanan untuk ditampilkan.'),
@@ -134,7 +135,7 @@ class _OrderPageState extends State<OrderPage>
     );
   }
 
-  void _showOrderDetails(TransactionModel transaction) {
+  void _showOrderDetails(transaction.TransactionModel transaction) {
     Get.bottomSheet(
       Container(
         decoration: BoxDecoration(
@@ -152,7 +153,7 @@ class _OrderPageState extends State<OrderPage>
               width: Dimenssions.width40,
               height: 4,
               decoration: BoxDecoration(
-                color: backgroundColor3.withOpacity(0.5),
+                color: backgroundColor3.withValues(alpha: 128),
                 borderRadius: BorderRadius.circular(Dimenssions.radius4),
               ),
             ),
@@ -169,7 +170,7 @@ class _OrderPageState extends State<OrderPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Order #${transaction.id}',
+                            'Transaction #${transaction.id}',
                             style: primaryTextStyle.copyWith(
                               fontSize: Dimenssions.font16,
                               fontWeight: semiBold,
@@ -190,7 +191,8 @@ class _OrderPageState extends State<OrderPage>
                     ],
                   ),
                   SizedBox(height: Dimenssions.height15),
-                  Divider(height: 1, color: backgroundColor3.withOpacity(0.2)),
+                  Divider(
+                      height: 1, color: backgroundColor3.withValues(alpha: 51)),
                 ],
               ),
             ),
@@ -203,7 +205,6 @@ class _OrderPageState extends State<OrderPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Orders List
                       Text(
                         'Daftar Pesanan',
                         style: primaryTextStyle.copyWith(
@@ -216,51 +217,9 @@ class _OrderPageState extends State<OrderPage>
                           .map((order) => _buildOrderDetails(order)),
                       SizedBox(height: Dimenssions.height15),
                       Divider(
-                          height: 1, color: backgroundColor3.withOpacity(0.2)),
+                          height: 1,
+                          color: backgroundColor3.withValues(alpha: 51)),
                       SizedBox(height: Dimenssions.height15),
-
-                      // Shipping Address
-                      if (transaction.userLocation != null) ...[
-                        Text(
-                          'Alamat Pengiriman',
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font14,
-                            fontWeight: semiBold,
-                          ),
-                        ),
-                        SizedBox(height: Dimenssions.height8),
-                        Container(
-                          padding: EdgeInsets.all(Dimenssions.height12),
-                          decoration: BoxDecoration(
-                            color: backgroundColor3.withOpacity(0.05),
-                            borderRadius:
-                                BorderRadius.circular(Dimenssions.radius8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                transaction.userLocation!.address,
-                                style: primaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font12,
-                                ),
-                              ),
-                              SizedBox(height: Dimenssions.height4),
-                              Text(
-                                '${transaction.userLocation!.city}, ${transaction.userLocation!.postalCode}',
-                                style: secondaryTextStyle.copyWith(
-                                  fontSize: Dimenssions.font12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: Dimenssions.height15),
-                        Divider(
-                            height: 1,
-                            color: backgroundColor3.withOpacity(0.2)),
-                        SizedBox(height: Dimenssions.height15),
-                      ],
 
                       // Payment Details
                       Text(
@@ -274,31 +233,25 @@ class _OrderPageState extends State<OrderPage>
                       Container(
                         padding: EdgeInsets.all(Dimenssions.height12),
                         decoration: BoxDecoration(
-                          color: backgroundColor3.withOpacity(0.05),
+                          color: backgroundColor3.withValues(alpha: 13),
                           borderRadius:
                               BorderRadius.circular(Dimenssions.radius8),
                         ),
                         child: Column(
                           children: [
-                            _buildPaymentRow(
-                              'Subtotal Produk',
-                              transaction.formattedTotalPrice,
-                            ),
+                            _buildPaymentRow('Subtotal Produk',
+                                transaction.formattedTotalPrice),
                             SizedBox(height: Dimenssions.height8),
-                            _buildPaymentRow(
-                              'Biaya Pengiriman',
-                              transaction.formattedShippingPrice,
-                            ),
+                            _buildPaymentRow('Biaya Pengiriman',
+                                transaction.formattedShippingPrice),
                             SizedBox(height: Dimenssions.height8),
                             Divider(
                                 height: 1,
-                                color: backgroundColor3.withOpacity(0.2)),
+                                color: backgroundColor3.withValues(alpha: 51)),
                             SizedBox(height: Dimenssions.height8),
-                            _buildPaymentRow(
-                              'Total Pembayaran',
-                              transaction.formattedGrandTotal,
-                              isTotal: true,
-                            ),
+                            _buildPaymentRow('Total Pembayaran',
+                                transaction.formattedGrandTotal,
+                                isTotal: true),
                           ],
                         ),
                       ),
@@ -308,19 +261,18 @@ class _OrderPageState extends State<OrderPage>
                 ),
               ),
             ),
-            // Cancel Button at Bottom
-            if (transaction.status.toUpperCase() == 'PENDING') ...[
+            // Cancel Transaction Button
+            if (_orderController.canCancelTransaction(transaction)) ...[
               Padding(
                 padding: EdgeInsets.all(Dimenssions.height15),
                 child: SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () => _showCancelDialog(transaction),
+                    onPressed: () => _showCancelTransactionDialog(transaction),
                     style: TextButton.styleFrom(
-                      backgroundColor: alertColor.withOpacity(0.1),
-                      padding: EdgeInsets.symmetric(
-                        vertical: Dimenssions.height12,
-                      ),
+                      backgroundColor: alertColor.withValues(alpha: 26),
+                      padding:
+                          EdgeInsets.symmetric(vertical: Dimenssions.height12),
                       shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(Dimenssions.radius8),
@@ -328,9 +280,9 @@ class _OrderPageState extends State<OrderPage>
                       ),
                     ),
                     child: Text(
-                      'Batalkan Pesanan',
+                      'Batalkan Transaksi',
                       style: primaryTextStyle.copyWith(
-                        color: alertColor,
+                        color: logoColor,
                         fontSize: Dimenssions.font14,
                         fontWeight: medium,
                       ),
@@ -347,36 +299,154 @@ class _OrderPageState extends State<OrderPage>
     );
   }
 
-  Widget _buildOrderDetails(OrderModel order) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Merchant: ${order.merchantName}',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                fontWeight: medium,
+  Widget _buildOrderDetails(transaction.OrderModel order) {
+    return Container(
+      margin: EdgeInsets.only(bottom: Dimenssions.height15),
+      padding: EdgeInsets.all(Dimenssions.height12),
+      decoration: BoxDecoration(
+        color: backgroundColor3.withValues(alpha: 13),
+        borderRadius: BorderRadius.circular(Dimenssions.radius8),
+        border: Border.all(color: backgroundColor3.withValues(alpha: 26)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Merchant Name
+          Text(
+            order.merchantName,
+            style: primaryTextStyle.copyWith(
+              fontSize: Dimenssions.font14,
+              fontWeight: semiBold,
+            ),
+          ),
+          SizedBox(height: Dimenssions.height8),
+          // Order ID and Status
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Order #${order.id}',
+                style: secondaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font12,
+                ),
+              ),
+              OrderStatusBadge(status: order.orderStatus),
+            ],
+          ),
+          // Show order status notification if picked up
+          if (order.orderStatus.toUpperCase() == 'PICKED_UP') ...[
+            Container(
+              margin: EdgeInsets.only(top: Dimenssions.height8),
+              width: double.infinity,
+              padding: EdgeInsets.all(Dimenssions.height8),
+              decoration: BoxDecoration(
+                color: logoColorSecondary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                border: Border.all(color: logoColorSecondary.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: Dimenssions.font16,
+                    color: logoColorSecondary,
+                  ),
+                  SizedBox(width: Dimenssions.width8),
+                  Expanded(
+                    child: Text(
+                      'Pesanan Anda sedang dalam perjalanan',
+                      style: primaryTextStyle.copyWith(
+                        fontSize: Dimenssions.font12,
+                        color: logoColorSecondary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            OrderStatusBadge(status: order.orderStatus),
           ],
-        ),
-        SizedBox(height: Dimenssions.height8),
-        ...order.orderItems.map((item) => _buildDetailProductItem(item)),
-        SizedBox(height: Dimenssions.height12),
-        Divider(
-          height: 1,
-          color: backgroundColor3.withOpacity(0.2),
-        ),
-        SizedBox(height: Dimenssions.height12),
-      ],
+          // Show rejection info for each rejected item
+          ...order.orderItems
+              .where(
+                  (item) => item.merchantApproval?.toUpperCase() == 'REJECTED')
+              .map((item) => Container(
+                    margin: EdgeInsets.only(top: Dimenssions.height8),
+                    width: double.infinity,
+                    padding: EdgeInsets.all(Dimenssions.height8),
+                    decoration: BoxDecoration(
+                      color: alertColor.withValues(alpha: 26),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                      border:
+                          Border.all(color: alertColor.withValues(alpha: 77)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Alasan Penolakan: ${item.product.name}',
+                          style: primaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                            fontWeight: medium,
+                            color: alertColor,
+                          ),
+                        ),
+                        if (item.rejectionReason != null) ...[
+                          SizedBox(height: Dimenssions.height4),
+                          Text(
+                            item.rejectionReason!,
+                            style: secondaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font12,
+                              color: alertColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )),
+          // Divider before items
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
+            child: Divider(
+                height: 1, color: backgroundColor3.withValues(alpha: 51)),
+          ),
+          // Order Items
+          ...order.orderItems.map((item) => _buildDetailProductItem(item)),
+          // Cancel Order Button - only show for waiting approval or pending status
+          if (order.orderStatus.toUpperCase() == 'WAITING_APPROVAL' ||
+              order.orderStatus.toUpperCase() == 'PENDING') ...[
+            Padding(
+              padding: EdgeInsets.only(top: Dimenssions.height12),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => _showCancelOrderDialog(order),
+                  style: TextButton.styleFrom(
+                    backgroundColor: alertColor.withValues(alpha: 26),
+                    padding:
+                        EdgeInsets.symmetric(vertical: Dimenssions.height8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                      side: BorderSide(color: alertColor),
+                    ),
+                  ),
+                  child: Text(
+                    'Batalkan Pesanan',
+                    style: primaryTextStyle.copyWith(
+                      color: logoColor,
+                      fontSize: Dimenssions.font12,
+                      fontWeight: medium,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  void _showCancelDialog(TransactionModel transaction) {
+  void _showCancelTransactionDialog(transaction.TransactionModel transaction) {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(
@@ -390,6 +460,75 @@ class _OrderPageState extends State<OrderPage>
             children: [
               Text(
                 'Konfirmasi Pembatalan',
+                style: primaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font18,
+                  fontWeight: semiBold,
+                ),
+              ),
+              SizedBox(height: Dimenssions.height15),
+              Text(
+                'Apakah Anda yakin ingin membatalkan transaksi ini?',
+                style: primaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: Dimenssions.height20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: Text(
+                      'Tidak',
+                      style: primaryTextStyle.copyWith(
+                        color: logoColorSecondary,
+                        fontSize: Dimenssions.font14,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimenssions.width10),
+                  TextButton(
+                    onPressed: () async {
+                      Get.back(); // Close confirmation dialog
+                      Get.back(); // Close order details
+                      await _orderController
+                          .cancelTransaction(transaction.id.toString());
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: alertColor,
+                    ),
+                    child: Text(
+                      'Ya, Batalkan',
+                      style: primaryTextStyle.copyWith(
+                        color: Colors.white,
+                        fontSize: Dimenssions.font14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCancelOrderDialog(transaction.OrderModel order) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        ),
+        backgroundColor: backgroundColor1,
+        child: Padding(
+          padding: EdgeInsets.all(Dimenssions.height20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Konfirmasi Pembatalan Order',
                 style: primaryTextStyle.copyWith(
                   fontSize: Dimenssions.font18,
                   fontWeight: semiBold,
@@ -421,9 +560,7 @@ class _OrderPageState extends State<OrderPage>
                   TextButton(
                     onPressed: () async {
                       Get.back(); // Close confirmation dialog
-                      Get.back(); // Close order details
-                      await _orderController
-                          .cancelOrder(transaction.id.toString());
+                      await _orderController.cancelOrder(order.id.toString());
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: alertColor,
@@ -448,86 +585,124 @@ class _OrderPageState extends State<OrderPage>
   Widget _buildDetailProductItem(dynamic item) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: Dimenssions.height8),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: Dimenssions.height65,
-            height: Dimenssions.height65,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-              border: Border.all(
-                color: backgroundColor3.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-              child: Image.network(
-                item.product.firstImageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: backgroundColor3.withOpacity(0.1),
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: secondaryTextColor,
-                    size: Dimenssions.font20,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: Dimenssions.height65,
+                height: Dimenssions.height65,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                  border: Border.all(
+                    color: backgroundColor3.withValues(alpha: 51),
+                    width: 1,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                  child: Image.network(
+                    item.product.firstImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: backgroundColor3.withValues(alpha: 26),
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: secondaryTextColor,
+                        size: Dimenssions.font20,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          SizedBox(width: Dimenssions.width12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.product.name,
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    fontWeight: medium,
-                  ),
-                ),
-                SizedBox(height: Dimenssions.height4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.store_outlined,
-                      size: Dimenssions.font14,
-                      color: secondaryTextColor,
-                    ),
-                    SizedBox(width: Dimenssions.width4),
-                    Text(
-                      item.merchant.name,
-                      style: secondaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font12,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimenssions.height8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              SizedBox(width: Dimenssions.width12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${item.quantity}x ${item.formattedPrice}',
-                      style: secondaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font12,
-                      ),
-                    ),
-                    Text(
-                      item.formattedTotalPrice,
-                      style: priceTextStyle.copyWith(
+                      item.product.name,
+                      style: primaryTextStyle.copyWith(
                         fontSize: Dimenssions.font14,
-                        fontWeight: semiBold,
+                        fontWeight: medium,
                       ),
+                    ),
+                    SizedBox(height: Dimenssions.height4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.store_outlined,
+                          size: Dimenssions.font14,
+                          color: secondaryTextColor,
+                        ),
+                        SizedBox(width: Dimenssions.width4),
+                        Text(
+                          item.merchant.name,
+                          style: secondaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: Dimenssions.height8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${item.quantity}x ${item.formattedPrice}',
+                          style: secondaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font12,
+                          ),
+                        ),
+                        Text(
+                          item.formattedTotalPrice,
+                          style: priceTextStyle.copyWith(
+                            fontSize: Dimenssions.font14,
+                            fontWeight: semiBold,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (item.customerNote != null && item.customerNote.isNotEmpty) ...[
+            SizedBox(height: Dimenssions.height8),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(Dimenssions.height8),
+              decoration: BoxDecoration(
+                color: backgroundColor3.withValues(alpha: 13),
+                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                border: Border.all(
+                  color: backgroundColor3.withValues(alpha: 26),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Catatan:',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font12,
+                      fontWeight: medium,
+                    ),
+                  ),
+                  SizedBox(height: Dimenssions.height4),
+                  Text(
+                    item.customerNote,
+                    style: secondaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

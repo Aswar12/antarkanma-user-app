@@ -36,7 +36,6 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Re-check location permission when app is resumed
       controller.getCurrentLocation();
     }
   }
@@ -86,6 +85,7 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
         body: Stack(
           children: [
             _buildMap(),
+            _buildAccuracyIndicator(),
             Positioned(
               bottom: 90,
               left: 16,
@@ -107,8 +107,11 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
           mapController: controller.mapController.value,
           options: MapOptions(
             center: controller.selectedLocation.value,
-            zoom: 15.0,
-            onTap: (_, latLng) => controller.updateLocation(latLng),
+            zoom: controller.zoomLevel.value,
+            onTap: (_, latLng) {
+              controller.updateLocation(latLng);
+              controller.animateToLocation(latLng);
+            },
             minZoom: 5.0,
             maxZoom: 18.0,
             interactiveFlags: InteractiveFlag.all,
@@ -117,6 +120,8 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.example.app',
+              maxZoom: 19,
+              tileProvider: NetworkTileProvider(),
             ),
             MarkerLayer(
               markers: [
@@ -132,36 +137,87 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
         ));
   }
 
-  Widget _buildMarker() {
-    return Column(
-      children: [
-        Container(
+  Widget _buildAccuracyIndicator() {
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 16,
+      child: Obx(() {
+        final isHighAccuracy = controller.isHighAccuracy.value;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.red,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
+            color: isHighAccuracy ? Colors.green.withOpacity(0.9) : Colors.orange.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isHighAccuracy ? Icons.gps_fixed : Icons.gps_not_fixed,
+                color: Colors.white,
+                size: 20,
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  controller.accuracyText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (controller.isLoading.value)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
             ],
           ),
-          padding: const EdgeInsets.all(8),
-          child: const Icon(
-            Icons.location_on,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-        Container(
-          width: 2,
-          height: 8,
-          color: Colors.red,
-        ),
-      ],
+        );
+      }),
     );
+  }
+
+  Widget _buildMarker() {
+    return Obx(() {
+      final isHighAccuracy = controller.isHighAccuracy.value;
+      return Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: isHighAccuracy ? Colors.green : Colors.orange,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(8),
+            child: Icon(
+              isHighAccuracy ? Icons.location_on : Icons.location_searching,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          Container(
+            width: 2,
+            height: 8,
+            color: isHighAccuracy ? Colors.green : Colors.orange,
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildLocationInfo() {
@@ -213,11 +269,24 @@ class _MapPickerViewState extends State<MapPickerView> with WidgetsBindingObserv
   }
 
   Widget _buildConfirmButton() {
-    return FloatingActionButton.extended(
-      onPressed: () => controller.confirmLocation(),
-      icon: const Icon(Icons.check),
-      label: const Text('Konfirmasi'),
-      backgroundColor: logoColorSecondary,
-    );
+    return Obx(() {
+      // Only show button if location has been selected
+      if (!controller.canConfirm.value) {
+        return const SizedBox.shrink();
+      }
+
+      return FloatingActionButton.extended(
+        onPressed: () => controller.confirmLocation(),
+        icon: Icon(
+          Icons.check,
+          color: Colors.white,
+        ),
+        label: Text(
+          'Konfirmasi',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: logoColorSecondary,
+      );
+    });
   }
 }

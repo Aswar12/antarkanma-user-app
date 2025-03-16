@@ -33,8 +33,8 @@ class FCMTokenService extends GetxService {
       _authService = Get.find<AuthService>();
       // Listen to auth changes to handle token registration
       ever(_authService.currentUser, (user) {
-        if (user != null && 
-            _currentToken.value != null && 
+        if (user != null &&
+            _currentToken.value != null &&
             !_isTokenRegistered.value) {
           registerFCMToken(_currentToken.value!);
         }
@@ -72,7 +72,8 @@ class FCMTokenService extends GetxService {
 
   Future<void> _handleTokenRefresh(String newToken) async {
     try {
-      print('Handling token refresh. Old: ${_currentToken.value}, New: $newToken');
+      print(
+          'Handling token refresh. Old: ${_currentToken.value}, New: $newToken');
 
       final oldToken = _currentToken.value;
       _currentToken.value = newToken;
@@ -101,7 +102,8 @@ class FCMTokenService extends GetxService {
       final authService = Get.find<AuthService>();
       final user = authService.currentUser.value;
       if (user != null) {
-        print('Registering FCM token for user ${user.id} with role ${user.role}');
+        print(
+            'Registering FCM token for user ${user.id} with role ${user.role}');
 
         await _notificationProvider.registerFCMToken(
           fcmtoken,

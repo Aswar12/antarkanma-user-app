@@ -6,38 +6,21 @@ import 'package:get/get.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
-/// A widget that displays a carousel of product images with lazy loading,
-/// image caching, and interactive features like zooming and indicators.
 class ProductImageSlider extends StatelessWidget {
-  /// List of image URLs to display in the carousel
   final List<String> imageUrls;
-
-  /// Current active index in the carousel
   final int currentIndex;
-
-  /// Callback function when page changes
   final Function(int) onPageChanged;
-
-  /// Unique identifier for the product
   final String productId;
 
-  /// Default placeholder images when no images are provided
   static const List<String> PLACEHOLDER_IMAGES = [
     'assets/image_shoes.png',
     'assets/image_shoes2.png',
     'assets/image_shoes3.png',
   ];
 
-  /// Whether to enable infinite scrolling
   final bool enableInfiniteScroll;
-
-  /// Whether to enable auto play
   final bool enableAutoPlay;
-
-  /// Duration between auto play transitions
   final Duration autoPlayInterval;
-
-  /// Position of the indicator from bottom
   final double indicatorBottomPosition;
 
   const ProductImageSlider({
@@ -59,7 +42,9 @@ class ProductImageSlider extends StatelessWidget {
 
     return Stack(
       children: [
-        CarouselSlider(
+        // Main Image Carousel
+        CarouselSlider.builder(
+          itemCount: displayImages.length,
           options: CarouselOptions(
             height: double.infinity,
             viewportFraction: 1.0,
@@ -69,15 +54,15 @@ class ProductImageSlider extends StatelessWidget {
             scrollPhysics: const BouncingScrollPhysics(),
             onPageChanged: (index, _) => onPageChanged(index),
           ),
-          items: [
-            for (var i = 0; i < displayImages.length; i++)
-              _buildImageSliderItem(
-                imageUrl: displayImages[i],
-                index: i,
-                displayImages: displayImages,
-              ),
-          ],
+          itemBuilder: (context, index, realIndex) {
+            return _buildImageSliderItem(
+              imageUrl: displayImages[index],
+              index: index,
+              displayImages: displayImages,
+            );
+          },
         ),
+        // Image Indicator
         _buildImageIndicator(displayImages.length),
       ],
     );
@@ -102,14 +87,9 @@ class ProductImageSlider extends StatelessWidget {
       child: Hero(
         tag: 'product_image_${productId}_$index',
         child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor3,
-          ),
+          color: backgroundColor3,
           child: CachedImageView(
             imageUrl: imageUrl,
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
             placeholder: PLACEHOLDER_IMAGES[0],
           ),
         ),

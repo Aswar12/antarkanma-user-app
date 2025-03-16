@@ -13,7 +13,7 @@ class NotificationProvider {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => status! < 500,
+      validateStatus: (status) => status! < 600, // Allow 5xx errors
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -34,30 +34,36 @@ class NotificationProvider {
 
   Future<Response> registerFCMToken(String fcmToken, String userId,
       {String? role}) async {
-    try {
-      final response = await _dio.post(
-        '/fcm/token/create', // Matches Laravel route exactly
-        data: {
-          'token': fcmToken, // Renamed to be more explicit
-          'user_id': userId,
-          'role': role,
-          'device_type': defaultTargetPlatform.name.toLowerCase(),
-          'platform': defaultTargetPlatform.name.toLowerCase(),
-          'app_version': '1.0.0',
-        },
-      );
+    int retryCount = 0;
+    while (retryCount < 3) {
+      // Retry up to 3 times
+      try {
+        final response = await _dio.post(
+          '/fcm/token', // Matches Laravel route exactly
+          data: {
+            'token': fcmToken, // Renamed to be more explicit
+            'user_id': userId,
+            'role': role,
+            'device_type': defaultTargetPlatform.name.toLowerCase(),
+            'platform': defaultTargetPlatform.name.toLowerCase(),
+            'app_version': '1.0.0',
+          },
+        );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception(
-            'Failed to register FCM token. Status: ${response.statusCode}');
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          throw Exception(
+              'Failed to register FCM token. Status: ${response.statusCode}');
+        }
+
+        print('FCM Token registration successful: ${response.data}');
+        return response;
+      } catch (e) {
+        retryCount++;
+        print('Error registering FCM token: $e. Retrying... ($retryCount)');
+        await Future.delayed(Duration(seconds: 2)); // Wait before retrying
       }
-
-      print('FCM Token registration successful: ${response.data}');
-      return response;
-    } catch (e) {
-      print('Error registering FCM token: $e');
-      throw Exception('Failed to register FCM token: $e');
     }
+    throw Exception('Failed to register FCM token after multiple attempts.');
   }
 
   Future<Response> updateFCMToken(

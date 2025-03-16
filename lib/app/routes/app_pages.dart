@@ -57,6 +57,7 @@ class AppPages {
       name: _Paths.userMainPage,
       page: () => const UserMainPage(),
       middlewares: [AuthGuard()],
+      binding: MainBinding(),
       transition: Transition.fadeIn,
       children: [
         // Home Section
@@ -76,6 +77,7 @@ class AppPages {
         GetPage(
           name: _Paths.editProfile,
           page: () => const EditProfileView(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
 
@@ -97,26 +99,31 @@ class AppPages {
         GetPage(
           name: _Paths.address,
           page: () => const AddressPage(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
         GetPage(
           name: _Paths.addAddress,
           page: () => AddEditAddressPage(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
         GetPage(
           name: _Paths.editAddress,
           page: () => AddEditAddressPage(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
         GetPage(
           name: _Paths.selectAddress,
           page: () => AddressSelectionPage(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
         GetPage(
           name: _Paths.mapPicker,
           page: () => const MapPickerView(),
+          binding: MainBinding(),
           transition: Transition.rightToLeft,
         ),
 

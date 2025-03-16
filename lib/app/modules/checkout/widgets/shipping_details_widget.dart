@@ -63,8 +63,8 @@ class ShippingDetailsWidget extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                ...shippingDetails.recommendations.benefits.entries.map((benefit) =>
-                  Text(
+                ...shippingDetails.recommendations.benefits.entries.map(
+                  (benefit) => Text(
                     '• ${benefit.value}',
                     style: primaryTextStyle.copyWith(fontSize: 12),
                   ),
@@ -103,7 +103,8 @@ class ShippingDetailsWidget extends StatelessWidget {
                       symbol: 'Rp ',
                       decimalDigits: 0,
                     ).format(shippingDetails.costComparison.singleOrderTotal),
-                    style: primaryTextStyle.copyWith(fontWeight: FontWeight.bold),
+                    style:
+                        primaryTextStyle.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -124,8 +125,10 @@ class ShippingDetailsWidget extends StatelessWidget {
                       locale: 'id_ID',
                       symbol: 'Rp ',
                       decimalDigits: 0,
-                    ).format(shippingDetails.costComparison.separateOrdersTotal),
-                    style: primaryTextStyle.copyWith(fontWeight: FontWeight.bold),
+                    ).format(
+                        shippingDetails.costComparison.separateOrdersTotal),
+                    style:
+                        primaryTextStyle.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -186,7 +189,8 @@ class ShippingDetailsWidget extends StatelessWidget {
                   children: [
                     Text(
                       'Grup ${group.groupId}',
-                      style: primaryTextStyle.copyWith(fontWeight: FontWeight.bold),
+                      style: primaryTextStyle.copyWith(
+                          fontWeight: FontWeight.bold),
                     ),
                     Text(
                       NumberFormat.currency(
@@ -206,8 +210,8 @@ class ShippingDetailsWidget extends StatelessWidget {
                   'Merchant:',
                   style: primaryTextStyle.copyWith(fontSize: 12),
                 ),
-                ...group.merchants.map((merchant) =>
-                  Text(
+                ...group.merchants.map(
+                  (merchant) => Text(
                     '• $merchant',
                     style: primaryTextStyle.copyWith(fontSize: 12),
                   ),
@@ -243,14 +247,14 @@ class ShippingDetailsWidget extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: suggestion.createNewOrder 
-                  ? Colors.orange[50] 
-                  : Colors.green[50],
+                color: suggestion.createNewOrder
+                    ? Colors.orange[50]
+                    : Colors.green[50],
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: suggestion.createNewOrder 
-                    ? Colors.orange[100]! 
-                    : Colors.green[100]!,
+                  color: suggestion.createNewOrder
+                      ? Colors.orange[100]!
+                      : Colors.green[100]!,
                 ),
               ),
               child: Column(
@@ -260,14 +264,12 @@ class ShippingDetailsWidget extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        suggestion.createNewOrder 
-                          ? 'Order Baru' 
-                          : 'Order Ini',
+                        suggestion.createNewOrder ? 'Order Baru' : 'Order Ini',
                         style: primaryTextStyle.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: suggestion.createNewOrder 
-                            ? Colors.orange[700] 
-                            : Colors.green[700],
+                          color: suggestion.createNewOrder
+                              ? Colors.orange[700]
+                              : Colors.green[700],
                         ),
                       ),
                       Text(
@@ -278,9 +280,9 @@ class ShippingDetailsWidget extends StatelessWidget {
                         ).format(suggestion.total),
                         style: primaryTextStyle.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: suggestion.createNewOrder 
-                            ? Colors.orange[700] 
-                            : Colors.green[700],
+                          color: suggestion.createNewOrder
+                              ? Colors.orange[700]
+                              : Colors.green[700],
                         ),
                       ),
                     ],
@@ -290,8 +292,8 @@ class ShippingDetailsWidget extends StatelessWidget {
                     'Merchant:',
                     style: primaryTextStyle.copyWith(fontSize: 12),
                   ),
-                  ...suggestion.merchants.map((merchant) =>
-                    Text(
+                  ...suggestion.merchants.map(
+                    (merchant) => Text(
                       '• $merchant',
                       style: primaryTextStyle.copyWith(fontSize: 12),
                     ),

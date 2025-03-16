@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/data/models/product_review_model.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
+import 'package:antarkanma/app/widgets/product_detail_skeleton_loading.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -23,7 +24,7 @@ class ProductReviewSection extends StatelessWidget {
       ),
       child: Obx(() {
         if (controller.isLoadingReviews.value && controller.reviews.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const ProductDetailSkeletonLoading();
         }
 
         return Column(

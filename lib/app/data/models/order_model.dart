@@ -9,9 +9,10 @@ class OrderModel {
   final String userId;
   final List<OrderItemModel> items;
   final double totalAmount;
-  final String _orderStatus; // PENDING, PROCESSING, COMPLETED, CANCELED
+  final String _orderStatus; // PENDING, PROCESSING, PICKED_UP, COMPLETED, CANCELED
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? transactionId;
 
   // Tambahan field untuk relasi dengan Transaction
   TransactionModel? transaction;
@@ -25,6 +26,7 @@ class OrderModel {
     this.createdAt,
     this.updatedAt,
     this.transaction,
+    this.transactionId,
   }) : _orderStatus = orderStatus;
 
   // Getter untuk order status
@@ -42,6 +44,21 @@ class OrderModel {
     ).format(totalAmount);
   }
 
+  // Check if any order item is rejected
+  bool get isRejected {
+    return items.any((item) => item.merchantApproval?.toUpperCase() == 'REJECTED');
+  }
+
+  // Get rejection reason from items
+  String? get rejectionReason {
+    final rejectedItem = items.firstWhereOrNull(
+        (item) => item.merchantApproval?.toUpperCase() == 'REJECTED');
+    return rejectedItem?.rejectionReason;
+  }
+
+  // Check if order is picked up
+  bool get isPickedUp => _orderStatus.toUpperCase() == 'PICKED_UP';
+
   // Konversi ke JSON
   Map<String, dynamic> toJson() {
     return {
@@ -52,6 +69,7 @@ class OrderModel {
       'order_status': _orderStatus,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'transaction_id': transactionId,
     };
   }
 
@@ -74,6 +92,7 @@ class OrderModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'])
           : null,
+      transactionId: json['transaction_id']?.toString(),
     );
   }
 
@@ -102,6 +121,7 @@ class OrderModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     TransactionModel? transaction,
+    String? transactionId,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -112,6 +132,7 @@ class OrderModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       transaction: transaction ?? this.transaction,
+      transactionId: transactionId ?? this.transactionId,
     );
   }
 
@@ -129,6 +150,8 @@ class OrderModel {
         return 'Menunggu Pembayaran';
       case 'PROCESSING':
         return 'Sedang Diproses';
+      case 'PICKED_UP':
+        return 'Dalam Perjalanan';
       case 'COMPLETED':
         return 'Selesai';
       case 'CANCELED':
@@ -143,6 +166,8 @@ class OrderModel {
       case 'PENDING':
         return Colors.orange;
       case 'PROCESSING':
+        return Colors.blue;
+      case 'PICKED_UP':
         return Colors.blue;
       case 'COMPLETED':
         return Colors.green;

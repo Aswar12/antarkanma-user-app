@@ -1,58 +1,82 @@
-import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../controllers/splash_controller.dart';
+import '../../../../theme.dart';
+import '../controllers/splash_controller.dart';
 
 class SplashPage extends GetView<SplashController> {
   const SplashPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevent back button during initialization
-      child: Scaffold(
-        backgroundColor: logoColor,
-        body: SafeArea(
-          child: Obx(() => AnimatedOpacity(
-                opacity: controller.isInitializing ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 500),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Logo
-                      Image.asset(
-                        'assets/Logo_AntarkanmaNoBg.png',
-                        width: 200,
-                        height: 200,
-                      ),
-                      SizedBox(height: Dimenssions.height30),
-
-                      // Loading indicator
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(backgroundColor1),
-                      ),
-
-                      SizedBox(height: Dimenssions.height20),
-
-                      // Welcome Text
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width20,
-                        ),
-                        child: Text(
-                          'Welcome to Antarkanma!',
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font16,
-                            fontWeight: medium,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          color: logoColor,
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // Background Design Elements
+              Positioned(
+                top: -50,
+                right: -50,
+                child: Container(
+                  width: Dimenssions.width150,
+                  height: Dimenssions.height150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.1),
                   ),
                 ),
-              )),
+              ),
+              Positioned(
+                bottom: -80,
+                left: -80,
+                child: Container(
+                  width: Dimenssions.width150 * 1.33,
+                  height: Dimenssions.height200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                ),
+              ),
+              // Main Content
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Static Logo
+                    SizedBox(
+                      width: Dimenssions.width150,
+                      height: Dimenssions.height150,
+                      child: Image.asset(
+                        'assets/Logo_AntarkanmaNoBg.png',
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.error_outline,
+                            color: alertColor,
+                            size: Dimenssions.iconSize24,
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: Dimenssions.height32),
+                    // Loading Indicator
+                    SizedBox(
+                      width: Dimenssions.width150 * 1.33,
+                      child: LinearProgressIndicator(
+                        backgroundColor: logoColorSecondary.withOpacity(0.2),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(logoColorSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

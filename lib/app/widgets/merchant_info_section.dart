@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
 import 'package:antarkanma/app/widgets/cached_image_view.dart';
+import 'package:antarkanma/app/widgets/product_detail_skeleton_loading.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -63,41 +64,7 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
   Widget build(BuildContext context) {
     return Obx(() {
       if (controller.isLoadingMerchant.value) {
-        return Container(
-          margin: EdgeInsets.symmetric(
-            horizontal: Dimenssions.width20,
-            vertical: Dimenssions.height10,
-          ),
-          padding: EdgeInsets.all(Dimenssions.height20),
-          decoration: BoxDecoration(
-            color: backgroundColor1,
-            borderRadius: BorderRadius.circular(Dimenssions.radius16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  color: logoColorSecondary,
-                ),
-                SizedBox(height: Dimenssions.height10),
-                Text(
-                  'Memuat data merchant...',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        return const ProductDetailSkeletonLoading();
       }
 
       final merchant = controller.product.value.merchant;

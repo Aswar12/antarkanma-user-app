@@ -5,17 +5,27 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../utils/location_permission_handler.dart';
+import '../services/location_service.dart';
 
 class MapPickerController extends GetxController {
   final selectedLocation = const LatLng(-4.6275392, 119.5871827).obs;
   final isLoading = false.obs;
   final currentAddress = ''.obs;
-  final Rx<MapController> mapController = MapController().obs;
+  late final Rx<MapController> mapController;
+  final isHighAccuracy = false.obs;
+  final accuracy = 0.0.obs;
+  final zoomLevel = 17.0.obs;
+  final canConfirm = false.obs; // Add canConfirm observable
   bool _disposed = false;
   Timer? _locationTimer;
+  Timer? _zoomTimer;
+
+  // Location Service
+  final LocationService _locationService = LocationService.to;
+  bool _isInitialized = false;
+  Completer<void>? _initCompleter;
 
   // Add a getter for currentLocation
   LatLng get currentLocation => selectedLocation.value;
@@ -23,6 +33,7 @@ class MapPickerController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    mapController = MapController().obs;
     _initializeLocation();
   }
 
@@ -30,13 +41,80 @@ class MapPickerController extends GetxController {
   void onClose() {
     _disposed = true;
     _locationTimer?.cancel();
+    _zoomTimer?.cancel();
     mapController.value.dispose();
     super.onClose();
   }
 
   Future<void> _initializeLocation() async {
     if (_disposed) return;
-    await getCurrentLocation();
+
+    if (_initCompleter != null) {
+      await _initCompleter!.future;
+      return;
+    }
+
+    _initCompleter = Completer<void>();
+
+    try {
+      await _locationService.init();
+
+      // Get initial location
+      final locationData = await _locationService.getCurrentLocation();
+      if (locationData['latitude'] != null &&
+          locationData['longitude'] != null) {
+        final newLocation = LatLng(
+          locationData['latitude'],
+          locationData['longitude'],
+        );
+        await updateLocation(newLocation);
+        isHighAccuracy.value = locationData['isHighAccuracy'] ?? false;
+        accuracy.value = locationData['accuracy'] ?? 0.0;
+
+        // Smoothly zoom to location
+        animateToLocation(newLocation);
+      }
+
+      _isInitialized = true;
+      _initCompleter?.complete();
+    } catch (e) {
+      debugPrint('Error initializing location: $e');
+      _initCompleter?.completeError(e);
+    }
+  }
+
+  void animateToLocation(LatLng location) {
+    if (_disposed) return;
+
+    try {
+      // First move to location with current zoom
+      mapController.value.move(location, mapController.value.zoom);
+
+      // Then smoothly zoom in
+      _zoomTimer?.cancel();
+      const duration = Duration(milliseconds: 100);
+      const steps = 10;
+      final startZoom = mapController.value.zoom;
+      final zoomDiff = (zoomLevel.value - startZoom) / steps;
+
+      int step = 0;
+      _zoomTimer = Timer.periodic(duration, (timer) {
+        if (_disposed || step >= steps) {
+          timer.cancel();
+          return;
+        }
+
+        final newZoom = startZoom + (zoomDiff * step);
+        try {
+          mapController.value.move(location, newZoom);
+        } catch (e) {
+          debugPrint('Error during zoom animation: $e');
+        }
+        step++;
+      });
+    } catch (e) {
+      debugPrint('Error animating to location: $e');
+    }
   }
 
   void _safeUpdate(VoidCallback callback) {
@@ -46,26 +124,6 @@ class MapPickerController extends GetxController {
       } catch (e) {
         print('Safe update error: $e');
       }
-    }
-  }
-
-  Future<Position?> _getPositionWithTimeout() async {
-    if (_disposed) return null;
-
-    try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      ).timeout(
-        const Duration(seconds: 40),
-        onTimeout: () {
-          throw TimeoutException('Waktu mendapatkan lokasi habis');
-        },
-      );
-    } catch (e) {
-      if (e is TimeoutException && !_disposed) {
-        return await Geolocator.getLastKnownPosition();
-      }
-      rethrow;
     }
   }
 
@@ -83,18 +141,34 @@ class MapPickerController extends GetxController {
           await LocationPermissionHandler.checkAndRequestLocationService();
       if (!serviceEnabled || _disposed) return;
 
-      Position? position = await _getPositionWithTimeout();
-      if (_disposed || position == null) return;
+      // Ensure initialization is complete
+      if (!_isInitialized) {
+        await _initializeLocation();
+      }
 
-      final newLocation = LatLng(position.latitude, position.longitude);
-      await updateLocation(newLocation);
+      // Get location from LocationService
+      final locationData =
+          await _locationService.getCurrentLocation(forceUpdate: true);
 
-      if (!_disposed) {
-        try {
-          mapController.value.move(newLocation, 15);
-        } catch (e) {
-          print('Error moving map: $e');
+      if (locationData['latitude'] != null &&
+          locationData['longitude'] != null) {
+        isHighAccuracy.value = locationData['isHighAccuracy'] ?? false;
+        accuracy.value = locationData['accuracy'] ?? 0.0;
+
+        final newLocation = LatLng(
+          locationData['latitude'],
+          locationData['longitude'],
+        );
+
+        await updateLocation(newLocation);
+
+        // If not high accuracy, start periodic checks
+        if (!isHighAccuracy.value) {
+          _startAccuracyCheck();
         }
+
+        // Animate to new location
+        animateToLocation(newLocation);
       }
     } catch (e) {
       print('Error getting location: $e');
@@ -105,11 +179,44 @@ class MapPickerController extends GetxController {
     }
   }
 
+  void _startAccuracyCheck() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (_disposed || isHighAccuracy.value) {
+        _locationTimer?.cancel();
+        return;
+      }
+
+      final locationData =
+          await _locationService.getCurrentLocation(forceUpdate: true);
+
+      if (locationData['isHighAccuracy'] == true) {
+        isHighAccuracy.value = true;
+        accuracy.value = locationData['accuracy'] ?? 0.0;
+
+        final betterLocation = LatLng(
+          locationData['latitude'],
+          locationData['longitude'],
+        );
+
+        await updateLocation(betterLocation);
+        _locationTimer?.cancel();
+
+        // Animate to better location
+        animateToLocation(betterLocation);
+      }
+    });
+  }
+
   Future<void> updateLocation(LatLng newLocation) async {
     if (_disposed) return;
 
     try {
-      _safeUpdate(() => selectedLocation.value = newLocation);
+      _safeUpdate(() {
+        selectedLocation.value = newLocation;
+        // Enable confirmation when location is updated
+        canConfirm.value = true;
+      });
       await getAddressFromLatLng(newLocation);
     } catch (e) {
       print('Error updating location: $e');
@@ -159,6 +266,8 @@ class MapPickerController extends GetxController {
     final result = {
       'location': selectedLocation.value,
       'address': currentAddress.value,
+      'isHighAccuracy': isHighAccuracy.value,
+      'accuracy': accuracy.value,
     };
 
     try {
@@ -172,14 +281,17 @@ class MapPickerController extends GetxController {
   }
 
   void initializeMap() {
-    selectedLocation.value =
-        const LatLng(-4.6275392, 119.5871827); // Default coordinates
-    mapController.value.move(selectedLocation.value, 15.0);
-    getCurrentLocation();
+    if (!_isInitialized) {
+      _initializeLocation();
+    }
   }
 
   String get formattedLocation {
     return '${selectedLocation.value.latitude.toStringAsFixed(6)}, '
         '${selectedLocation.value.longitude.toStringAsFixed(6)}';
+  }
+
+  String get accuracyText {
+    return 'Akurasi (±${accuracy.value.toStringAsFixed(1)}m)';
   }
 }

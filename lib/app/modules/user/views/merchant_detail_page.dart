@@ -1,13 +1,15 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/controllers/merchant_detail_controller.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/app/widgets/merchant_skeleton_loading.dart';
 import 'package:antarkanma/app/widgets/product_grid_card.dart';
 import 'package:antarkanma/app/widgets/search_input_field.dart';
 import 'package:antarkanma/app/widgets/cached_image_view.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class MerchantDetailPage extends GetView<MerchantDetailController> {
   const MerchantDetailPage({super.key});
@@ -47,13 +49,12 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Image and Info
-          Stack(
-            children: [
-              // Background Image with Hero
-              SizedBox(
-                height: 200,
-                width: double.infinity,
-                child: Hero(
+          AspectRatio(
+            aspectRatio: 16/9, // Wider aspect ratio for header image
+            child: Stack(
+              children: [
+                // Background Image with Hero
+                Hero(
                   tag: 'merchant-${merchant.id}',
                   child: merchant.logoUrl != null && merchant.logoUrl!.isNotEmpty
                       ? CachedImageView(
@@ -73,99 +74,98 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                           ),
                         ),
                 ),
-              ),
-              // Gradient Overlay
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.2),
-                      Colors.black.withOpacity(0.5),
-                    ],
-                  ),
-                ),
-              ),
-              // Merchant Info Overlay
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: EdgeInsets.all(Dimenssions.width20),
+                // Gradient Overlay
+                Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.8),
-                        Colors.transparent,
+                        Colors.black.withOpacity(0.2),
+                        Colors.black.withOpacity(0.5),
                       ],
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              merchant.name,
-                              style: primaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font20,
-                                fontWeight: semiBold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Dimenssions.width8,
-                              vertical: Dimenssions.height4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: merchant.isActive ? Colors.green : alertColor,
-                              borderRadius: BorderRadius.circular(Dimenssions.radius8),
-                            ),
-                            child: Text(
-                              merchant.isActive ? 'Buka' : 'Tutup',
-                              style: primaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font12,
-                                color: Colors.white,
-                                fontWeight: medium,
-                              ),
-                            ),
-                          ),
+                ),
+                // Merchant Info Overlay
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(Dimenssions.width20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.8),
+                          Colors.transparent,
                         ],
                       ),
-                      SizedBox(height: Dimenssions.height8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          SizedBox(width: Dimenssions.width4),
-                          Expanded(
-                            child: Text(
-                              merchant.address,
-                              style: primaryTextStyle.copyWith(
-                                fontSize: Dimenssions.font14,
-                                color: Colors.white.withOpacity(0.8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                merchant.name,
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font20,
+                                  fontWeight: semiBold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Dimenssions.width8,
+                                vertical: Dimenssions.height4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: merchant.isActive ? Colors.green : alertColor,
+                                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                              ),
+                              child: Text(
+                                merchant.isActive ? 'Buka' : 'Tutup',
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font12,
+                                  color: Colors.white,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: Dimenssions.height8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: Dimenssions.width4),
+                            Expanded(
+                              child: Text(
+                                merchant.address,
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font14,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Additional Info Section
@@ -281,74 +281,59 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
 
                 SizedBox(height: Dimenssions.height10),
 
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (merchant.id != null) {
-                            Get.toNamed('/chat', arguments: {
-                              'merchantId': merchant.id,
-                              'merchantName': merchant.name,
-                            });
+                // WhatsApp Chat Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final phoneNumber = merchant.phoneNumber;
+                      if (phoneNumber.isNotEmpty) {
+                        // Format phone number for WhatsApp
+                        String formattedPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+                        if (!formattedPhone.startsWith('+62')) {
+                          formattedPhone = '+62${formattedPhone.startsWith('0') ? formattedPhone.substring(1) : formattedPhone}';
+                        }
+                        
+                        // Try to launch WhatsApp app first
+                        final whatsappUri = Uri.parse('whatsapp://send?phone=${formattedPhone.substring(1)}');
+                        try {
+                          final launched = await launchUrl(
+                            whatsappUri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                          if (!launched) {
+                            // Fallback to web WhatsApp if app launch fails
+                            final webWhatsappUri = Uri.parse('https://wa.me/${formattedPhone.substring(1)}');
+                            await launchUrl(webWhatsappUri);
                           }
-                        },
-                        icon: Icon(Icons.chat_outlined,
-                            color: Colors.white, size: 20),
-                        label: Text(
-                          'Chat Penjual',
-                          style: primaryTextStyle.copyWith(
-                            color: Colors.white,
-                            fontWeight: medium,
-                            fontSize: Dimenssions.font14,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: logoColorSecondary,
-                          padding: EdgeInsets.symmetric(
-                              vertical: Dimenssions.height10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(Dimenssions.radius12),
-                          ),
-                        ),
+                        } catch (e) {
+                          print('Error launching WhatsApp: $e');
+                        }
+                      }
+                    },
+                    icon: FaIcon(
+                      FontAwesomeIcons.whatsapp,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    label: Text(
+                      'Chat WhatsApp',
+                      style: primaryTextStyle.copyWith(
+                        color: Colors.white,
+                        fontWeight: medium,
+                        fontSize: Dimenssions.font14,
                       ),
                     ),
-                    SizedBox(width: Dimenssions.width12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final phoneNumber = merchant.phoneNumber;
-                          if (phoneNumber.isNotEmpty) {
-                            final url = 'tel:$phoneNumber';
-                            if (await url_launcher.canLaunch(url)) {
-                              await url_launcher.launch(url);
-                            }
-                          }
-                        },
-                        icon: Icon(Icons.phone_outlined,
-                            color: Colors.white, size: 20),
-                        label: Text(
-                          'Hubungi',
-                          style: primaryTextStyle.copyWith(
-                            color: Colors.white,
-                            fontWeight: medium,
-                            fontSize: Dimenssions.font14,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: logoColorSecondary,
-                          padding: EdgeInsets.symmetric(
-                              vertical: Dimenssions.height10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(Dimenssions.radius12),
-                          ),
-                        ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: logoColorSecondary,
+                      padding: EdgeInsets.symmetric(
+                        vertical: Dimenssions.height12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -358,17 +343,10 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
     );
   }
 
-  Widget buildProductGrid() {
+  Widget buildProductGrid(BuildContext context) {
     return Obx(() {
       if (controller.isLoading.value) {
-        return SizedBox(
-          height: 200,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: logoColorSecondary,
-            ),
-          ),
-        );
+        return const MerchantSkeletonLoading();
       }
 
       if (controller.products.isEmpty) {
@@ -397,13 +375,17 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
         );
       }
 
+      final screenWidth = MediaQuery.of(context).size.width;
+      final cardWidth = (screenWidth - (Dimenssions.width15 * 2) - Dimenssions.width8) / 2;
+      final cardHeight = cardWidth * 1.5; // 3:2 aspect ratio
+
       return GridView.builder(
         padding: EdgeInsets.zero,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.65,
-          mainAxisSpacing: Dimenssions.height15,
-          crossAxisSpacing: Dimenssions.width15,
+          mainAxisSpacing: Dimenssions.height8,
+          crossAxisSpacing: Dimenssions.width8,
+          mainAxisExtent: cardHeight,
         ),
         itemCount: controller.products.length,
         shrinkWrap: true,
@@ -462,11 +444,7 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return Center(
-            child: CircularProgressIndicator(
-              color: logoColorSecondary,
-            ),
-          );
+          return const MerchantSkeletonLoading();
         }
 
         if (controller.merchant.value == null) {
@@ -484,7 +462,7 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
         return RefreshIndicator(
           onRefresh: () async {
             if (controller.merchant.value?.id != null) {
-              await controller.loadMerchantData(controller.merchant.value!.id);
+              await controller.loadMerchantData(controller.merchant.value!.id!);
             }
           },
           color: logoColorSecondary,
@@ -492,14 +470,15 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
-                if (controller.merchant.value != null)
-                  buildMerchantHeader(controller.merchant.value!),
+                if (controller.merchant.value != null && 
+                    controller.searchController.text.isEmpty)
+                  buildMerchantHeader(controller.merchant.value),
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: Dimenssions.width15,
                     vertical: Dimenssions.height10,
                   ),
-                  child: buildProductGrid(),
+                  child: buildProductGrid(context),
                 ),
               ],
             ),

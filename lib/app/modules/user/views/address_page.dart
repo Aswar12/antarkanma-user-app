@@ -1,5 +1,6 @@
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,7 @@ class AddressPage extends GetView<UserLocationController> {
                   size: Dimenssions.height22,
                 ),
               ),
-              onPressed: () => Get.toNamed('/usermain/add-address'),
+              onPressed: () => Get.toNamed(Routes.userAddAddress),
             ),
           ),
         ],
@@ -139,7 +140,7 @@ class AddressPage extends GetView<UserLocationController> {
             height: Dimenssions.height45,
             padding: EdgeInsets.symmetric(horizontal: Dimenssions.width30),
             child: TextButton(
-              onPressed: () => Get.toNamed('/main/add-address'),
+              onPressed: () => Get.toNamed(Routes.userAddAddress),
               style: TextButton.styleFrom(
                 backgroundColor: logoColorSecondary,
                 shape: RoundedRectangleBorder(
@@ -330,7 +331,7 @@ class AddressPage extends GetView<UserLocationController> {
               color: logoColorSecondary,
               onTap: () {
                 Get.back();
-                Get.toNamed('/main/edit-address', arguments: address);
+                Get.toNamed(Routes.userEditAddress, arguments: address);
               },
             ),
             if (!address.isDefault)

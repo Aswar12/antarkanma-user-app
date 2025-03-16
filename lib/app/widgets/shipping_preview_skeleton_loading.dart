@@ -20,7 +20,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
             height: Dimenssions.height20,
             width: Dimenssions.screenWidth * 0.6,
             decoration: BoxDecoration(
-              color: backgroundColor1,
+              color: backgroundColor3,
               borderRadius: BorderRadius.circular(Dimenssions.radius4),
             ),
           ),
@@ -30,7 +30,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
             margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
             padding: EdgeInsets.all(Dimenssions.height15),
             decoration: BoxDecoration(
-              color: backgroundColor1,
+              color: backgroundColor3,
               borderRadius: BorderRadius.circular(Dimenssions.radius15),
             ),
             child: Column(
@@ -55,7 +55,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
             margin: EdgeInsets.all(Dimenssions.height15),
             padding: EdgeInsets.all(Dimenssions.height15),
             decoration: BoxDecoration(
-              color: backgroundColor1,
+              color: backgroundColor3,
               borderRadius: BorderRadius.circular(Dimenssions.radius15),
             ),
             child: Column(
@@ -65,7 +65,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
                   height: Dimenssions.height20,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: backgroundColor1,
+                    color: backgroundColor3,
                     borderRadius: BorderRadius.circular(Dimenssions.radius4),
                   ),
                 ),
@@ -78,7 +78,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
                       child: Container(
                         height: Dimenssions.height100,
                         decoration: BoxDecoration(
-                          color: backgroundColor1,
+                          color: backgroundColor3,
                           borderRadius: BorderRadius.circular(Dimenssions.radius8),
                         ),
                       ),
@@ -88,7 +88,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
                       width: Dimenssions.width100,
                       height: Dimenssions.height100,
                       decoration: BoxDecoration(
-                        color: backgroundColor1,
+                        color: backgroundColor3,
                         borderRadius: BorderRadius.circular(Dimenssions.radius8),
                       ),
                     ),
@@ -110,7 +110,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
           width: Dimenssions.width20,
           height: Dimenssions.height20,
           decoration: BoxDecoration(
-            color: backgroundColor1,
+            color: backgroundColor3,
             shape: BoxShape.circle,
           ),
         ),
@@ -121,7 +121,7 @@ class ShippingPreviewSkeletonLoading extends StatelessWidget {
           child: Container(
             height: Dimenssions.height16,
             decoration: BoxDecoration(
-              color: backgroundColor1,
+              color: backgroundColor3,
               borderRadius: BorderRadius.circular(Dimenssions.radius4),
             ),
           ),
@@ -142,8 +142,8 @@ class ShimmerWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: backgroundColor1.withOpacity(0.1),
-      highlightColor: backgroundColor1.withOpacity(0.3),
+      baseColor: backgroundColor3.withOpacity(0.1),
+      highlightColor: logoColor.withOpacity(0.3),
       period: const Duration(milliseconds: 1500),
       child: child,
     );

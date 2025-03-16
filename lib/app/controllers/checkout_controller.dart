@@ -14,6 +14,7 @@ import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/app/data/models/shipping_details_model.dart';
+import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/modules/user/views/payment_method_selection_page.dart';
 
@@ -44,11 +45,50 @@ class CheckoutController extends GetxController {
   final total = 0.0.obs;
   final shippingDetails = Rxn<ShippingDetails>();
   final merchantItems = Rx<Map<int, List<OrderItemModel>>>({});
+  
+  // Customer notes map - stores notes for each order item
+  final customerNotes = <int, String>{}.obs;
 
   final List<String> paymentMethods = ['COD'];
 
   List<Worker>? _workers;
   dio.CancelToken? _shippingCancelToken;
+
+  // Cache for variant info
+  final _variantCache = <int, VariantModel>{};
+
+  // Method to update customer note for an order item
+  void updateCustomerNote(int orderItemId, String note) {
+    customerNotes[orderItemId] = note;
+    update();
+  }
+
+  // Method to get customer note for an order item
+  String? getCustomerNote(int orderItemId) {
+    return customerNotes[orderItemId];
+  }
+
+  Future<VariantModel?> getVariantInfo(int variantId) async {
+    if (_variantCache.containsKey(variantId)) {
+      return _variantCache[variantId];
+    }
+
+    for (var items in merchantItems.value.values) {
+      for (var item in items) {
+        if (item.variantId == variantId) {
+          final cartItem = cartController.selectedItems.firstWhereOrNull(
+            (cartItem) => cartItem.selectedVariant?.id == variantId
+          );
+          if (cartItem?.selectedVariant != null) {
+            _variantCache[variantId] = cartItem!.selectedVariant!;
+            return cartItem.selectedVariant;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
 
   void validateShipping() {
     if (shippingDetails.value?.isValidForShipping != true) {
@@ -422,6 +462,8 @@ class CheckoutController extends GetxController {
                 'product_id': item.product.id,
                 'quantity': item.quantity,
                 'merchant_id': item.merchant.id,
+                'variant_id': item.variantId,
+                'customer_note': customerNotes[item.id ?? 0] ?? '', // Fixed: Get note from customerNotes map
               })
           .toList(),
     };

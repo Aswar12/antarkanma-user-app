@@ -1,4 +1,5 @@
 import 'package:antarkanma/app/data/models/cart_item_model.dart';
+import 'package:antarkanma/app/data/models/variant_model.dart';
 
 class OrderItemStatus {
   static const String pending = 'PENDING';
@@ -20,6 +21,10 @@ class OrderItemModel {
   final String? cancelReason;
   final DateTime? canceledAt;
   final bool? canCancel;
+  final int? variantId;
+  final String? customerNote;
+  final String? rejectionReason;
+  final String? merchantApproval;
 
   OrderItemModel({
     this.id,
@@ -31,14 +36,34 @@ class OrderItemModel {
     this.cancelReason,
     this.canceledAt,
     this.canCancel,
+    this.variantId,
+    this.customerNote,
+    this.rejectionReason,
+    this.merchantApproval,
   });
 
-  factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    print('Creating OrderItemModel from JSON: $json');
+  factory OrderItemModel.fromJson(dynamic json) {
     try {
+      if (json is List) {
+        if (json.isEmpty) {
+          throw FormatException('Empty array received for OrderItemModel');
+        }
+        if (json[0] is List) {
+          if ((json[0] as List).isEmpty) {
+            throw FormatException('Empty inner array received for OrderItemModel');
+          }
+          json = (json[0] as List)[0];
+        } else {
+          json = json[0];
+        }
+      }
+
+      if (json is! Map<String, dynamic>) {
+        throw FormatException('Invalid JSON format for OrderItemModel');
+      }
+
       final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
 
-      // Handle response format (when receiving from API)
       if (json['product'] != null) {
         return OrderItemModel(
           id: _parseId(json['id']),
@@ -48,14 +73,17 @@ class OrderItemModel {
           merchant: json['merchant'] != null
               ? MerchantInfo.fromJson(json['merchant'])
               : MerchantInfo.fromJson(json['product']['merchant'] ?? {}),
-          status: json['status']?.toString() ?? OrderItemStatus.pending,
+          status: json['order_status']?.toString() ?? OrderItemStatus.pending,
           cancelReason: json['cancel_reason']?.toString(),
           canceledAt: json['canceled_at'] != null ? DateTime.parse(json['canceled_at']) : null,
           canCancel: json['can_cancel'] as bool?,
+          variantId: _parseId(json['variant_id']),
+          customerNote: json['customer_note']?.toString(),
+          rejectionReason: json['rejection_reason']?.toString(),
+          merchantApproval: json['merchant_approval']?.toString(),
         );
       }
 
-      // Handle request format (when creating transaction)
       return OrderItemModel(
         quantity: _parseQuantity(json['quantity']),
         price: parsedPrice,
@@ -76,11 +104,12 @@ class OrderItemModel {
           address: json['merchant']?['address'] ?? '',
           phoneNumber: json['merchant']?['phone'] ?? '',
         ),
+        variantId: _parseId(json['variant_id']),
+        customerNote: json['customer_note']?.toString(),
+        rejectionReason: json['rejection_reason']?.toString(),
+        merchantApproval: json['merchant_approval']?.toString(),
       );
-    } catch (e, stackTrace) {
-      print('Error parsing OrderItemModel: $e');
-      print('Stack trace: $stackTrace');
-      print('JSON data: $json');
+    } catch (e) {
       rethrow;
     }
   }
@@ -108,7 +137,11 @@ class OrderItemModel {
   }
 
   factory OrderItemModel.fromCartItem(CartItemModel cartItem, String orderId) {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final tempId = int.parse('${timestamp % 100000}${cartItem.product.id}');
+    
     return OrderItemModel(
+      id: tempId,
       quantity: cartItem.quantity,
       price: cartItem.price,
       product: ProductInfo(
@@ -129,6 +162,7 @@ class OrderItemModel {
         address: cartItem.merchant.address,
         phoneNumber: cartItem.merchant.phoneNumber,
       ),
+      variantId: cartItem.selectedVariant?.id,
     );
   }
 
@@ -140,10 +174,14 @@ class OrderItemModel {
       'quantity': quantity,
       'price': price,
       'merchant': merchant.toJson(),
-      'status': status,
+      'order_status': status,
       'cancel_reason': cancelReason,
       'canceled_at': canceledAt?.toIso8601String(),
       'can_cancel': canCancel,
+      'variant_id': variantId,
+      'customer_note': customerNote,
+      'rejection_reason': rejectionReason,
+      'merchant_approval': merchantApproval,
     };
   }
 
@@ -152,13 +190,13 @@ class OrderItemModel {
   String get formattedTotalPrice => 'Rp ${totalPrice.toStringAsFixed(0)}';
   String get merchantName => merchant.name;
 
-  // Status helper methods
   bool get isCanceled => status.toUpperCase() == OrderItemStatus.canceled;
   bool get isPending => status.toUpperCase() == OrderItemStatus.pending;
   bool get isAccepted => status.toUpperCase() == OrderItemStatus.accepted;
   bool get isProcessing => status.toUpperCase() == OrderItemStatus.processing;
   bool get isReadyForPickup => status.toUpperCase() == OrderItemStatus.readyForPickup;
   bool get isCompleted => status.toUpperCase() == OrderItemStatus.completed;
+  bool get isRejected => merchantApproval?.toUpperCase() == 'REJECTED';
 
   String get statusDisplay {
     switch (status.toUpperCase()) {
@@ -197,6 +235,10 @@ class OrderItemModel {
     String? cancelReason,
     DateTime? canceledAt,
     bool? canCancel,
+    int? variantId,
+    String? customerNote,
+    String? rejectionReason,
+    String? merchantApproval,
   }) {
     return OrderItemModel(
       id: id ?? this.id,
@@ -208,6 +250,10 @@ class OrderItemModel {
       cancelReason: cancelReason ?? this.cancelReason,
       canceledAt: canceledAt ?? this.canceledAt,
       canCancel: canCancel ?? this.canCancel,
+      variantId: variantId ?? this.variantId,
+      customerNote: customerNote ?? this.customerNote,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      merchantApproval: merchantApproval ?? this.merchantApproval,
     );
   }
 }
@@ -235,7 +281,6 @@ class ProductInfo {
     try {
       final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
 
-      // Parse galleries from the API response format
       List<String> galleryUrls = [];
       if (json['galleries'] != null) {
         if (json['galleries'] is List) {
@@ -264,10 +309,7 @@ class ProductInfo {
             ? MerchantInfo.fromJson(json['merchant'])
             : null,
       );
-    } catch (e, stackTrace) {
-      print('Error parsing ProductInfo: $e');
-      print('Stack trace: $stackTrace');
-      print('JSON data: $json');
+    } catch (e) {
       rethrow;
     }
   }
@@ -318,8 +360,6 @@ class CategoryInfo {
         name: json['name']?.toString() ?? '',
       );
     } catch (e) {
-      print('Error parsing CategoryInfo: $e');
-      print('JSON data: $json');
       rethrow;
     }
   }
@@ -362,8 +402,6 @@ class MerchantInfo {
             json['phone']?.toString() ?? json['phone_number']?.toString() ?? '',
       );
     } catch (e) {
-      print('Error parsing MerchantInfo: $e');
-      print('JSON data: $json');
       rethrow;
     }
   }

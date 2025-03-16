@@ -9,33 +9,63 @@ import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:latlong2/latlong.dart';
 
-class AddEditAddressPage extends GetView<UserLocationController> {
+class AddEditAddressPage extends StatefulWidget {
   final UserLocationModel? address = Get.arguments;
 
   AddEditAddressPage({super.key});
 
   @override
+  State<AddEditAddressPage> createState() => _AddEditAddressPageState();
+}
+
+class _AddEditAddressPageState extends State<AddEditAddressPage> {
+  late final UserLocationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controller
+    controller = Get.find<UserLocationController>();
+    // Ensure the controller is initialized
+    controller.onInit();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isEditing = address != null;
-    return Scaffold(
-      backgroundColor: backgroundColor8,
-      appBar: AppBar(
-        iconTheme: IconThemeData(color: logoColorSecondary),
-        backgroundColor: transparentColor,
-        title: Text(
-          isEditing ? 'Edit Alamat' : 'Tambah Alamat',
-          style: primaryTextStyle,
+    final isEditing = widget.address != null;
+    return WillPopScope(
+      onWillPop: () async {
+        Get.back(result: false);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor8,
+        appBar: AppBar(
+          iconTheme: IconThemeData(color: logoColorSecondary),
+          backgroundColor: transparentColor,
+          title: Text(
+            isEditing ? 'Edit Alamat' : 'Tambah Alamat',
+            style: primaryTextStyle,
+          ),
+        ),
+        body: AddressForm(
+          address: widget.address,
+          controller: controller,
         ),
       ),
-      body: AddressForm(address: address),
     );
   }
 }
 
 class AddressForm extends StatefulWidget {
   final UserLocationModel? address;
+  final UserLocationController controller;
 
-  const AddressForm({super.key, this.address});
+  const AddressForm({
+    super.key,
+    this.address,
+    required this.controller,
+  });
 
   @override
   _AddressFormState createState() => _AddressFormState();
@@ -64,7 +94,6 @@ class _AddressFormState extends State<AddressForm> {
     'SEGERI',
   ];
 
-  final UserLocationController controller = Get.find<UserLocationController>();
   bool _isFocused = false;
 
   @override
@@ -87,7 +116,9 @@ class _AddressFormState extends State<AddressForm> {
   }
 
   void _showSnackbar(String title, String message, Color backgroundColor) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(Get.context!).showSnackBar(
       SnackBar(
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -154,8 +185,8 @@ class _AddressFormState extends State<AddressForm> {
       bool success = await Get.showOverlay(
         asyncFunction: () async {
           return widget.address == null
-              ? await controller.addAddress(newAddress)
-              : await controller.updateAddress(newAddress);
+              ? await widget.controller.addAddress(newAddress)
+              : await widget.controller.updateAddress(newAddress);
         },
         loadingWidget: const Center(
           child: CircularProgressIndicator(),
@@ -163,15 +194,21 @@ class _AddressFormState extends State<AddressForm> {
       );
 
       if (success) {
-        _showSnackbar(
+        // Close both pages first
+        Get.back(); // Close current page
+        Get.back(); // Close previous page
+
+        // Then show success message
+        Get.snackbar(
           'Sukses',
           widget.address == null
               ? 'Alamat berhasil ditambahkan'
               : 'Alamat berhasil diperbarui',
-          Colors.green,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
         );
-        await Future.delayed(const Duration(milliseconds: 500));
-        Get.back();
       }
     } catch (e) {
       _showSnackbar(

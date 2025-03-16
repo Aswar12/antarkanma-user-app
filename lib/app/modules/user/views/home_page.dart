@@ -26,7 +26,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
+class _HomePageState extends State<HomePage>
+    with AutomaticKeepAliveClientMixin {
   late HomePageController controller;
 
   @override
@@ -384,7 +385,8 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
         sliver: SliverGrid(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.8,
+            childAspectRatio:
+                0.6, // Adjusted from 0.8 to 0.6 to accommodate content
             mainAxisSpacing: Dimenssions.height10,
             crossAxisSpacing: Dimenssions.width10,
           ),
@@ -421,7 +423,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       if (controller.isLoading.value && controller.searchQuery.isEmpty) {
         return const SafeArea(
           child: Scaffold(
-            body: HomeSkeletonLoading(),
+            body: MerchantSkeletonLoading(),
           ),
         );
       }
@@ -465,18 +467,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                     ),
                   ),
                 ],
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverAppBarDelegate(
-                    minHeight: Dimenssions.height45,
-                    maxHeight: Dimenssions.height45,
-                    child: Container(
-                      color: backgroundColor1,
-                      alignment: Alignment.center,
-                      child: const CategoryWidget(),
-                    ),
-                  ),
-                ),
                 SliverToBoxAdapter(
                   child: merchantListTitle(),
                 ),

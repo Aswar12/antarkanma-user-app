@@ -44,6 +44,16 @@ class CachedImageView extends StatelessWidget {
         maxHeightDiskCache: 1000,
         memCacheWidth: 800,
         memCacheHeight: 800,
+        imageBuilder: (context, imageProvider) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: imageProvider,
+              fit: fit,
+            ),
+          ),
+        ),
         placeholder: (context, url) => _buildLoadingState(),
         errorWidget: (context, url, error) {
           debugPrint('Error loading image: $url');

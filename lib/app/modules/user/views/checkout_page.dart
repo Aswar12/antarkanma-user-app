@@ -1,7 +1,9 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:antarkanma/app/widgets/checkout_confirmation_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/modules/user/views/address_selection_page.dart';
@@ -12,7 +14,7 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/modules/checkout/widgets/shipping_details_section_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/widgets/shipping_preview_skeleton_loading.dart';
-import 'package:antarkanma/app/data/models/shipping_details_model.dart';
+import 'package:antarkanma/app/data/models/variant_model.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -24,6 +26,7 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   late CheckoutController controller;
   late UserLocationController locationController;
+  final Map<int, TextEditingController> _noteControllers = {};
 
   @override
   void initState() {
@@ -35,13 +38,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
   }
 
+  @override
+  void dispose() {
+    for (var controller in _noteControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _getOrCreateController(OrderItemModel item) {
+    if (!_noteControllers.containsKey(item.id)) {
+      final controller = TextEditingController(
+          text: item.id != null
+              ? this.controller.getCustomerNote(item.id!) ?? ''
+              : '');
+      _noteControllers[item.id ?? 0] = controller;
+    }
+    return _noteControllers[item.id ?? 0]!;
+  }
+
   bool _isFirstLoad = true;
 
   void _initializeCheckoutAndCalculateShipping() {
     try {
       controller.autoSetInitialValues();
       // Calculate shipping only on first load
-      if (_isFirstLoad && controller.selectedLocation.value != null && controller.orderItems.isNotEmpty) {
+      if (_isFirstLoad &&
+          controller.selectedLocation.value != null &&
+          controller.orderItems.isNotEmpty) {
         controller.calculateShippingPreview();
         _isFirstLoad = false;
       }
@@ -84,6 +108,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (item.variantId != null) ...[
+                    const SizedBox(height: 4),
+                    FutureBuilder<VariantModel?>(
+                      future: controller.getVariantInfo(item.variantId!),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data != null) {
+                          final variant = snapshot.data!;
+                          return Text(
+                            'Varian: ${variant.name} - ${variant.value}',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font14,
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Wrap(
                     alignment: WrapAlignment.spaceBetween,
@@ -106,6 +149,46 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Customer Note TextField
+                  TextField(
+                    key: ValueKey('note_${item.id}'),
+                    controller: _getOrCreateController(item),
+                    decoration: InputDecoration(
+                      hintText: 'Tambahkan catatan untuk pesanan ini',
+                      hintStyle: primaryTextStyle.copyWith(
+                        color: Colors.grey,
+                        fontSize: Dimenssions.font14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: logoColorSecondary),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      isDense: true,
+                    ),
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font14,
+                    ),
+                    maxLines: 2,
+                    onChanged: (value) {
+                      if (item.id != null) {
+                        controller.updateCustomerNote(item.id!, value);
+                      }
+                    },
+                    enabled: !controller.isProcessingCheckout.value,
                   ),
                 ],
               ),
@@ -159,14 +242,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _buildLoadingImage() {
-    return Container(
-      width: 80,
-      height: 80,
-      color: Colors.grey[200],
-      child: Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
+    return Shimmer.fromColors(
+      baseColor: backgroundColor3.withOpacity(0.1),
+      highlightColor: logoColor.withOpacity(0.3),
+      period: const Duration(milliseconds: 1500),
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: backgroundColor3,
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
     );
@@ -460,12 +545,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
-          Container(
-            width: 100,
-            height: 24,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(4),
+          Shimmer.fromColors(
+            baseColor: backgroundColor3.withOpacity(0.1),
+            highlightColor: logoColor.withOpacity(0.3),
+            period: const Duration(milliseconds: 1500),
+            child: Container(
+              width: 100,
+              height: 24,
+              decoration: BoxDecoration(
+                color: backgroundColor3,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
         ],
@@ -514,12 +604,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
         Obx(() {
           if (ctrl.isCalculatingShipping.value) {
-            return Container(
-              width: 120,
-              height: 24,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
+            return Shimmer.fromColors(
+              baseColor: backgroundColor3.withOpacity(0.1),
+              highlightColor: logoColor.withOpacity(0.3),
+              period: const Duration(milliseconds: 1500),
+              child: Container(
+                width: 120,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: backgroundColor3,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             );
           }
@@ -566,7 +661,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.shopping_cart_outlined, size: 20, color: logoColorSecondary),
+              Icon(Icons.shopping_cart_outlined,
+                  size: 20, color: logoColorSecondary),
               const SizedBox(width: 8),
               Text(
                 'Kembali ke Keranjang',
@@ -587,7 +683,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 !ctrl.canCheckout ||
                 ctrl.isCalculatingShipping.value
             ? null
-            : () => ctrl.processCheckout(),
+            : () {
+                Get.bottomSheet(
+                  CheckoutConfirmationDialog(controller: ctrl),
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  enterBottomSheetDuration: const Duration(milliseconds: 300),
+                  exitBottomSheetDuration: const Duration(milliseconds: 200),
+                );
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor: logoColorSecondary,
           foregroundColor: Colors.white,
@@ -611,12 +715,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.shopping_bag_outlined, size: 20),
+                  Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 20,
+                    color: logoColor,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Pesan Sekarang',
                     style: primaryTextStyle.copyWith(
-                      color: Colors.white,
+                      color: logoColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.3,
@@ -692,24 +800,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 children: [
                   _buildDeliveryAddressSection(),
                   const SizedBox(height: 8), // Reduced spacing
-                  Obx(() {
-                    if (controller.isCalculatingShipping.value) {
-                      return const ShippingPreviewSkeletonLoading();
-                    }
+                  // Only show shipping details section for multiple merchants
+                  if (controller.merchantItems.value.length > 1)
+                    Obx(() {
+                      if (controller.isCalculatingShipping.value) {
+                        return const ShippingPreviewSkeletonLoading();
+                      }
 
-                    final shippingDetails = controller.shippingDetails.value;
-                    if (shippingDetails != null) {
-                      return Column(
-                        children: [
-                          ShippingDetailsSectionWidget(
-                            shippingDetails: shippingDetails,
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }),
+                      final shippingDetails = controller.shippingDetails.value;
+                      if (shippingDetails != null) {
+                        return Column(
+                          children: [
+                            ShippingDetailsSectionWidget(
+                              shippingDetails: shippingDetails,
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
                   _buildOrderItemsSection(),
                   const SizedBox(height: 8), // Reduced spacing
                   _buildPaymentSection(),

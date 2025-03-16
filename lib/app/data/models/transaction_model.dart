@@ -22,9 +22,28 @@ class OrderModel {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     List<OrderItemModel> orderItems = [];
     if (json['order_items'] != null) {
-      orderItems = (json['order_items'] as List)
-          .map((item) => OrderItemModel.fromJson(item))
-          .toList();
+      try {
+        var items = json['order_items'];
+        // Handle case where items might be a List<List>
+        if (items is List) {
+          if (items.isNotEmpty && items[0] is List) {
+            // Flatten the nested list structure
+            items = items.expand((i) => i is List ? i : [i]).toList();
+          }
+          orderItems = items.map((item) {
+            try {
+              return OrderItemModel.fromJson(item);
+            } catch (e) {
+              print('Error parsing individual order item: $e');
+              print('Item data: $item');
+              return null;
+            }
+          }).where((item) => item != null).cast<OrderItemModel>().toList();
+        }
+      } catch (e) {
+        print('Error parsing order items: $e');
+        print('Order items data: ${json['order_items']}');
+      }
     }
 
     // Handle total_amount that could be string or number
@@ -108,9 +127,23 @@ class TransactionModel {
       // Parse order items
       List<OrderItemModel> orderItems = [];
       if (transactionData['order'] != null && transactionData['order']['order_items'] != null) {
-        orderItems = (transactionData['order']['order_items'] as List)
-            .map((item) => OrderItemModel.fromJson(item))
-            .toList();
+        if (transactionData['order']['order_items'] is List) {
+          var items = transactionData['order']['order_items'];
+          // Handle case where items might be a List<List>
+          if (items.isNotEmpty && items[0] is List) {
+            // Flatten the nested list structure
+            items = items.expand((i) => i is List ? i : [i]).toList();
+          }
+          orderItems = items.map((item) {
+            try {
+              return OrderItemModel.fromJson(item);
+            } catch (e) {
+              print('Error parsing order item: $e');
+              print('Item data: $item');
+              return null;
+            }
+          }).where((item) => item != null).cast<OrderItemModel>().toList();
+        }
       } else if (transactionData['items'] != null) {
         orderItems = _parseItems(transactionData['items']);
       }
@@ -124,12 +157,38 @@ class TransactionModel {
       // Parse orders with new structure
       List<OrderModel> orders = [];
       if (transactionData['orders'] != null) {
-        orders = (transactionData['orders'] as List)
-            .map((order) => OrderModel.fromJson(order))
-            .toList();
+        if (transactionData['orders'] is List) {
+          orders = (transactionData['orders'] as List)
+              .map((order) {
+                try {
+                  if (order is List) {
+                    // If order is a List, take the first item
+                    order = order[0];
+                  }
+                  return OrderModel.fromJson(order);
+                } catch (e) {
+                  print('Error parsing order: $e');
+                  print('Order data: $order');
+                  return null;
+                }
+              })
+              .where((order) => order != null)
+              .cast<OrderModel>()
+              .toList();
+        }
       } else if (transactionData['order'] != null) {
         // Backward compatibility: if single order, wrap in list
-        orders = [OrderModel.fromJson(transactionData['order'])];
+        try {
+          var order = transactionData['order'];
+          if (order is List) {
+            // If order is a List, take the first item
+            order = order[0];
+          }
+          orders = [OrderModel.fromJson(order)];
+        } catch (e) {
+          print('Error parsing single order: $e');
+          print('Order data: ${transactionData['order']}');
+        }
       }
 
       // Parse user
@@ -196,6 +255,12 @@ class TransactionModel {
   static List<OrderItemModel> _parseItems(dynamic items) {
     if (items == null) return [];
     if (items is! List) return [];
+
+    // Handle case where items might be a List<List>
+    if (items.isNotEmpty && items[0] is List) {
+      // Flatten the nested list structure
+      items = items.expand((i) => i is List ? i : [i]).toList();
+    }
 
     return items.map((item) {
       try {

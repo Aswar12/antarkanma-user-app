@@ -71,9 +71,4 @@ class PaginatedResponse<T> {
       'total': total,
     };
   }
-
-  @override
-  String toString() {
-    return 'PaginatedResponse(data: ${data.length} items, currentPage: $currentPage, lastPage: $lastPage, total: $total)';
-  }
 }

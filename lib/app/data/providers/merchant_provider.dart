@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:antarkanma/config.dart';
 import 'package:flutter/foundation.dart';
@@ -26,9 +26,6 @@ class MerchantProvider {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          debugPrint('🌐 Request URL: ${options.uri}');
-          debugPrint('📝 Request Query Parameters: ${options.queryParameters}');
-
           options.headers.addAll({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -36,12 +33,44 @@ class MerchantProvider {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint('✅ Response Status Code: ${response.statusCode}');
-          debugPrint('✅ Response Data: ${response.data}');
           return handler.next(response);
         },
         onError: (DioException error, handler) {
+          // Return empty data for DNS lookup errors in debug mode
+          if (kDebugMode &&
+              error.error != null &&
+              (error.error.toString().contains('Failed host lookup') ||
+                  error.error.toString().contains('SocketException'))) {
+            return handler.resolve(
+              Response(
+                requestOptions: error.requestOptions,
+                data: {'data': []},
+                statusCode: 200,
+              ),
+            );
+          }
           _handleError(error);
+          return handler.next(error);
+        },
+      ),
+    );
+
+    // Add retry interceptor
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (DioException error, handler) async {
+          if (error.error != null &&
+              (error.error.toString().contains('Failed host lookup') ||
+                  error.error.toString().contains('SocketException'))) {
+            // Wait and retry once
+            await Future.delayed(const Duration(seconds: 2));
+            try {
+              final response = await _dio.fetch(error.requestOptions);
+              return handler.resolve(response);
+            } catch (e) {
+              return handler.next(error);
+            }
+          }
           return handler.next(error);
         },
       ),
@@ -68,10 +97,7 @@ class MerchantProvider {
       if (latitude != null) queryParams['latitude'] = latitude;
       if (longitude != null) queryParams['longitude'] = longitude;
 
-      // Create CancelToken for timeout handling
       final cancelToken = CancelToken();
-
-      // Set up timeout
       Timer? timeoutTimer = Timer(const Duration(seconds: 60), () {
         if (!cancelToken.isCancelled) {
           cancelToken.cancel('Request timed out');
@@ -85,10 +111,6 @@ class MerchantProvider {
           options: token != null ? _getAuthOptions(token) : null,
           cancelToken: cancelToken,
         );
-
-        debugPrint('API Response Status: ${response.statusCode}');
-        debugPrint('API Response Data: ${response.data}');
-
         return response;
       } finally {
         timeoutTimer.cancel();
@@ -97,7 +119,6 @@ class MerchantProvider {
       if (e is DioException && e.type == DioExceptionType.cancel) {
         throw TimeoutException('Request timed out');
       }
-      debugPrint('Error fetching merchants: $e');
       rethrow;
     }
   }
@@ -123,7 +144,6 @@ class MerchantProvider {
       if (e is DioException && e.type == DioExceptionType.cancel) {
         throw TimeoutException('Request timed out');
       }
-      debugPrint('Error fetching merchant: $e');
       rethrow;
     } finally {
       timeoutTimer?.cancel();
@@ -167,7 +187,6 @@ class MerchantProvider {
       if (e is DioException && e.type == DioExceptionType.cancel) {
         throw TimeoutException('Request timed out');
       }
-      debugPrint('Error fetching merchant products: $e');
       rethrow;
     } finally {
       timeoutTimer?.cancel();
@@ -206,7 +225,6 @@ class MerchantProvider {
       if (e is DioException && e.type == DioExceptionType.cancel) {
         throw TimeoutException('Request timed out');
       }
-      debugPrint('Error fetching popular merchants: $e');
       rethrow;
     } finally {
       timeoutTimer?.cancel();
@@ -215,7 +233,6 @@ class MerchantProvider {
 
   void _handleError(DioException error) {
     String message;
-    debugPrint('API Error Response: ${error.response?.data}');
 
     if (error.response?.data is Map && error.response?.data['meta'] != null) {
       message = error.response?.data['meta']['message'] ?? 'An error occurred';

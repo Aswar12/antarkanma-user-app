@@ -17,17 +17,12 @@ class HomePageController extends GetxController {
   final AuthService _authService;
   final LocationService _locationService;
 
-  HomePageController({
-    required this.productService,
-    required this.merchantService,
-    required CategoryService categoryService,
-    required AuthService authService,
-    required LocationService locationService,
-  })  : _categoryService = categoryService,
-        _authService = authService,
-        _locationService = locationService;
+  // Initialize controllers immediately
+  final ScrollController scrollController = ScrollController();
+  final TextEditingController searchController = TextEditingController();
+  final FocusNode searchFocusNode = FocusNode();
 
-  // Observable state variables
+  // Observable state variables with persistence
   final RxList<ProductModel> popularProducts = <ProductModel>[].obs;
   final RxList<ProductModel> allProducts = <ProductModel>[].obs;
   final RxList<ProductModel> searchResults = <ProductModel>[].obs;
@@ -42,22 +37,20 @@ class HomePageController extends GetxController {
   final RxBool isLoadingPopularProducts = false.obs;
   final RxBool isLoadingMerchants = false.obs;
 
-  // UI states
+  // UI states with persistence
   final RxString selectedCategory = "Semua".obs;
   final RxInt currentIndex = 0.obs;
   final RxString searchQuery = ''.obs;
   final RxBool isSearching = false.obs;
-  final TextEditingController searchController = TextEditingController();
-  final FocusNode searchFocusNode = FocusNode();
-  final ScrollController scrollController = ScrollController();
 
-  // Cache control
-  static const Duration cacheExpiration = Duration(minutes: 15);
+  // Cache control with longer expiration (30 minutes)
+  static const Duration cacheExpiration = Duration(minutes: 30);
   DateTime? _lastPopularProductsUpdate;
   DateTime? _lastMerchantsUpdate;
   Timer? _cacheRefreshTimer;
+  Timer? _debounceTimer;
 
-  // Pagination and loading control
+  // Pagination control
   static const int _pageSize = 10;
   bool _isLoadingPopular = false;
   Completer<void>? _popularProductsCompleter;
@@ -67,42 +60,73 @@ class HomePageController extends GetxController {
   int _retryAttempts = 0;
   static const int maxRetries = 3;
 
-  @override
-  void onInit() {
-    super.onInit();
-    debugPrint('HomePageController: onInit');
-    _setupControllers();
-    _startCacheRefreshTimer();
-    loadInitialData();
-  }
-
-  @override
-  void onReady() {
-    super.onReady();
-    debugPrint('HomePageController: onReady');
-    // Only refresh if cache is expired
-    if (_isCacheExpired()) {
-      refreshProducts(showMessage: false);
-    }
-  }
-
-  @override
-  void onClose() {
-    _disposeControllers();
-    _cacheRefreshTimer?.cancel();
-    super.onClose();
-  }
-
-  void _setupControllers() {
-    searchFocusNode.addListener(_onSearchFocusChange);
+  HomePageController({
+    required this.productService,
+    required this.merchantService,
+    required CategoryService categoryService,
+    required AuthService authService,
+    required LocationService locationService,
+  })  : _categoryService = categoryService,
+        _authService = authService,
+        _locationService = locationService {
+    // Initialize listeners in constructor
     scrollController.addListener(_scrollListener);
+    searchFocusNode.addListener(_onSearchFocusChange);
     _setupSearchListener();
   }
 
-  void _disposeControllers() {
-    searchController.dispose();
-    searchFocusNode.dispose();
-    scrollController.dispose();
+  @override
+  void onInit() {
+    super.onInit();
+    _startCacheRefreshTimer();
+    
+    // Improved data loading logic
+    if (!_isCacheExpired() && popularProducts.isNotEmpty && allMerchants.isNotEmpty) {
+      // Use existing data if cache is valid
+      isLoading.value = false;
+      return;
+    }
+    
+    // Load data only if cache expired or data is empty
+    loadInitialData();
+  }
+
+  void _scrollListener() {
+    if (!isLoadingMore.value && hasMoreData.value && scrollController.hasClients) {
+      final maxScroll = scrollController.position.maxScrollExtent;
+      final currentScroll = scrollController.position.pixels;
+      final delta = maxScroll * 0.2;
+
+      if (maxScroll - currentScroll <= delta && _currentPage < _lastPage) {
+        loadMoreMerchants();
+      }
+    }
+  }
+
+  void _onSearchFocusChange() {
+    isSearching.value = searchFocusNode.hasFocus;
+  }
+
+  void _setupSearchListener() {
+    searchController.addListener(() {
+      if (searchController.text != searchQuery.value) {
+        searchQuery.value = searchController.text;
+        if (searchQuery.isNotEmpty) {
+          _currentPage = 1;
+          _debounceSearch();
+        } else {
+          searchResults.clear();
+          merchantSearchResults.clear();
+        }
+      }
+    });
+  }
+
+  void _debounceSearch() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      performSearch();
+    });
   }
 
   void _startCacheRefreshTimer() {
@@ -131,43 +155,6 @@ class HomePageController extends GetxController {
     } catch (e) {
       debugPrint('Background cache refresh error: $e');
     }
-  }
-
-  void _scrollListener() {
-    if (!isLoadingMore.value && hasMoreData.value && scrollController.hasClients) {
-      final maxScroll = scrollController.position.maxScrollExtent;
-      final currentScroll = scrollController.position.pixels;
-      final delta = maxScroll * 0.2;
-
-      if (maxScroll - currentScroll <= delta && _currentPage < _lastPage) {
-        loadMoreMerchants();
-      }
-    }
-  }
-
-  void _onSearchFocusChange() {
-    isSearching.value = searchFocusNode.hasFocus;
-  }
-
-  void _setupSearchListener() {
-    searchController.addListener(() {
-      searchQuery.value = searchController.text;
-      if (searchQuery.isNotEmpty) {
-        _currentPage = 1;
-        _debounceSearch();
-      } else {
-        searchResults.clear();
-        merchantSearchResults.clear();
-      }
-    });
-  }
-
-  Timer? _debounceTimer;
-  void _debounceSearch() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      performSearch();
-    });
   }
 
   Future<void> loadAllMerchants() async {
@@ -254,6 +241,7 @@ class HomePageController extends GetxController {
       _isLoadingPopular = true;
       _popularProductsCompleter = Completer<void>();
 
+      // Check if we have valid cached data
       if (!_isCacheExpired() && popularProducts.isNotEmpty) {
         _popularProductsCompleter?.complete();
         return;
@@ -309,8 +297,8 @@ class HomePageController extends GetxController {
       isRefreshing.value = true;
       _retryAttempts = 0;
 
-      // Refresh location in background
-      await _locationService.getCurrentLocation();
+      // Start location update in background
+      _locationService.getCurrentLocation();
 
       // Clear cached data
       await Future.wait([
@@ -375,15 +363,11 @@ class HomePageController extends GetxController {
       hasMoreData.value = true;
       _retryAttempts = 0;
 
-      // Start location service initialization in background
+      // Start location update in background
       final locationFuture = _locationService.getCurrentLocation();
 
       // Load cached data first if available
-      if (!_isCacheExpired()) {
-        await Future.wait([
-          loadPopularProducts(),
-          loadAllMerchants(),
-        ]);
+      if (!_isCacheExpired() && popularProducts.isNotEmpty && allMerchants.isNotEmpty) {
         isLoading.value = false;
         return;
       }
@@ -391,7 +375,7 @@ class HomePageController extends GetxController {
       // Wait for location before loading merchants
       await locationFuture;
       
-      // Load fresh data
+      // Load fresh data concurrently
       await Future.wait([
         loadPopularProducts(),
         loadAllMerchants(),
@@ -408,6 +392,16 @@ class HomePageController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  @override
+  void onClose() {
+    scrollController.dispose();
+    searchController.dispose();
+    searchFocusNode.dispose();
+    _cacheRefreshTimer?.cancel();
+    _debounceTimer?.cancel();
+    super.onClose();
   }
 
   // Getters

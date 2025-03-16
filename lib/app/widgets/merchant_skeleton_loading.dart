@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:antarkanma/theme.dart';
 import 'home_skeleton_loading.dart';
 
@@ -9,7 +10,10 @@ class MerchantSkeletonLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
-      child: ShimmerWrapper(
+      child: Shimmer.fromColors(
+        baseColor: backgroundColor1.withOpacity(0.1),
+        highlightColor: logoColor.withOpacity(0.3),
+        period: const Duration(milliseconds: 1500),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -40,7 +44,7 @@ class MerchantSkeletonLoading extends StatelessWidget {
             width: double.infinity,
             color: backgroundColor1,
           ),
-          
+
           // Profile image skeleton
           Positioned(
             bottom: Dimenssions.height20,
@@ -54,7 +58,7 @@ class MerchantSkeletonLoading extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Merchant name skeleton
           Positioned(
             bottom: Dimenssions.height45,
@@ -68,7 +72,7 @@ class MerchantSkeletonLoading extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Rating skeleton
           Positioned(
             bottom: Dimenssions.height20,

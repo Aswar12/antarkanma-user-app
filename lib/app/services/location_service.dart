@@ -5,10 +5,11 @@ import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_android/geolocator_android.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dio/dio.dart';
 import '../controllers/permission_controller.dart';
 
 class LocationService extends GetxService {
+  static LocationService get to => Get.find();
+  
   final _permissionController = Get.find<PermissionController>();
   final _connectivity = Connectivity();
 
@@ -21,85 +22,162 @@ class LocationService extends GetxService {
   final RxBool isLocationAvailable = false.obs;
   final RxBool isHighAccuracyLocation = false.obs;
   final RxBool isNetworkAvailable = false.obs;
+  final RxDouble accuracy = 0.0.obs;
 
   final double defaultLatitude = -4.62824460;
   final double defaultLongitude = 119.58851330;
 
-  final double _highAccuracyThreshold = 10.0;
-  final Duration _locationTimeout = const Duration(seconds: 30);
-  final Duration _retryDelay = const Duration(seconds: 3);
+  final double _highAccuracyThreshold = 5.0; // 5 meters accuracy
+  final Duration _locationTimeout = const Duration(seconds: 50);
+  final Duration _retryDelay = const Duration(seconds: 2);
+  static const int maxAttempts = 3;
 
-  // New method specifically for getting high-accuracy location when needed
-  Future<Position?> getHighAccuracyLocation() async {
-    if (!_permissionController.isLocationPermissionGranted.value ||
-        !isNetworkAvailable.value ||
-        !await Geolocator.isLocationServiceEnabled()) {
-      return null;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
-        timeLimit: _locationTimeout,
-        forceAndroidLocationManager: true,
-      );
-
-      _updateLocation(position, isHighAccuracy: true);
-      return position;
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout getting high accuracy location: $e');
-      return null;
-    } catch (e) {
-      debugPrint('Error getting high accuracy location: $e');
-      return null;
-    }
-  }
+  bool _isInitialized = false;
+  Completer<void>? _initCompleter;
+  Position? _lastPosition;
+  DateTime? _lastUpdateTime;
 
   Future<LocationService> init() async {
+    if (_isInitialized) return this;
+    
+    if (_initCompleter != null) {
+      return _initCompleter!.future.then((_) => this);
+    }
+
+    _initCompleter = Completer<void>();
+
     try {
       debugPrint('LocationService: Starting initialization...');
       await _cleanupExistingResources();
       await _initializeNetworkMonitoring();
+      await _initializePlatform();
 
-      if (isNetworkAvailable.value) {
-        await _initializePlatform();
+      // Try to get last known position immediately
+      _lastPosition = await Geolocator.getLastKnownPosition();
+      if (_lastPosition != null) {
+        _updateLocation(_lastPosition!, isHighAccuracy: false);
       }
 
+      await _initializeLocationSettings();
+
+      _isInitialized = true;
+      _initCompleter?.complete();
+      return this;
+    } catch (e) {
+      debugPrint('Error initializing LocationService: $e');
+      _isInitialized = false;
+      _initCompleter?.completeError(e);
+      rethrow;
+    }
+  }
+
+  Future<Position?> getHighAccuracyLocation() async {
+    if (!_isInitialized) {
+      await init();
+    }
+
+    try {
+      if (!await _checkAndRequestPermissions() || !await _checkAndRequestLocationService()) {
+        return _lastPosition;
+      }
+
+      // If we have a recent high accuracy position, use it
+      if (_lastPosition != null && 
+          _lastUpdateTime != null && 
+          DateTime.now().difference(_lastUpdateTime!) < const Duration(seconds: 30) &&
+          _lastPosition!.accuracy <= _highAccuracyThreshold) {
+        return _lastPosition;
+      }
+
+      Position? position;
+      int attempts = 0;
+
+      while (attempts < maxAttempts) {
+        try {
+          position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: _locationTimeout,
+            forceAndroidLocationManager: true,
+          ).timeout(_locationTimeout);
+
+          if (position.accuracy <= _highAccuracyThreshold) {
+            isHighAccuracyLocation.value = true;
+            accuracy.value = position.accuracy;
+            _lastPosition = position;
+            _lastUpdateTime = DateTime.now();
+            _updateLocation(position, isHighAccuracy: true);
+            return position;
+          }
+
+          attempts++;
+          if (attempts < maxAttempts) {
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        } catch (e) {
+          debugPrint('Error in location attempt $attempts: $e');
+          attempts++;
+          if (attempts >= maxAttempts) break;
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+
+      // If we got a position but not high accuracy, still use it
+      if (position != null) {
+        isHighAccuracyLocation.value = position.accuracy <= _highAccuracyThreshold;
+        accuracy.value = position.accuracy;
+        _lastPosition = position;
+        _lastUpdateTime = DateTime.now();
+        _updateLocation(position, isHighAccuracy: false);
+        return position;
+      }
+
+      // If all attempts failed, try one last time with lower accuracy
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: _locationTimeout,
+          forceAndroidLocationManager: true,
+        ).timeout(_locationTimeout);
+
+        if (position != null) {
+          isHighAccuracyLocation.value = false;
+          accuracy.value = position.accuracy;
+          _lastPosition = position;
+          _lastUpdateTime = DateTime.now();
+          _updateLocation(position, isHighAccuracy: false);
+          return position;
+        }
+      } catch (e) {
+        debugPrint('Error getting medium accuracy location: $e');
+      }
+
+      // Return last known position as fallback
+      return _lastPosition;
+    } catch (e) {
+      debugPrint('Error getting high accuracy position: $e');
+      return _lastPosition;
+    }
+  }
+
+  Future<void> _initializeLocationSettings() async {
+    try {
       if (!await _checkAndRequestPermissions()) {
         _fallbackToDefault();
-        return this;
+        return;
       }
 
       if (!await _checkAndRequestLocationService()) {
         _fallbackToDefault();
-        return this;
+        return;
       }
 
-      try {
-        if (isNetworkAvailable.value) {
-          final lastKnown = await Geolocator.getLastKnownPosition();
-          if (lastKnown != null && lastKnown.latitude != 0 && lastKnown.longitude != 0) {
-            _updateLocation(lastKnown, isHighAccuracy: false);
-          }
-        }
-      } catch (e) {
-        debugPrint('Error getting last known position: $e');
-      }
-
+      // Start location updates
       if (isNetworkAvailable.value) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _startLocationUpdates();
-        });
-      } else {
-        _fallbackToDefault();
+        _startLocationUpdates();
       }
-
-      return this;
     } catch (e) {
-      debugPrint('Error initializing LocationService: $e');
-      await _cleanupExistingResources();
+      debugPrint('Error initializing location settings: $e');
       _fallbackToDefault();
-      return this;
     }
   }
 
@@ -133,6 +211,9 @@ class LocationService extends GetxService {
 
   void _updateNetworkStatus(ConnectivityResult result) {
     isNetworkAvailable.value = result != ConnectivityResult.none;
+    if (isNetworkAvailable.value && !_isInitialized) {
+      _initializeLocationSettings();
+    }
   }
 
   Future<void> _startLocationUpdates() async {
@@ -147,7 +228,9 @@ class LocationService extends GetxService {
       ).listen(
         (position) {
           if (position.latitude != 0 && position.longitude != 0) {
-            _updateLocation(position, isHighAccuracy: false);
+            _lastPosition = position;
+            _lastUpdateTime = DateTime.now();
+            _updateLocation(position, isHighAccuracy: position.accuracy <= _highAccuracyThreshold);
           }
         },
         onError: (error) {
@@ -164,15 +247,20 @@ class LocationService extends GetxService {
   LocationSettings _createLocationSettings() {
     if (Platform.isAndroid) {
       return AndroidSettings(
-        accuracy: LocationAccuracy.medium,
-        distanceFilter: 10,
-        forceLocationManager: false,
-        intervalDuration: const Duration(seconds: 10),
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        forceLocationManager: true,
+        intervalDuration: const Duration(seconds: 5),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: "Antarkanma menggunakan lokasi untuk pengiriman yang akurat",
+          notificationTitle: "Layanan Lokasi Aktif",
+          enableWakeLock: true,
+        ),
       );
     }
     return const LocationSettings(
-      accuracy: LocationAccuracy.medium,
-      distanceFilter: 10,
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
     );
   }
 
@@ -180,7 +268,8 @@ class LocationService extends GetxService {
     latitude.value = position.latitude;
     longitude.value = position.longitude;
     isLocationAvailable.value = true;
-    isHighAccuracyLocation.value = position.accuracy <= _highAccuracyThreshold;
+    isHighAccuracyLocation.value = isHighAccuracy;
+    accuracy.value = position.accuracy;
   }
 
   void _handleStreamError(dynamic error) {
@@ -239,6 +328,7 @@ class LocationService extends GetxService {
     longitude.value = defaultLongitude;
     isLocationAvailable.value = false;
     isHighAccuracyLocation.value = false;
+    accuracy.value = 0.0;
   }
 
   void _startRecoveryTimer() {
@@ -252,27 +342,50 @@ class LocationService extends GetxService {
     _positionStream = null;
   }
 
-  // Method used by homepage controller
   Future<Map<String, dynamic>> getCurrentLocation({bool forceUpdate = false}) async {
-    if (forceUpdate) {
-      final position = await getHighAccuracyLocation();
-      if (position != null) {
-        return {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'isDefault': false,
-          'isHighAccuracy': true,
-          'hasNetwork': isNetworkAvailable.value,
-        };
-      }
+    if (!_isInitialized) {
+      await init();
     }
 
+    try {
+      if (forceUpdate || _lastPosition == null || 
+          (_lastUpdateTime != null && DateTime.now().difference(_lastUpdateTime!) > const Duration(seconds: 30))) {
+        final position = await getHighAccuracyLocation();
+        if (position != null) {
+          return {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'isDefault': false,
+            'isHighAccuracy': position.accuracy <= _highAccuracyThreshold,
+            'hasNetwork': isNetworkAvailable.value,
+            'accuracy': position.accuracy,
+          };
+        }
+      }
+
+      // Return cached position if available and recent
+      if (_lastPosition != null) {
+        return {
+          'latitude': _lastPosition!.latitude,
+          'longitude': _lastPosition!.longitude,
+          'isDefault': false,
+          'isHighAccuracy': _lastPosition!.accuracy <= _highAccuracyThreshold,
+          'hasNetwork': isNetworkAvailable.value,
+          'accuracy': _lastPosition!.accuracy,
+        };
+      }
+    } catch (e) {
+      debugPrint('Error getting current location: $e');
+    }
+
+    // Return default values if all else fails
     return {
       'latitude': latitude.value,
       'longitude': longitude.value,
       'isDefault': !isLocationAvailable.value,
       'isHighAccuracy': isHighAccuracyLocation.value,
       'hasNetwork': isNetworkAvailable.value,
+      'accuracy': accuracy.value,
     };
   }
 

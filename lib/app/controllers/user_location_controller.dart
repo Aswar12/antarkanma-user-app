@@ -4,7 +4,7 @@ import 'package:antarkanma/app/services/user_location_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 
 class UserLocationController extends GetxController {
-  late final UserLocationService _locationService;
+  final UserLocationService _locationService = Get.find<UserLocationService>();
   final AuthService _authService = Get.find<AuthService>();
 
   final Rx<UserLocationModel?> _defaultAddress = Rx<UserLocationModel?>(null);
@@ -24,16 +24,16 @@ class UserLocationController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initializeIfAuthenticated();
+    _initializeController();
   }
 
-  void _initializeIfAuthenticated() {
+  Future<void> _initializeController() async {
     if (_authService.isLoggedIn.value) {
       try {
-        _locationService = Get.find<UserLocationService>();
-        loadAddresses();
+        await _locationService.ensureInitialized();
+        await loadAddresses();
       } catch (e) {
-        print('Error initializing UserLocationService: $e');
+        print('Error initializing UserLocationController: $e');
         _errorMessage.value = 'Error initializing location service: $e';
       }
     }
@@ -45,6 +45,10 @@ class UserLocationController extends GetxController {
     try {
       _isLoading.value = true;
       _errorMessage.value = '';
+      
+      // Ensure service is initialized
+      await _locationService.ensureInitialized();
+      
       await _locationService.loadUserLocations();
       _addresses.value = _locationService.userLocations;
       _defaultAddress.value = _locationService.defaultLocation.value;
@@ -67,6 +71,10 @@ class UserLocationController extends GetxController {
     try {
       _isLoading.value = true;
       _errorMessage.value = '';
+      
+      // Ensure service is initialized
+      await _locationService.ensureInitialized();
+      
       final success = await _locationService.addUserLocation(address);
       if (success) {
         await loadAddresses();
@@ -86,6 +94,10 @@ class UserLocationController extends GetxController {
     try {
       _isLoading.value = true;
       _errorMessage.value = '';
+      
+      // Ensure service is initialized
+      await _locationService.ensureInitialized();
+      
       final success = await _locationService.updateUserLocation(address);
       if (success) {
         await loadAddresses();
@@ -105,6 +117,10 @@ class UserLocationController extends GetxController {
     try {
       _isLoading.value = true;
       _errorMessage.value = '';
+      
+      // Ensure service is initialized
+      await _locationService.ensureInitialized();
+      
       final success = await _locationService.deleteUserLocation(addressId);
       if (success) {
         await loadAddresses();
@@ -124,6 +140,10 @@ class UserLocationController extends GetxController {
     try {
       _isLoading.value = true;
       _errorMessage.value = '';
+      
+      // Ensure service is initialized
+      await _locationService.ensureInitialized();
+      
       final success = await _locationService.setDefaultLocation(addressId);
       if (success) {
         await loadAddresses();
