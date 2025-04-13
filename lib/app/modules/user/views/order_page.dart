@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
-import 'package:antarkanma/app/data/models/transaction_model.dart'
-    as transaction;
+import 'package:antarkanma/app/data/models/transaction_model.dart' as transaction;
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
+import 'package:antarkanma/app/widgets/empty_order_placeholder.dart';
+import 'package:antarkanma/app/widgets/home_skeleton_loading.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -15,10 +16,10 @@ class OrderPage extends StatefulWidget {
   State<OrderPage> createState() => _OrderPageState();
 }
 
-class _OrderPageState extends State<OrderPage>
-    with SingleTickerProviderStateMixin {
+class _OrderPageState extends State<OrderPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late OrderController _orderController;
+  final RxBool _isRefreshing = false.obs;
 
   @override
   void initState() {
@@ -38,6 +39,24 @@ class _OrderPageState extends State<OrderPage>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleRefresh() async {
+    try {
+      _isRefreshing.value = true;
+      await _orderController.refreshOrders();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Gagal memuat data. Tarik ke bawah untuk mencoba lagi.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      _isRefreshing.value = false;
+    }
   }
 
   @override
@@ -86,23 +105,46 @@ class _OrderPageState extends State<OrderPage>
         builder: (controller) {
           return Obx(() {
             if (controller.isLoading.value) {
-              return Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(logoColorSecondary),
+              return const HomeSkeletonLoading();
+            }
+
+            if (controller.errorMessage.value.isNotEmpty) {
+              return RefreshIndicator(
+                onRefresh: _handleRefresh,
+                color: logoColorSecondary,
+                child: ListView(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height / 2,
+                      child: Center(
+                        child: Text(
+                          controller.errorMessage.value,
+                          style: primaryTextStyle.copyWith(
+                            color: alertColor,
+                            fontSize: Dimenssions.font14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }
 
-            if (controller.errorMessage.value.isNotEmpty) {
-              return Center(
-                child: Text(controller.errorMessage.value),
-              );
-            }
             return TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList(controller.activeOrders),
-                _buildOrderList(controller.historyOrders),
+                _buildOrderList(
+                  controller.activeOrders,
+                  emptyMessage: 'Tidak ada pesanan aktif saat ini.',
+                  emptyIcon: Icons.receipt_long_outlined,
+                ),
+                _buildOrderList(
+                  controller.historyOrders,
+                  emptyMessage: 'Belum ada riwayat pesanan.',
+                  emptyIcon: Icons.history_outlined,
+                ),
               ],
             );
           });
@@ -111,27 +153,47 @@ class _OrderPageState extends State<OrderPage>
     );
   }
 
-  Widget _buildOrderList(List<transaction.TransactionModel> transactions) {
-    if (transactions.isEmpty) {
-      return Center(
-        child: Text('Tidak ada pesanan untuk ditampilkan.'),
-      );
-    }
-
+  Widget _buildOrderList(
+    List<transaction.TransactionModel> transactions, {
+    required String emptyMessage,
+    required IconData emptyIcon,
+  }) {
     return RefreshIndicator(
-      onRefresh: () => _orderController.refreshOrders(),
+      onRefresh: _handleRefresh,
       color: logoColorSecondary,
-      child: ListView.builder(
-        padding: EdgeInsets.all(Dimenssions.height15),
-        itemCount: transactions.length,
-        itemBuilder: (context, index) {
-          final transaction = transactions[index];
-          return OrderCard(
-            transaction: transaction,
-            onTap: _showOrderDetails,
+      child: Obx(() {
+        if (_isRefreshing.value) {
+          return const HomeSkeletonLoading();
+        }
+
+        if (transactions.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height / 2,
+                child: EmptyOrderPlaceholder(
+                  message: emptyMessage,
+                  icon: emptyIcon,
+                ),
+              ),
+            ],
           );
-        },
-      ),
+        }
+
+        return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(Dimenssions.height15),
+          itemCount: transactions.length,
+          itemBuilder: (context, index) {
+            final transaction = transactions[index];
+            return OrderCard(
+              transaction: transaction,
+              onTap: _showOrderDetails,
+            );
+          },
+        );
+      }),
     );
   }
 

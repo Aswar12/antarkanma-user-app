@@ -26,8 +26,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with AutomaticKeepAliveClientMixin {
+class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
   late HomePageController controller;
 
   @override
@@ -50,7 +49,6 @@ class _HomePageState extends State<HomePage>
       locationService: locationService,
     );
 
-    // Ensure data is loaded when page is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.allMerchants.isEmpty) {
         controller.loadInitialData();
@@ -107,7 +105,6 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    // Ensure product data is loaded before navigation
     if (!controller.hasValidData) {
       try {
         Get.snackbar(
@@ -148,21 +145,39 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildSearchBar() {
-    return SearchInputField(
-      controller: controller.searchController,
-      focusNode: controller.searchFocusNode,
-      hintText: 'Cari Merchant...',
-      onClear: () {
-        controller.searchController.clear();
-        controller.searchQuery.value = '';
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      onChanged: (value) async {
-        controller.searchQuery.value = value;
-        if (value.isNotEmpty) {
-          await controller.performSearch();
-        }
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: SearchInputField(
+            controller: controller.searchController,
+            focusNode: controller.searchFocusNode,
+            hintText: 'Cari Produk atau Merchant...',
+            onClear: () {
+              controller.searchController.clear();
+              controller.searchQuery.value = '';
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            onChanged: (value) async {
+              controller.searchQuery.value = value;
+              if (value.isNotEmpty) {
+                await controller.performSearch();
+              }
+            },
+          ),
+        ),
+        Obx(() {
+          return controller.searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () {
+                    controller.searchController.clear();
+                    controller.searchQuery.value = '';
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                )
+              : Container();
+        }),
+      ],
     );
   }
 
@@ -193,7 +208,7 @@ class _HomePageState extends State<HomePage>
 
   Widget popularProducts() {
     return Obx(() {
-      if (controller.isLoading.value) {
+      if (controller.isLoading.value || controller.isSkeletonLoading.value) {
         return Container(
           height: Dimenssions.pageView,
           margin: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
@@ -285,6 +300,31 @@ class _HomePageState extends State<HomePage>
     });
   }
 
+  Widget searchResultsTitle() {
+    return Container(
+      margin: EdgeInsets.only(
+        top: Dimenssions.height15,
+        left: Dimenssions.width15,
+        right: Dimenssions.width15,
+        bottom: Dimenssions.height10,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              'Hasil Pencarian',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font18,
+                fontWeight: semiBold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget merchantListTitle() {
     return Container(
       margin: EdgeInsets.only(
@@ -300,14 +340,14 @@ class _HomePageState extends State<HomePage>
             child: Text(
               controller.searchQuery.isEmpty
                   ? 'Semua Merchant'
-                  : 'Hasil Pencarian',
+                  : 'Merchant',
               style: primaryTextStyle.copyWith(
                 fontSize: Dimenssions.font18,
                 fontWeight: semiBold,
               ),
             ),
           ),
-          if (!controller.isLoading.value && controller.allMerchants.isNotEmpty)
+          if (!controller.isLoading.value && !controller.isSkeletonLoading.value && controller.allMerchants.isNotEmpty)
             TextButton(
               onPressed: _handleRefresh,
               child: Text(
@@ -323,8 +363,85 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  List<Widget> _buildSearchResultSlivers() {
+    if (controller.searchResults.isEmpty && controller.merchantSearchResults.isEmpty) {
+      return [
+        SliverFillRemaining(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off_outlined,
+                  size: Dimenssions.iconSize24 * 2,
+                  color: secondaryTextColor,
+                ),
+                SizedBox(height: Dimenssions.height10),
+                Text(
+                  'Tidak ada hasil pencarian',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font16,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      if (controller.searchResults.isNotEmpty) ...[
+        SliverToBoxAdapter(child: searchResultsTitle()),
+        SliverToBoxAdapter(
+          child: Container(
+            height: 280,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+              itemCount: controller.searchResults.length,
+              itemBuilder: (context, index) {
+                final product = controller.searchResults[index];
+                return Container(
+                  width: 200,
+                  margin: EdgeInsets.only(right: Dimenssions.width10),
+                  child: ProductCarouselCard(
+                    product: product,
+                    onTap: () => navigateToProductDetail(product),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+      if (controller.merchantSearchResults.isNotEmpty) ...[
+        SliverToBoxAdapter(child: merchantListTitle()),
+        SliverToBoxAdapter(
+          child: Container(
+            height: 280,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: Dimenssions.width15),
+              itemCount: controller.merchantSearchResults.length,
+              itemBuilder: (context, index) {
+                final merchant = controller.merchantSearchResults[index];
+                return Container(
+                  width: 200,
+                  margin: EdgeInsets.only(right: Dimenssions.width10),
+                  child: MerchantCard(merchant: merchant),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    ];
+  }
+
   List<Widget> _buildMerchantSlivers() {
-    if (controller.isLoading.value) {
+    if (controller.isLoading.value || controller.isSkeletonLoading.value) {
       return [
         const SliverToBoxAdapter(
           child: MerchantSkeletonLoading(),
@@ -385,8 +502,7 @@ class _HomePageState extends State<HomePage>
         sliver: SliverGrid(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio:
-                0.6, // Adjusted from 0.8 to 0.6 to accommodate content
+            childAspectRatio: 0.6,
             mainAxisSpacing: Dimenssions.height10,
             crossAxisSpacing: Dimenssions.width10,
           ),
@@ -420,7 +536,7 @@ class _HomePageState extends State<HomePage>
     super.build(context);
 
     return Obx(() {
-      if (controller.isLoading.value && controller.searchQuery.isEmpty) {
+      if ((controller.isLoading.value || controller.isSkeletonLoading.value) && controller.searchQuery.isEmpty) {
         return const SafeArea(
           child: Scaffold(
             body: MerchantSkeletonLoading(),
@@ -466,11 +582,11 @@ class _HomePageState extends State<HomePage>
                       ],
                     ),
                   ),
+                  SliverToBoxAdapter(child: merchantListTitle()),
+                  ..._buildMerchantSlivers(),
+                ] else ...[
+                  ..._buildSearchResultSlivers(),
                 ],
-                SliverToBoxAdapter(
-                  child: merchantListTitle(),
-                ),
-                ..._buildMerchantSlivers(),
               ],
             ),
           ),

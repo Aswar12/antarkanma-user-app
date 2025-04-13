@@ -13,26 +13,60 @@ import 'app/services/auth_service.dart';
 import 'app/services/storage_service.dart';
 import 'app/services/fcm_token_service.dart';
 
+// Ignore specific socket errors in debug mode
+bool _shouldIgnoreSocketError(dynamic error) {
+  if (!kDebugMode) return false;
+  
+  final errorString = error.toString();
+  return errorString.contains('socket_patch.dart:520') || 
+         errorString.contains('socket_patch.dart:633') ||
+         errorString.contains('NativeSocket.lookup') ||
+         errorString.contains('staggeredLookup');
+}
+
 class CustomHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     final client = super.createHttpClient(context);
     client.badCertificateCallback = (cert, host, port) => true;
     client.idleTimeout = const Duration(seconds: 60);
+    client.connectionTimeout = const Duration(seconds: 10);
+    client.maxConnectionsPerHost = 5;
+    
     client.findProxy = (uri) {
-      if (uri.host == 'is3.cloudhost.id') {
-        debugPrint('🔄 Resolving S3 host: ${uri.host}');
+      try {
+        if (uri.host == 'is3.cloudhost.id') {
+          debugPrint('🔄 Resolving S3 host: ${uri.host}');
+        }
+      } catch (e) {
+        if (!_shouldIgnoreSocketError(e)) {
+          debugPrint('DNS lookup error: $e');
+        }
       }
       return 'DIRECT';
     };
+
     return client;
+  }
+
+  @override
+  Future<List<InternetAddress>> lookup(String host, {InternetAddress? sourceAddress}) async {
+    try {
+      return await InternetAddress.lookup(host);
+    } catch (e) {
+      if (!_shouldIgnoreSocketError(e)) {
+        debugPrint('DNS lookup error: $e');
+      }
+      // Return fallback IP if lookup fails
+      return [InternetAddress('0.0.0.0')];
+    }
   }
 }
 
 Future<void> initializeNetworking() async {
   HttpOverrides.global = CustomHttpOverrides();
   if (kDebugMode) {
-    debugPrint('Custom networking initialized');
+    debugPrint('Custom networking initialized with error handling');
   }
 }
 
@@ -46,33 +80,87 @@ Future<void> initializeStorage() async {
     if (kDebugMode) {
       debugPrint('Error initializing storage: $e');
     }
+    rethrow;
   }
 }
 
 Future<void> initializeServices() async {
   try {
-    // Initialize StorageService first
+    // Initialize StorageService first and verify it's working
     final storageService = StorageService.instance;
     await storageService.ensureInitialized();
+    
+    // Test storage functionality without clearing existing data
+    await storageService.saveString('test_key', 'test_value');
+    final testValue = storageService.getString('test_key');
+    if (testValue != 'test_value') {
+      throw Exception('Storage verification failed');
+    }
+    await storageService.remove('test_key');
+    
     Get.put(storageService, permanent: true);
+    debugPrint('Storage service verified and working');
+
+    // Print current storage state
+    if (kDebugMode) {
+      debugPrint('Current storage state:');
+      storageService.printStorageState();
+    }
 
     // Initialize AuthService
     final authService = AuthService();
     await authService.ensureInitialized();
     Get.put(authService, permanent: true);
+    debugPrint('Auth service initialized');
 
-    // Initialize MainBinding and wait for it to complete
-    final mainBinding = MainBinding();
-    await mainBinding.dependencies();
+    // Initialize MainBinding with retry mechanism and error handling
+    int attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        final mainBinding = MainBinding();
+        await mainBinding.dependencies();
+        debugPrint('MainBinding initialized successfully');
+        break;
+      } catch (e) {
+        attempts++;
+        debugPrint('MainBinding initialization attempt $attempts failed: $e');
+        if (attempts >= maxAttempts) {
+          rethrow;
+        }
+        await Future.delayed(Duration(seconds: attempts));
+      }
+    }
 
     if (kDebugMode) {
       debugPrint('Core services initialized successfully');
+      storageService.printStorageState();
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('Error initializing services: $e');
-    }
+    debugPrint('Error initializing services: $e');
     rethrow;
+  }
+}
+
+Future<void> initializeFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    if (kDebugMode) {
+      await Get.put(FCMTokenService().init());
+    } else {
+      Get.put(FCMTokenService().init()).catchError((e) {
+        debugPrint('Non-critical FCM initialization error: $e');
+      });
+    }
+  } catch (e) {
+    debugPrint('Error initializing Firebase: $e');
+    if (kDebugMode) {
+      rethrow;
+    }
   }
 }
 
@@ -83,33 +171,48 @@ Future<void> initializeApp() async {
     // Initialize storage first
     await initializeStorage();
 
-    // Initialize networking
+    // Initialize networking with error handling
     await initializeNetworking();
 
-    // Initialize Firebase
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // Initialize Firebase in parallel
+    final firebaseFuture = initializeFirebase();
 
-    // Initialize AuthService
-    final authService = AuthService();
-    await authService.ensureInitialized();
-    Get.put(authService, permanent: true);
+    // Initialize core services with retry mechanism
+    int attempts = 0;
+    const maxAttempts = 3;
+    Exception? lastError;
 
-    // Initialize FCM Token Service
-    await Get.put(FCMTokenService().init());
+    while (attempts < maxAttempts) {
+      try {
+        await initializeServices();
+        debugPrint('Services initialized successfully');
+        break;
+      } catch (e) {
+        attempts++;
+        lastError = e as Exception;
+        debugPrint('Service initialization attempt $attempts failed: $e');
+        if (attempts >= maxAttempts) {
+          throw lastError!;
+        }
+        await Future.delayed(Duration(seconds: attempts));
+      }
+    }
 
-    // Initialize core services and wait for completion
-    await initializeServices();
+    // Wait for Firebase in debug mode only
+    if (kDebugMode) {
+      await firebaseFuture;
+    }
 
     if (kDebugMode) {
       debugPrint('App initialized successfully');
+      final storageService = Get.find<StorageService>();
+      storageService.printStorageState();
     }
   } catch (e) {
+    debugPrint('Error initializing app: $e');
     if (kDebugMode) {
-      debugPrint('Error initializing app: $e');
+      rethrow;
     }
-    rethrow;
   }
 }
 
@@ -133,15 +236,33 @@ class MyApp extends StatelessWidget {
           debugPrint('GetMaterialApp initialized');
         }
       },
-      onReady: () {
+      onReady: () async {
         if (kDebugMode) {
           debugPrint('GetMaterialApp ready');
+          // Print storage state when app is ready
+          final storageService = Get.find<StorageService>();
+          storageService.printStorageState();
+        }
+
+        // Ensure proper navigation after initialization
+        final storageService = Get.find<StorageService>();
+        final token = storageService.getToken();
+        final userData = storageService.getUser();
+        final rememberMe = storageService.getRememberMe();
+
+        if (token != null && userData != null && rememberMe) {
+          debugPrint('Valid session found, navigating to main page');
+          await Future.delayed(const Duration(seconds: 2)); // Allow splash to show
+          Get.offAllNamed(Routes.userMainPage);
+        } else {
+          debugPrint('No valid session found, navigating to login');
+          await Future.delayed(const Duration(seconds: 2)); // Allow splash to show
+          Get.offAllNamed(Routes.login);
         }
       },
       builder: (context, child) {
         return GestureDetector(
           onTap: () {
-            // Dismiss keyboard when tapping outside
             FocusScope.of(context).requestFocus(FocusNode());
           },
           child: child!,
@@ -156,9 +277,10 @@ void main() async {
     await initializeApp();
     runApp(const MyApp());
   } catch (e) {
+    debugPrint('Fatal error during app startup: $e');
     if (kDebugMode) {
-      debugPrint('Fatal error during app startup: $e');
+      rethrow;
     }
-    rethrow;
+    runApp(const MyApp());
   }
 }

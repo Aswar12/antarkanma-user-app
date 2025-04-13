@@ -6,6 +6,7 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:intl/intl.dart';
 
 class MerchantInfoSection extends GetView<ProductDetailController> {
   final ProductModel product;
@@ -29,6 +30,37 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
       return 'Hari operasional tidak tersedia';
     }
     return merchant.operatingDays!.join(', ');
+  }
+
+  Future<void> _openWhatsApp(String phoneNumber, String message) async {
+    // Format phone number to remove any spaces or special characters and ensure it starts with +62
+    String formattedPhone = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // If the number starts with 0, replace it with +62
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '+62${formattedPhone.substring(1)}';
+    } 
+    // If the number doesn't start with +62 or 0, add +62
+    else if (!formattedPhone.startsWith('+62')) {
+      formattedPhone = '+62$formattedPhone';
+    }
+    
+    // Create the WhatsApp URL with the formatted phone and encoded message
+    final whatsappUrl = Uri.parse(
+      'https://wa.me/$formattedPhone?text=${Uri.encodeComponent(message)}'
+    );
+
+    if (await url_launcher.canLaunchUrl(whatsappUrl)) {
+      await url_launcher.launchUrl(whatsappUrl);
+    } else {
+      Get.snackbar(
+        'Error',
+        'Tidak dapat membuka WhatsApp',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
   Widget _buildMerchantLogo(String? logoUrl) {
@@ -222,61 +254,43 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
               ),
             ),
             SizedBox(height: Dimenssions.height16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      if (merchant.id != null) {
-                        Get.toNamed('/chat', arguments: {
-                          'merchantId': merchant.id,
-                          'merchantName': merchant.name,
-                        });
-                      }
-                    },
-                    icon: Icon(Icons.chat_outlined, color: logoColorSecondary),
-                    label: Text(
-                      'Chat Penjual',
-                      style: primaryTextOrange,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: logoColorSecondary,
-                      side: BorderSide(color: logoColorSecondary),
-                      padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              height: 45, // Fixed height for better proportion
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  if (merchant.phoneNumber.isNotEmpty) {
+                    final product = controller.product.value;
+                    final price = NumberFormat.currency(
+                      locale: 'id_ID',
+                      symbol: 'Rp ',
+                      decimalDigits: 0,
+                    ).format(product.price);
+                    
+                    final message = 'Halo, saya tertarik dengan produk ini:\n'
+                        '${product.name}\n'
+                        '$price';
+                    
+                    _openWhatsApp(merchant.phoneNumber, message);
+                  }
+                },
+                icon: Icon(Icons.chat_outlined, color: logoColorSecondary, size: 20),
+                label: Text(
+                  'Chat Penjual',
+                  style: primaryTextOrange.copyWith(
+                    fontSize: Dimenssions.font14,
+                    fontWeight: medium,
                   ),
                 ),
-                SizedBox(width: Dimenssions.width12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final phoneNumber = merchant.phoneNumber;
-                      if (phoneNumber.isNotEmpty) {
-                        final url = 'tel:$phoneNumber';
-                        if (await url_launcher.canLaunch(url)) {
-                          await url_launcher.launch(url);
-                        }
-                      }
-                    },
-                    icon: Icon(Icons.phone_outlined, color: logoColorSecondary),
-                    label: Text(
-                      'Hubungi',
-                      style: primaryTextOrange,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: logoColorSecondary,
-                      side: BorderSide(color: logoColorSecondary),
-                      padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
-                      ),
-                    ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: logoColorSecondary,
+                  side: BorderSide(color: logoColorSecondary),
+                  padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Dimenssions.radius12),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),

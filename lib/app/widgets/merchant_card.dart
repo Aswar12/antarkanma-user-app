@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/cached_image_view.dart';
+import 'package:antarkanma/app/widgets/shimmer_loading.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -180,69 +181,77 @@ class MerchantCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (merchant.distance != null)
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: Dimenssions.width8,
-                                        vertical: Dimenssions.height4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(
-                                            Dimenssions.radius12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.directions_bike_outlined,
-                                            size: Dimenssions.iconSize16,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: Dimenssions.width4),
-                                          Text(
-                                            '${merchant.distance?.toStringAsFixed(1)} km',
-                                            style: secondaryTextStyle.copyWith(
-                                              fontSize: Dimenssions.font12,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: Dimenssions.width8,
+                                      vertical: Dimenssions.height4,
                                     ),
-                                  if (merchant.distance != null &&
-                                      merchant.duration != null)
-                                    SizedBox(width: Dimenssions.width8),
-                                  if (merchant.duration != null)
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: Dimenssions.width8,
-                                        vertical: Dimenssions.height4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(
-                                            Dimenssions.radius12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.access_time,
-                                            size: Dimenssions.iconSize16,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: Dimenssions.width4),
-                                          Text(
-                                            '${merchant.duration} min',
-                                            style: secondaryTextStyle.copyWith(
-                                              fontSize: Dimenssions.font12,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(
+                                          Dimenssions.radius12),
                                     ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.directions_bike_outlined,
+                                          size: Dimenssions.iconSize16,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: Dimenssions.width4),
+                                        merchant.distance != null
+                                            ? Text(
+                                                '${merchant.distance?.toStringAsFixed(1)} km',
+                                                style: secondaryTextStyle.copyWith(
+                                                  fontSize: Dimenssions.font12,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : ShimmerLoading(
+                                                width: Dimenssions.width30,
+                                                height: Dimenssions.height12,
+                                                radius: Dimenssions.radius4,
+                                              ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: Dimenssions.width8),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: Dimenssions.width8,
+                                      vertical: Dimenssions.height4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(
+                                          Dimenssions.radius12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.access_time,
+                                          size: Dimenssions.iconSize16,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: Dimenssions.width4),
+                                        merchant.duration != null
+                                            ? Text(
+                                                '${merchant.duration} min',
+                                                style: secondaryTextStyle.copyWith(
+                                                  fontSize: Dimenssions.font12,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : ShimmerLoading(
+                                                width: Dimenssions.width30,
+                                                height: Dimenssions.height12,
+                                                radius: Dimenssions.radius4,
+                                              ),
+                                      ],
+                                    ),
+                                  ),
                                   SizedBox(width: Dimenssions.width8),
                                   Container(
                                     padding: EdgeInsets.symmetric(
@@ -251,7 +260,7 @@ class MerchantCard extends StatelessWidget {
                                     ),
                                     decoration: BoxDecoration(
                                       color:
-                                          logoColorSecondary.withOpacity(0.9),
+                                          logoColorSecondary.withOpacity(0.3),
                                       borderRadius: BorderRadius.circular(
                                           Dimenssions.radius12),
                                     ),

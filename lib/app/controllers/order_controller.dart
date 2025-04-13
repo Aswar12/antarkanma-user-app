@@ -22,6 +22,7 @@ class OrderController extends GetxController {
   static const String ORDER_STATUS_PENDING = 'PENDING';
   static const String ORDER_STATUS_PROCESSING = 'PROCESSING';
   static const String ORDER_STATUS_READYTOPICKUP = 'READYTOPICKUP';
+  static const String ORDER_STATUS_READY_FOR_PICKUP = 'READY_FOR_PICKUP'; // Correct format
   static const String ORDER_STATUS_SHIPPED = 'SHIPPED';
   static const String ORDER_STATUS_DELIVERED = 'DELIVERED';
   static const String ORDER_STATUS_COMPLETED = 'COMPLETED';
@@ -304,10 +305,10 @@ class OrderController extends GetxController {
         return orderStatus == ORDER_STATUS_PENDING ||
             orderStatus == ORDER_STATUS_PROCESSING ||
             orderStatus == ORDER_STATUS_READYTOPICKUP ||
+            orderStatus == ORDER_STATUS_READY_FOR_PICKUP || // Updated to correct format
             orderStatus == ORDER_STATUS_SHIPPED ||
             orderStatus == ORDER_STATUS_PICKED_UP ||
-            orderStatus ==
-                ORDER_STATUS_WAITING_APPROVAL; // Added waiting approval status
+            orderStatus == ORDER_STATUS_WAITING_APPROVAL;
       });
     }).toList();
 

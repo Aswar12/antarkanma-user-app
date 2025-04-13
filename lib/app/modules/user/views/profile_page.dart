@@ -10,6 +10,8 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+// ... [previous imports and class definition remain the same] ...
+
 class ProfilePage extends GetView<AuthController> {
   final AuthService authService = Get.find<AuthService>();
 
@@ -27,7 +29,7 @@ class ProfilePage extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor3,
+      backgroundColor: backgroundColor1,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -46,30 +48,59 @@ class ProfilePage extends GetView<AuthController> {
 
   Widget _buildHeader(AuthService authService) {
     final user = authService.getUser();
-    return SizedBox(
+    return Container(
       height: Dimenssions.height250,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            logoColor,
+            logoColor.withOpacity(0.8),
+            logoColor.withOpacity(0.6),
+          ],
+        ),
+      ),
       child: Stack(
         children: [
-          // Background Image with Overlay
-          SizedBox(
-            width: double.infinity,
-            height: Dimenssions.height250,
-            child: Stack(
-              children: [
-                // Background Image
-                Image.asset(
-                  'assets/image_profile.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
+          // Decorative elements
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: logoColor.withOpacity(0.3), width: 2),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.2),
+                    Colors.white.withOpacity(0.1),
+                  ],
                 ),
-                // Dark Overlay
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                ),
-              ],
+              ),
             ),
           ),
+          Positioned(
+            bottom: -30,
+            left: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: logoColor.withOpacity(0.3), width: 2),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.2),
+                    Colors.white.withOpacity(0.1),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Profile content
           Align(
             alignment: Alignment.center,
             child: Column(
@@ -79,7 +110,7 @@ class ProfilePage extends GetView<AuthController> {
                 GestureDetector(
                   onTap: () => Get.toNamed(Routes.userEditProfile),
                   child: Container(
-                    margin: EdgeInsets.only(top: Dimenssions.height30),
+                    margin: EdgeInsets.only(top: Dimenssions.height20),
                     child: Stack(
                       children: [
                         Hero(
@@ -88,10 +119,21 @@ class ProfilePage extends GetView<AuthController> {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 3,
+                              border: Border.all(color: logoColor, width: 3),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white,
+                                  Colors.white.withOpacity(0.9),
+                                ],
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  spreadRadius: 2,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: user != null
                                 ? ProfileImage(
@@ -100,11 +142,11 @@ class ProfilePage extends GetView<AuthController> {
                                   )
                                 : CircleAvatar(
                                     radius: Dimenssions.height50,
-                                    backgroundColor: Colors.grey[300],
+                                    backgroundColor: Colors.white,
                                     child: Icon(
                                       Icons.person,
                                       size: Dimenssions.height50,
-                                      color: Colors.grey[600],
+                                      color: logoColor,
                                     ),
                                   ),
                           ),
@@ -113,19 +155,24 @@ class ProfilePage extends GetView<AuthController> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.all(Dimenssions.height5),
+                            padding: EdgeInsets.all(Dimenssions.height8),
                             decoration: BoxDecoration(
-                              color: logoColorSecondary,
+                              color: Colors.white,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
+                              border: Border.all(color: logoColor, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  spreadRadius: 1,
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
                             ),
                             child: Icon(
                               Icons.edit,
                               size: Dimenssions.height15,
-                              color: backgroundColor1,
+                              color: logoColor,
                             ),
                           ),
                         ),
@@ -133,22 +180,40 @@ class ProfilePage extends GetView<AuthController> {
                     ),
                   ),
                 ),
-                SizedBox(height: Dimenssions.height15),
+                SizedBox(height: Dimenssions.height20),
                 // User Info
                 Text(
                   authService.userName ?? 'Guest User',
                   style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font20,
+                    fontSize: Dimenssions.font22,
                     fontWeight: semiBold,
                     color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.2),
+                        offset: const Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: Dimenssions.height5),
-                Text(
-                  authService.userPhone ?? 'No phone number',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    color: Colors.white.withOpacity(0.8),
+                SizedBox(height: Dimenssions.height8),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimenssions.width15,
+                    vertical: Dimenssions.height5,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: logoColor.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(Dimenssions.radius20),
+                  ),
+                  child: Text(
+                    authService.userPhone ?? 'No phone number',
+                    style: secondaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font14,
+                      color: Colors.white,
+                      fontWeight: medium,
+                    ),
                   ),
                 ),
               ],
@@ -169,14 +234,15 @@ class ProfilePage extends GetView<AuthController> {
           margin: EdgeInsets.all(Dimenssions.height15),
           padding: EdgeInsets.all(Dimenssions.height15),
           decoration: BoxDecoration(
-            color: backgroundColor2,
+            color: Colors.white,
+            border: Border.all(color: logoColor.withOpacity(0.3)),
             borderRadius: BorderRadius.circular(Dimenssions.radius15),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: logoColor.withOpacity(0.1),
                 spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -188,10 +254,17 @@ class ProfilePage extends GetView<AuthController> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        color: logoColorSecondary,
-                        size: Dimenssions.height22,
+                      Container(
+                        padding: EdgeInsets.all(Dimenssions.height8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: logoColor),
+                          borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: logoColor,
+                          size: Dimenssions.height22,
+                        ),
                       ),
                       SizedBox(width: Dimenssions.width10),
                       Text(
@@ -203,24 +276,40 @@ class ProfilePage extends GetView<AuthController> {
                       ),
                     ],
                   ),
-                  TextButton(
-                    onPressed: () => Get.toNamed(Routes.userAddress),
-                    child: Text(
-                      'Lihat Semua',
-                      style: primaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
-                        color: logoColorSecondary,
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: logoColor),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius20),
+                    ),
+                    child: TextButton(
+                      onPressed: () => Get.toNamed(Routes.userAddress),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimenssions.width15,
+                          vertical: Dimenssions.height8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(Dimenssions.radius20),
+                        ),
+                      ),
+                      child: Text(
+                        'Lihat Semua',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font14,
+                          color: logoColor,
+                          fontWeight: medium,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: Dimenssions.height10),
+              SizedBox(height: Dimenssions.height15),
               if (controller.defaultAddress != null) ...[
                 Container(
-                  padding: EdgeInsets.all(Dimenssions.height10),
+                  padding: EdgeInsets.all(Dimenssions.height15),
                   decoration: BoxDecoration(
-                    color: backgroundColor3,
+                    border: Border.all(color: logoColor.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(Dimenssions.radius15),
                   ),
                   child: Obx(() => Text(
@@ -241,13 +330,13 @@ class ProfilePage extends GetView<AuthController> {
                 SizedBox(
                   height: Dimenssions.height45,
                   width: double.infinity,
-                  child: TextButton(
+                  child: ElevatedButton(
                     onPressed: () => Get.toNamed(Routes.userAddAddress),
-                    style: TextButton.styleFrom(
-                      backgroundColor: logoColorSecondary,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: logoColor,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius15),
+                        borderRadius: BorderRadius.circular(Dimenssions.radius15),
                       ),
                     ),
                     child: Text(
@@ -273,14 +362,15 @@ class ProfilePage extends GetView<AuthController> {
       margin: EdgeInsets.all(Dimenssions.height15),
       padding: EdgeInsets.all(Dimenssions.height15),
       decoration: BoxDecoration(
-        color: backgroundColor2,
+        color: Colors.white,
+        border: Border.all(color: logoColor.withOpacity(0.3)),
         borderRadius: BorderRadius.circular(Dimenssions.radius15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: logoColor.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -297,7 +387,6 @@ class ProfilePage extends GetView<AuthController> {
               icon: Icons.headset_mic_outlined,
               title: 'Bantuan',
               onTap: () {
-                // TODO: Implement help page navigation when available
                 Get.snackbar(
                   'Info',
                   'Fitur bantuan akan segera hadir',
@@ -306,13 +395,15 @@ class ProfilePage extends GetView<AuthController> {
               },
             ),
           ]),
-          SizedBox(height: Dimenssions.height20),
+          Divider(
+            height: Dimenssions.height30,
+            color: logoColor.withOpacity(0.3),
+          ),
           _buildMenuGroup('Umum', [
             _MenuItem(
               icon: Icons.privacy_tip_outlined,
               title: 'Kebijakan & Privasi',
               onTap: () {
-                // TODO: Implement privacy policy page navigation when available
                 Get.snackbar(
                   'Info',
                   'Halaman kebijakan & privasi akan segera hadir',
@@ -324,7 +415,6 @@ class ProfilePage extends GetView<AuthController> {
               icon: Icons.description_outlined,
               title: 'Ketentuan Layanan',
               onTap: () {
-                // TODO: Implement terms of service page navigation when available
                 Get.snackbar(
                   'Info',
                   'Halaman ketentuan layanan akan segera hadir',
@@ -339,35 +429,34 @@ class ProfilePage extends GetView<AuthController> {
             ),
           ]),
           SizedBox(height: Dimenssions.height20),
-          SizedBox(
+          Container(
             height: Dimenssions.height45,
             width: double.infinity,
-            child: TextButton(
+            decoration: BoxDecoration(
+              border: Border.all(color: alertColor),
+              borderRadius: BorderRadius.circular(Dimenssions.radius15),
+            ),
+            child: ElevatedButton.icon(
               onPressed: () => Get.dialog(const LogoutConfirmationDialog()),
-              style: TextButton.styleFrom(
-                backgroundColor: alertColor.withOpacity(0.1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Dimenssions.radius15),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.logout,
-                    color: alertColor,
-                    size: Dimenssions.height20,
-                  ),
-                  SizedBox(width: Dimenssions.width10),
-                  Text(
-                    'Keluar',
-                    style: primaryTextStyle.copyWith(
-                      color: alertColor,
-                      fontSize: Dimenssions.font14,
-                      fontWeight: medium,
-                    ),
-                  ),
-                ],
+              icon: Icon(
+                Icons.logout,
+                color: alertColor,
+                size: Dimenssions.height20,
+              ),
+              label: Text(
+                'Keluar',
+                style: primaryTextStyle.copyWith(
+                  color: alertColor,
+                  fontSize: Dimenssions.font14,
+                  fontWeight: medium,
+                ),
               ),
             ),
           ),
@@ -387,41 +476,58 @@ class ProfilePage extends GetView<AuthController> {
             fontWeight: semiBold,
           ),
         ),
-        SizedBox(height: Dimenssions.height10),
+        SizedBox(height: Dimenssions.height15),
         ...items.map((item) => _buildMenuItemWidget(item)),
       ],
     );
   }
 
   Widget _buildMenuItemWidget(_MenuItem item) {
-    return InkWell(
-      onTap: item.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: Dimenssions.height15,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              item.icon,
-              color: logoColorSecondary,
-              size: Dimenssions.height20,
-            ),
-            SizedBox(width: Dimenssions.width15),
-            Expanded(
-              child: Text(
-                item.title,
-                style: secondaryTextStyle.copyWith(
-                  fontSize: Dimenssions.font14,
+    return Container(
+      margin: EdgeInsets.only(bottom: Dimenssions.height10),
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(Dimenssions.radius8),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            vertical: Dimenssions.height12,
+            horizontal: Dimenssions.width10,
+          ),
+          decoration: BoxDecoration(
+            border: Border.all(color: logoColor.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(Dimenssions.radius8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(Dimenssions.height8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: logoColor),
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: logoColor,
+                  size: Dimenssions.height20,
                 ),
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: secondaryTextColor,
-              size: Dimenssions.height15,
-            ),
-          ],
+              SizedBox(width: Dimenssions.width15),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: secondaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font14,
+                    fontWeight: medium,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: logoColor,
+                size: Dimenssions.height15,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -435,6 +541,11 @@ class ProfilePage extends GetView<AuthController> {
         ),
         child: Container(
           padding: EdgeInsets.all(Dimenssions.height20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: logoColor.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(Dimenssions.radius15),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -459,7 +570,7 @@ class ProfilePage extends GetView<AuthController> {
                       child: Icon(
                         Icons.star_border,
                         size: Dimenssions.height30,
-                        color: logoColorSecondary,
+                        color: logoColor,
                       ),
                     ),
                   ),
@@ -479,22 +590,28 @@ class ProfilePage extends GetView<AuthController> {
                     ),
                   ),
                   SizedBox(width: Dimenssions.width10),
-                  TextButton(
-                    onPressed: () {
-                      controller.submitRating();
-                      Get.back();
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: logoColorSecondary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius15),
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: logoColor),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius15),
                     ),
-                    child: Text(
-                      'Kirim',
-                      style: primaryTextStyle.copyWith(
-                        color: backgroundColor1,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        controller.submitRating();
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                        ),
+                      ),
+                      child: Text(
+                        'Kirim',
+                        style: primaryTextStyle.copyWith(
+                          color: logoColor,
+                        ),
                       ),
                     ),
                   ),

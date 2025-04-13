@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:antarkanma/app/modules/user/controllers/edit_profile_controller.dart';
+import 'package:antarkanma/app/services/osrm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:antarkanma/app/controllers/merchant_detail_controller.dart';
 import 'package:antarkanma/app/controllers/product_detail_controller.dart';
@@ -7,6 +8,7 @@ import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/data/providers/shipping_provider.dart';
+import 'package:antarkanma/app/services/rating_service.dart';
 import 'package:get/get.dart';
 import '../controllers/homepage_controller.dart';
 import '../controllers/auth_controller.dart';
@@ -114,7 +116,7 @@ class MainBinding extends Bindings {
   Future<void> _initializeBaseServices() async {
     try {
       debugPrint('Initializing base services...');
-      
+
       // Initialize StorageService
       final storageService = StorageService.instance;
       Get.put<StorageService>(
@@ -203,33 +205,41 @@ class MainBinding extends Bindings {
 
       try {
         // Wait for all permissions to be properly initialized with timeout
-        await permissionController.checkInitialPermissions()
-          .timeout(const Duration(seconds: 30));
+        await permissionController
+            .checkInitialPermissions()
+            .timeout(const Duration(seconds: 30));
         debugPrint('Permissions initialized successfully');
       } catch (e) {
-        debugPrint('Warning: Permission initialization timed out or failed: $e');
+        debugPrint(
+            'Warning: Permission initialization timed out or failed: $e');
         // Continue initialization even if permissions fail
       }
 
       // Initialize core location service with retry and timeout
-      await _retryWithDelay(
-        () async {
+      try {
+        await _retryWithDelay(() async {
           final locationService = LocationService();
-          await locationService.init()
-              .timeout(const Duration(seconds: 15));
+          await locationService.init().timeout(const Duration(seconds: 15));
           Get.put<LocationService>(
             locationService,
             permanent: true,
           );
           debugPrint('Core location service initialized');
-        },
-        maxRetries: 2
-      );
+        }, maxRetries: 2);
+      } catch (e) {
+        debugPrint('Warning: Location service initialization error: $e');
+        // Put the service even if initialization fails, it will use default values
+        Get.put<LocationService>(
+          LocationService(),
+          permanent: true,
+        );
+      }
 
       // Initialize user location service
       final userLocationService = UserLocationService();
       try {
-        await userLocationService.ensureInitialized()
+        await userLocationService
+            .ensureInitialized()
             .timeout(const Duration(seconds: 15));
         Get.put<UserLocationService>(
           userLocationService,
@@ -270,10 +280,22 @@ class MainBinding extends Bindings {
         permanent: true,
       );
 
+      // Initialize RatingService
+      Get.put<RatingService>(
+        RatingService(),
+        permanent: true,
+      );
+
       // Initialize ShippingService lazily when needed
       Get.lazyPut<ShippingService>(
         () => ShippingService(),
         fenix: true,
+      );
+
+      // Initialize OSRM service
+      Get.put<OSRMService>(
+        OSRMService(),
+        permanent: true,
       );
 
       debugPrint('Core services initialized successfully');
@@ -297,23 +319,23 @@ class MainBinding extends Bindings {
       );
 
       debugPrint('Initializing critical controllers...');
-      
+
       // Initialize core controllers first
       Get.put<AuthController>(
         AuthController(),
         permanent: true,
       );
-      
+
       Get.put<CartController>(
         CartController(),
         permanent: true,
       );
-      
+
       Get.put<OrderController>(
         OrderController(),
         permanent: true,
       );
-      
+
       Get.put<UserLocationController>(
         UserLocationController(),
         permanent: true,
@@ -332,7 +354,7 @@ class MainBinding extends Bindings {
         Get.find<CategoryService>().getCategories(),
       ]);
 
-      // Initialize HomePageController with optimized loading
+      // Initialize HomePageController with optimized loading and state persistence
       final homePageController = HomePageController(
         productService: Get.find<ProductService>(),
         merchantService: Get.find<MerchantService>(),
@@ -340,16 +362,31 @@ class MainBinding extends Bindings {
         authService: Get.find<AuthService>(),
         locationService: Get.find<LocationService>(),
       );
-      
-      // Put controller with permanent flag to maintain state
+
+      // Put controller with permanent flag to maintain state across navigation
       Get.put<HomePageController>(
         homePageController,
         permanent: true,
       );
 
-      // Start loading data in background
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        homePageController.loadInitialData();
+      // Initialize data loading in background to prevent UI blocking
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          // Clear old cache if needed
+          final storageService = Get.find<StorageService>();
+          if (storageService.getStorageUsage() > 500 * 1024 * 1024) {
+            // 500MB limit
+            await Future.wait([
+              Get.find<ProductService>().clearLocalStorage(),
+              Get.find<MerchantService>().clearLocalStorage(),
+            ]);
+          }
+
+          // Start preloading data
+          await homePageController.loadInitialData();
+        } catch (e) {
+          debugPrint('Error in background data loading: $e');
+        }
       });
 
       // Initialize ShippingService
@@ -358,7 +395,7 @@ class MainBinding extends Bindings {
         shippingService,
         permanent: true,
       );
-      
+
       Get.lazyPut<CheckoutController>(
         () => CheckoutController(
           userLocationController: Get.find<UserLocationController>(),
@@ -390,7 +427,6 @@ class MainBinding extends Bindings {
         fenix: true,
       );
 
-
       debugPrint('Controllers initialized successfully');
 
       // Initialize EditProfileController lazily
@@ -398,7 +434,6 @@ class MainBinding extends Bindings {
         () => EditProfileController(),
         fenix: true,
       );
-
     } catch (e) {
       debugPrint('Error initializing controllers: $e');
       rethrow;

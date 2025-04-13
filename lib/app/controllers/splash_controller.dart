@@ -2,12 +2,17 @@ import 'package:get/get.dart';
 import '../routes/app_pages.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../services/location_service.dart';
+import '../services/category_service.dart';
+import '../services/product_service.dart';
+import '../services/merchant_service.dart';
 import 'package:flutter/material.dart';
 
 class SplashController extends GetxController {
   final StorageService _storageService;
   final AuthService _authService;
   final _isInitializing = true.obs;
+  final _initialRoute = ''.obs;
 
   SplashController({
     required StorageService storageService,
@@ -16,6 +21,7 @@ class SplashController extends GetxController {
         _authService = authService;
 
   bool get isInitializing => _isInitializing.value;
+  String get initialRoute => _initialRoute.value;
 
   @override
   void onInit() {
@@ -25,9 +31,9 @@ class SplashController extends GetxController {
 
   Future<void> _initializeApp() async {
     try {
-      // Add a small delay to show splash screen
-      await Future.delayed(const Duration(seconds: 2));
-
+      // Start preloading data in parallel with auth check
+      final preloadFuture = _preloadData();
+      
       // Check authentication status
       final token = _storageService.getToken();
       final rememberMe = _storageService.getRememberMe();
@@ -51,8 +57,9 @@ class SplashController extends GetxController {
                 );
               
               if (profile != null) {
+                await preloadFuture;
                 _isInitializing.value = false;
-                Get.offAllNamed(Routes.userMainPage);
+                _initialRoute.value = Routes.userMainPage;
                 return;
               }
               
@@ -83,8 +90,10 @@ class SplashController extends GetxController {
             showError: false,
           );
           if (success) {
+            // Wait for preload to complete before navigation
+            await preloadFuture;
             _isInitializing.value = false;
-            Get.offAllNamed(Routes.userMainPage);
+            _initialRoute.value = Routes.userMainPage;
             return;
           }
         }
@@ -92,12 +101,41 @@ class SplashController extends GetxController {
 
       // If no valid auth or auto-login failed, go to login
       _isInitializing.value = false;
-      Get.offAllNamed(Routes.login);
+      _initialRoute.value = Routes.login;
     } catch (e) {
       debugPrint('Error in splash initialization: $e');
       // In case of error, default to login page
       _isInitializing.value = false;
-      Get.offAllNamed(Routes.login);
+      _initialRoute.value = Routes.login;
+    }
+  }
+
+  Future<void> _preloadData() async {
+    try {
+      // Get required services
+      final locationService = Get.find<LocationService>();
+      final categoryService = Get.find<CategoryService>();
+      final productService = Get.find<ProductService>();
+      final merchantService = Get.find<MerchantService>();
+      
+      // Load categories and clear storage first
+      await Future.wait([
+        categoryService.getCategories(),
+        productService.clearLocalStorage(),
+        merchantService.clearLocalStorage(),
+      ]);
+
+      // Then try to get location with timeout
+      try {
+        await locationService.getCurrentLocation()
+            .timeout(const Duration(seconds: 15));
+      } catch (e) {
+        debugPrint('Location fetch timed out, continuing with default location');
+      }
+      
+    } catch (e) {
+      debugPrint('Error in preloading data: $e');
+      // Don't throw - we want splash to continue even if preload fails
     }
   }
 

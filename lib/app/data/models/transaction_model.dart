@@ -1,6 +1,7 @@
 import 'package:antarkanma/app/data/models/order_item_model.dart';
 import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/data/models/user_model.dart';
+import 'package:antarkanma/app/data/models/courier_model.dart';
 
 class OrderModel {
   final dynamic id;
@@ -100,6 +101,7 @@ class TransactionModel {
   final UserLocationModel? userLocation;
   final List<OrderModel> orders;
   final UserModel? user;
+  final CourierModel? courier;
 
   TransactionModel({
     this.id,
@@ -117,6 +119,7 @@ class TransactionModel {
     this.userLocation,
     required this.orders,
     this.user,
+    this.courier,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -197,6 +200,12 @@ class TransactionModel {
         user = UserModel.fromJson(transactionData['user']);
       }
 
+      // Parse courier
+      CourierModel? courier;
+      if (transactionData['courier'] != null) {
+        courier = CourierModel.fromJson(transactionData['courier']);
+      }
+
       // Parse prices that could be string or number
       double totalPrice = 0.0;
       if (transactionData['total_price'] != null || transactionData['total_amount'] != null) {
@@ -236,6 +245,7 @@ class TransactionModel {
         userLocation: userLocation,
         orders: orders,
         user: user,
+        courier: courier,
       );
     } catch (e, stackTrace) {
       print('Error parsing TransactionModel: $e');
@@ -290,6 +300,7 @@ class TransactionModel {
       'user_location': userLocation?.toJson(),
       'orders': orders.map((order) => order.toJson()).toList(),
       'user': user?.toJson(),
+      'courier': courier?.toJson(),
     };
   }
 
@@ -345,6 +356,7 @@ class TransactionModel {
     UserLocationModel? userLocation,
     List<OrderModel>? orders,
     UserModel? user,
+    CourierModel? courier,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -362,6 +374,7 @@ class TransactionModel {
       userLocation: userLocation ?? this.userLocation,
       orders: orders ?? this.orders,
       user: user ?? this.user,
+      courier: courier ?? this.courier,
     );
   }
 }

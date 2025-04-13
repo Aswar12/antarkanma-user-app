@@ -22,7 +22,7 @@ class AuthController extends GetxController {
   final phoneNumberController = TextEditingController();
   final RxBool isLoading = false.obs;
   final RxBool isPasswordHidden = true.obs;
-  final rememberMe = false.obs;
+  final rememberMe = true.obs; // Always remember me by default
   final RxInt _rating = 0.obs;
   int get rating => _rating.value;
 
@@ -43,8 +43,9 @@ class AuthController extends GetxController {
       // Ensure storage is initialized
       await _storageService.ensureInitialized();
 
-      // Load remember me state
-      rememberMe.value = _storageService.getRememberMe();
+      // Always set remember me to true
+      rememberMe.value = true;
+      await _storageService.saveRememberMe(true);
 
       _isInitialized.value = true;
     } catch (e) {
@@ -60,9 +61,8 @@ class AuthController extends GetxController {
       }
 
       final token = _storageService.getToken();
-      final rememberMe = _storageService.getRememberMe();
 
-      if (token != null && rememberMe) {
+      if (token != null) {
         // Verify the token first
         final isValid = await _authService.verifyToken(token);
         if (isValid) {
@@ -137,14 +137,6 @@ class AuthController extends GetxController {
     isConfirmPasswordHidden.value = !isConfirmPasswordHidden.value;
   }
 
-  Future<void> toggleRememberMe() async {
-    if (!_isInitialized.value) {
-      await _initializeController();
-    }
-    rememberMe.value = !rememberMe.value;
-    await _storageService.saveRememberMe(rememberMe.value);
-  }
-
   void setRating(int value) {
     if (value >= 1 && value <= 5) {
       _rating.value = value;
@@ -182,7 +174,7 @@ class AuthController extends GetxController {
       final success = await _authService.login(
         identifierController.text,
         passwordController.text,
-        rememberMe: rememberMe.value,
+        rememberMe: true, // Always remember me
       );
 
       if (!success) {
@@ -272,21 +264,10 @@ class AuthController extends GetxController {
         await _initializeController();
       }
 
-      // Store remember me state and credentials before logout
-      final wasRememberMeEnabled = _storageService.getRememberMe();
-      final savedCredentials =
-          wasRememberMeEnabled ? _storageService.getSavedCredentials() : null;
-
       await _authService.logout();
 
-      // Clear auth data while preserving remember me if enabled
-      if (wasRememberMeEnabled && savedCredentials != null) {
-        // Clear auth data but keep remember me settings
-        await _storageService.clearAuth();
-      } else {
-        // Clear everything including remember me settings
-        await _storageService.clearAll();
-      }
+      // Clear auth data but keep credentials since remember me is always true
+      await _storageService.clearAuth();
 
       // Reset controllers
       identifierController.clear();
@@ -296,13 +277,10 @@ class AuthController extends GetxController {
       emailController.clear();
       phoneNumberController.clear();
 
-      // Reset observable values except remember me if enabled
+      // Reset observable values
       isLoading.value = false;
       isPasswordHidden.value = true;
       isConfirmPasswordHidden.value = true;
-      if (!wasRememberMeEnabled) {
-        rememberMe.value = false;
-      }
 
       Get.offAllNamed(Routes.login);
       showCustomSnackbar(

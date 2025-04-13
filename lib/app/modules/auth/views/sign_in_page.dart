@@ -92,8 +92,6 @@ class SignInPage extends GetView<AuthController> {
           emailInput(),
           SizedBox(height: Dimenssions.height15),
           passwordInput(),
-          SizedBox(height: Dimenssions.height10),
-          rememberMeCheckbox(),
         ],
       ),
     );
@@ -118,33 +116,6 @@ class SignInPage extends GetView<AuthController> {
       initialObscureText: true,
       icon: 'assets/icon_password.png',
       showVisibilityToggle: true,
-    );
-  }
-
-  Widget rememberMeCheckbox() {
-    return Obx(
-      () => Container(
-        margin: EdgeInsets.only(top: Dimenssions.height5),
-        child: Row(
-          children: [
-            Checkbox(
-              value: controller.rememberMe.value,
-              onChanged: (value) => controller.toggleRememberMe(),
-              activeColor: logoColorSecondary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            Text(
-              'Ingat Saya',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                fontWeight: medium,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

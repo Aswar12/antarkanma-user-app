@@ -81,17 +81,20 @@ class AuthProvider {
 
             if (retryCount < maxRetries) {
               error.requestOptions.extra['retryCount'] = retryCount + 1;
-              
+
               // Calculate delay with exponential backoff starting at 2 seconds
               final delay = Duration(seconds: 2 * (1 << retryCount));
-              debugPrint('🔄 Waiting ${delay.inSeconds}s before retry ${retryCount + 1}/$maxRetries');
+              debugPrint(
+                  '🔄 Waiting ${delay.inSeconds}s before retry ${retryCount + 1}/$maxRetries');
               await Future.delayed(delay);
 
               try {
                 // Keep timeouts consistent at 45 seconds
-                error.requestOptions.connectTimeout = const Duration(seconds: 45);
+                error.requestOptions.connectTimeout =
+                    const Duration(seconds: 45);
                 error.requestOptions.sendTimeout = const Duration(seconds: 45);
-                error.requestOptions.receiveTimeout = const Duration(seconds: 45);
+                error.requestOptions.receiveTimeout =
+                    const Duration(seconds: 45);
 
                 final response = await _dio.fetch(error.requestOptions);
                 return handler.resolve(response);

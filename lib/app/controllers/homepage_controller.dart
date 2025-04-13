@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/data/models/product_category_model.dart';
@@ -7,8 +9,7 @@ import 'package:antarkanma/app/services/product_service.dart';
 import 'package:antarkanma/app/services/merchant_service.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/services/location_service.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:antarkanma/app/services/osrm_service.dart';
 
 class HomePageController extends GetxController {
   final ProductService productService;
@@ -16,6 +17,7 @@ class HomePageController extends GetxController {
   final CategoryService _categoryService;
   final AuthService _authService;
   final LocationService _locationService;
+  final OSRMService _osrmService = Get.find<OSRMService>();
 
   // Initialize controllers immediately
   final ScrollController scrollController = ScrollController();
@@ -36,6 +38,8 @@ class HomePageController extends GetxController {
   final RxBool isRefreshing = false.obs;
   final RxBool isLoadingPopularProducts = false.obs;
   final RxBool isLoadingMerchants = false.obs;
+  final RxBool isSkeletonLoading = false.obs;
+  final RxBool isCalculatingDistances = false.obs;
 
   // UI states with persistence
   final RxString selectedCategory = "Semua".obs;
@@ -43,15 +47,15 @@ class HomePageController extends GetxController {
   final RxString searchQuery = ''.obs;
   final RxBool isSearching = false.obs;
 
-  // Cache control with longer expiration (30 minutes)
-  static const Duration cacheExpiration = Duration(minutes: 30);
+  // Cache control
+  static const Duration cacheExpiration = Duration(days: 2);
   DateTime? _lastPopularProductsUpdate;
   DateTime? _lastMerchantsUpdate;
   Timer? _cacheRefreshTimer;
   Timer? _debounceTimer;
 
   // Pagination control
-  static const int _pageSize = 10;
+  static const int _pageSize = 20;
   bool _isLoadingPopular = false;
   Completer<void>? _popularProductsCompleter;
   int _currentPage = 1;
@@ -59,6 +63,10 @@ class HomePageController extends GetxController {
   int _totalItems = 0;
   int _retryAttempts = 0;
   static const int maxRetries = 3;
+
+  // Cache size control
+  static const int maxCachedProducts = 200;
+  static const int maxCachedMerchants = 100;
 
   HomePageController({
     required this.productService,
@@ -69,38 +77,9 @@ class HomePageController extends GetxController {
   })  : _categoryService = categoryService,
         _authService = authService,
         _locationService = locationService {
-    // Initialize listeners in constructor
     scrollController.addListener(_scrollListener);
     searchFocusNode.addListener(_onSearchFocusChange);
     _setupSearchListener();
-  }
-
-  @override
-  void onInit() {
-    super.onInit();
-    _startCacheRefreshTimer();
-    
-    // Improved data loading logic
-    if (!_isCacheExpired() && popularProducts.isNotEmpty && allMerchants.isNotEmpty) {
-      // Use existing data if cache is valid
-      isLoading.value = false;
-      return;
-    }
-    
-    // Load data only if cache expired or data is empty
-    loadInitialData();
-  }
-
-  void _scrollListener() {
-    if (!isLoadingMore.value && hasMoreData.value && scrollController.hasClients) {
-      final maxScroll = scrollController.position.maxScrollExtent;
-      final currentScroll = scrollController.position.pixels;
-      final delta = maxScroll * 0.2;
-
-      if (maxScroll - currentScroll <= delta && _currentPage < _lastPage) {
-        loadMoreMerchants();
-      }
-    }
   }
 
   void _onSearchFocusChange() {
@@ -117,21 +96,16 @@ class HomePageController extends GetxController {
         } else {
           searchResults.clear();
           merchantSearchResults.clear();
+          _sortMerchantsByDistance(allMerchants);
+          allMerchants.refresh();
         }
       }
     });
   }
 
-  void _debounceSearch() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      performSearch();
-    });
-  }
-
   void _startCacheRefreshTimer() {
     _cacheRefreshTimer?.cancel();
-    _cacheRefreshTimer = Timer.periodic(cacheExpiration, (timer) {
+    _cacheRefreshTimer = Timer.periodic(const Duration(hours: 12), (timer) {
       if (!isRefreshing.value) {
         _refreshCachedData();
       }
@@ -144,16 +118,20 @@ class HomePageController extends GetxController {
     }
     final now = DateTime.now();
     return now.difference(_lastPopularProductsUpdate!) > cacheExpiration ||
-           now.difference(_lastMerchantsUpdate!) > cacheExpiration;
+        now.difference(_lastMerchantsUpdate!) > cacheExpiration;
   }
 
-  Future<void> _refreshCachedData() async {
-    try {
-      if (_isCacheExpired()) {
-        await refreshProducts(showMessage: false);
+  void _scrollListener() {
+    if (!isLoadingMore.value &&
+        hasMoreData.value &&
+        scrollController.hasClients) {
+      final maxScroll = scrollController.position.maxScrollExtent;
+      final currentScroll = scrollController.position.pixels;
+      final delta = maxScroll * 0.2;
+
+      if (maxScroll - currentScroll <= delta && _currentPage < _lastPage) {
+        loadMoreMerchants();
       }
-    } catch (e) {
-      debugPrint('Background cache refresh error: $e');
     }
   }
 
@@ -162,25 +140,30 @@ class HomePageController extends GetxController {
 
     try {
       isLoadingMerchants.value = true;
-      final locationData = await _locationService.getCurrentLocation();
-      
+
       final paginatedResponse = await merchantService.getAllMerchants(
         page: _currentPage,
         pageSize: _pageSize,
         category: selectedCategory.value == "Semua" ? null : selectedCategory.value,
-        latitude: locationData['latitude'],
-        longitude: locationData['longitude'],
       );
 
       if (_currentPage == 1) {
         allMerchants.clear();
       }
 
-      allMerchants.addAll(paginatedResponse.data);
+      final newMerchants = paginatedResponse.data;
       _lastPage = paginatedResponse.lastPage;
       _totalItems = paginatedResponse.total;
       hasMoreData.value = _currentPage < _lastPage;
       _lastMerchantsUpdate = DateTime.now();
+
+      allMerchants.addAll(newMerchants);
+      allMerchants.refresh();
+
+      if (_currentPage == 1) {
+        _calculateDistancesInBackground(newMerchants);
+      }
+
       _retryAttempts = 0;
     } catch (e) {
       debugPrint('Error loading merchants: $e');
@@ -195,40 +178,134 @@ class HomePageController extends GetxController {
     }
   }
 
+  Future<void> _calculateDistancesInBackground(List<MerchantModel> merchants) async {
+    try {
+      isCalculatingDistances.value = true;
+
+      final locationData = await _locationService.getCurrentLocation(forceUpdate: true)
+          .timeout(const Duration(seconds: 15));
+      
+      if (locationData['isDefault'] == true) return;
+
+      final userLat = locationData['latitude'] as double;
+      final userLng = locationData['longitude'] as double;
+
+      final visibleMerchants = merchants.take(_pageSize).toList();
+      if (visibleMerchants.every((m) => m.distance != null)) return;
+
+      final destinations = visibleMerchants
+          .where((m) =>
+              m.latitude != null && m.longitude != null && m.distance == null)
+          .map((m) => {
+                'id': m.id,
+                'latitude': m.latitude!,
+                'longitude': m.longitude!,
+              })
+          .toList();
+
+      if (destinations.isEmpty) return;
+
+      final results = await _osrmService.calculateBatchDistances(
+        userLat,
+        userLng,
+        destinations,
+      );
+
+      for (var result in results) {
+        final merchantId = result['merchant_id'];
+        final distance = result['distance'];
+        final duration = result['duration'];
+
+        final index = allMerchants.indexWhere((m) => m.id == merchantId);
+        if (index != -1) {
+          final merchant = allMerchants[index];
+          allMerchants[index] = MerchantModel(
+            id: merchant.id,
+            name: merchant.name,
+            address: merchant.address,
+            phoneNumber: merchant.phoneNumber,
+            status: merchant.status,
+            description: merchant.description,
+            logo: merchant.logo,
+            logoUrl: merchant.logoUrl,
+            openingTime: merchant.openingTime,
+            closingTime: merchant.closingTime,
+            operatingDays: merchant.operatingDays,
+            latitude: merchant.latitude,
+            longitude: merchant.longitude,
+            distance: distance,
+            duration: duration.round(),
+            stats: merchant.stats,
+            totalProducts: merchant.totalProducts,
+          );
+        }
+      }
+
+      _sortVisibleMerchants();
+      allMerchants.refresh();
+    } catch (e) {
+      debugPrint('Error calculating distances in background: $e');
+    }
+  }
+
+  void _sortMerchantsByDistance(List<MerchantModel> merchants) {
+    merchants.sort((a, b) {
+      final distanceA = a.distance ?? double.infinity;
+      final distanceB = b.distance ?? double.infinity;
+      return distanceA.compareTo(distanceB);
+    });
+  }
+
+  void _sortVisibleMerchants() {
+    final visibleMerchants = allMerchants.take(_pageSize).toList();
+    visibleMerchants.sort((a, b) {
+      final distanceA = a.distance ?? double.infinity;
+      final distanceB = b.distance ?? double.infinity;
+      return distanceA.compareTo(distanceB);
+    });
+
+    for (var i = 0; i < visibleMerchants.length; i++) {
+      if (i < allMerchants.length) {
+        allMerchants[i] = visibleMerchants[i];
+      }
+    }
+  }
+
+  Future<void> loadInitialData() async {
+    try {
+      isLoading.value = true;
+      isSkeletonLoading.value = true;
+      _currentPage = 1;
+      _lastPage = 1;
+      hasMoreData.value = true;
+      _retryAttempts = 0;
+
+      _locationService.init();
+
+      await loadAllMerchants();
+
+      await Future.wait([
+        loadPopularProducts(),
+      ]);
+
+      selectedCategory.value = "Semua";
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+      if (_retryAttempts < maxRetries) {
+        _retryAttempts++;
+        await Future.delayed(Duration(seconds: _retryAttempts));
+        return loadInitialData();
+      }
+    } finally {
+      isLoading.value = false;
+      isSkeletonLoading.value = false;
+    }
+  }
+
   Future<void> loadMoreMerchants() async {
     if (isLoadingMore.value || _currentPage >= _lastPage) return;
     _currentPage++;
     await loadAllMerchants();
-  }
-
-  Future<void> performSearch() async {
-    if (searchQuery.isEmpty) return;
-
-    try {
-      isLoadingMore.value = true;
-      final locationData = await _locationService.getCurrentLocation();
-
-      final merchantResponse = await merchantService.getAllMerchants(
-        query: searchQuery.value,
-        page: _currentPage,
-        pageSize: _pageSize,
-        latitude: locationData['latitude'],
-        longitude: locationData['longitude'],
-      );
-
-      if (_currentPage == 1) {
-        merchantSearchResults.clear();
-      }
-
-      merchantSearchResults.addAll(merchantResponse.data);
-      _lastPage = merchantResponse.lastPage;
-      _totalItems = merchantResponse.total;
-      hasMoreData.value = _currentPage < _lastPage;
-    } catch (e) {
-      debugPrint('Error performing search: $e');
-    } finally {
-      isLoadingMore.value = false;
-    }
   }
 
   Future<void> loadPopularProducts() async {
@@ -241,14 +318,16 @@ class HomePageController extends GetxController {
       _isLoadingPopular = true;
       _popularProductsCompleter = Completer<void>();
 
-      // Check if we have valid cached data
       if (!_isCacheExpired() && popularProducts.isNotEmpty) {
         _popularProductsCompleter?.complete();
         return;
       }
 
-      final paginatedResponse = await productService.getAllProducts(pageSize: 10);
-      popularProducts.assignAll(paginatedResponse.data);
+      final paginatedResponse =
+          await productService.getAllProducts(pageSize: maxCachedProducts);
+
+      popularProducts
+          .assignAll(paginatedResponse.data.take(maxCachedProducts).toList());
       _lastPopularProductsUpdate = DateTime.now();
       _popularProductsCompleter?.complete();
       _retryAttempts = 0;
@@ -285,9 +364,83 @@ class HomePageController extends GetxController {
     searchController.clear();
     searchQuery.value = '';
     merchantSearchResults.clear();
+    searchResults.clear();
     _currentPage = 1;
     hasMoreData.value = true;
     await loadAllMerchants();
+  }
+
+  void _debounceSearch() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      performSearch();
+    });
+  }
+
+  Future<void> performSearch() async {
+    if (searchQuery.isEmpty) return;
+
+    try {
+      isLoadingMore.value = true;
+
+      // Search for merchants
+      final merchantPaginatedResponse = await merchantService.getAllMerchants(
+        query: searchQuery.value,
+        page: _currentPage,
+        pageSize: _pageSize,
+      );
+
+      if (_currentPage == 1) {
+        merchantSearchResults.clear();
+        searchResults.clear();
+      }
+
+      final newMerchantResults = merchantPaginatedResponse.data;
+      final searchTerm = searchQuery.value.toLowerCase().trim();
+      
+      final filteredMerchantResults = newMerchantResults.where((merchant) {
+        final name = merchant.name.toLowerCase();
+        final address = (merchant.address ?? '').toLowerCase();
+        return name.contains(searchTerm) || address.contains(searchTerm);
+      }).toList();
+
+      merchantSearchResults.addAll(filteredMerchantResults);
+      _calculateDistancesInBackground(filteredMerchantResults);
+
+      // Search for products
+      final productPaginatedResponse = await productService.getAllProducts(
+        query: searchQuery.value,
+        page: _currentPage,
+        pageSize: _pageSize,
+      );
+
+      final filteredProductResults = productPaginatedResponse.data.where((product) {
+        final name = product.name.toLowerCase();
+        final description = (product.description ?? '').toLowerCase();
+        return name.contains(searchTerm) || description.contains(searchTerm);
+      }).toList();
+
+      searchResults.addAll(filteredProductResults);
+
+      _lastPage = merchantPaginatedResponse.lastPage;
+      _totalItems = merchantPaginatedResponse.total;
+      hasMoreData.value = _currentPage < _lastPage;
+
+    } catch (e) {
+      debugPrint('Error performing search: $e');
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  Future<void> _refreshCachedData() async {
+    try {
+      if (_isCacheExpired()) {
+        await refreshProducts(showMessage: false);
+      }
+    } catch (e) {
+      debugPrint('Background cache refresh error: $e');
+    }
   }
 
   Future<void> refreshProducts({bool showMessage = true}) async {
@@ -295,35 +448,34 @@ class HomePageController extends GetxController {
 
     try {
       isRefreshing.value = true;
+      isSkeletonLoading.value = true;
       _retryAttempts = 0;
 
-      // Start location update in background
-      _locationService.getCurrentLocation();
+      popularProducts.clear();
+      allProducts.clear();
+      searchResults.clear();
+      allMerchants.clear();
+      merchantSearchResults.clear();
+      _categoryService.categories.clear();
 
-      // Clear cached data
+      _currentPage = 1;
+      _lastPage = 1;
+      hasMoreData.value = true;
+      selectedCategory.value = "Semua";
+      searchController.clear();
+      searchQuery.value = '';
+
       await Future.wait([
         productService.clearLocalStorage(),
         merchantService.clearLocalStorage(),
       ]);
 
-      popularProducts.clear();
-      allProducts.clear();
-      searchResults.clear();
-      merchantSearchResults.clear();
-      allMerchants.clear();
-      _categoryService.categories.clear();
-      _currentPage = 1;
-      _lastPage = 1;
-      hasMoreData.value = true;
-
-      // Load fresh data concurrently
       await Future.wait([
         loadPopularProducts(),
         loadAllMerchants(),
         _categoryService.getCategories(),
       ]);
 
-      selectedCategory.value = "Semua";
       _lastPopularProductsUpdate = DateTime.now();
       _lastMerchantsUpdate = DateTime.now();
 
@@ -352,46 +504,23 @@ class HomePageController extends GetxController {
     } finally {
       isRefreshing.value = false;
       isLoading.value = false;
+      isSkeletonLoading.value = false;
     }
   }
 
-  Future<void> loadInitialData() async {
-    try {
-      isLoading.value = true;
-      _currentPage = 1;
-      _lastPage = 1;
-      hasMoreData.value = true;
-      _retryAttempts = 0;
+  List<ProductCategory> get categories => _categoryService.categories;
+  bool get isCategoriesLoading => _categoryService.isLoading.value;
+  List<ProductModel> get filteredProducts =>
+      searchQuery.isEmpty ? allProducts : searchResults;
+  List<MerchantModel> get filteredMerchants =>
+      searchQuery.isEmpty ? allMerchants : merchantSearchResults;
+  bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 
-      // Start location update in background
-      final locationFuture = _locationService.getCurrentLocation();
-
-      // Load cached data first if available
-      if (!_isCacheExpired() && popularProducts.isNotEmpty && allMerchants.isNotEmpty) {
-        isLoading.value = false;
-        return;
-      }
-
-      // Wait for location before loading merchants
-      await locationFuture;
-      
-      // Load fresh data concurrently
-      await Future.wait([
-        loadPopularProducts(),
-        loadAllMerchants(),
-      ]);
-
-      selectedCategory.value = "Semua";
-    } catch (e) {
-      debugPrint('Error loading initial data: $e');
-      if (_retryAttempts < maxRetries) {
-        _retryAttempts++;
-        await Future.delayed(Duration(seconds: _retryAttempts));
-        return loadInitialData();
-      }
-    } finally {
-      isLoading.value = false;
-    }
+  @override
+  void onInit() {
+    super.onInit();
+    _startCacheRefreshTimer();
+    loadInitialData();
   }
 
   @override
@@ -403,13 +532,4 @@ class HomePageController extends GetxController {
     _debounceTimer?.cancel();
     super.onClose();
   }
-
-  // Getters
-  List<ProductCategory> get categories => _categoryService.categories;
-  bool get isCategoriesLoading => _categoryService.isLoading.value;
-  List<ProductModel> get filteredProducts =>
-      searchQuery.isEmpty ? allProducts : searchResults;
-  List<MerchantModel> get filteredMerchants =>
-      searchQuery.isEmpty ? allMerchants : merchantSearchResults;
-  bool get hasValidData => popularProducts.isNotEmpty && !isLoading.value;
 }
