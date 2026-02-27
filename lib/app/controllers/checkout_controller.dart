@@ -105,7 +105,8 @@ class CheckoutController extends GetxController {
           ? userLocationController.userLocations.first
           : null;
 
-      UserLocationModel? priorityLocation = selectedLoc ?? defaultLoc ?? firstLoc;
+      UserLocationModel? priorityLocation =
+          selectedLoc ?? defaultLoc ?? firstLoc;
 
       if (priorityLocation != null) {
         selectedLocation.value = priorityLocation;
@@ -114,7 +115,8 @@ class CheckoutController extends GetxController {
         debugPrint('No valid location found');
         showCustomSnackbar(
           title: 'Warning',
-          message: 'Alamat pengiriman tidak tersedia. Silakan tambahkan alamat baru.',
+          message:
+              'Alamat pengiriman tidak tersedia. Silakan tambahkan alamat baru.',
           isError: true,
         );
       }
@@ -152,7 +154,8 @@ class CheckoutController extends GetxController {
       if (Get.arguments != null && Get.arguments is Map) {
         final args = Get.arguments as Map;
         if (args['type'] == 'direct_buy' && args['merchantItems'] != null) {
-          merchantCartItems = args['merchantItems'] as Map<int, List<CartItemModel>>;
+          merchantCartItems =
+              args['merchantItems'] as Map<int, List<CartItemModel>>;
         }
       }
 
@@ -237,10 +240,13 @@ class CheckoutController extends GetxController {
         return;
       }
 
-      final items = orderItems.map((item) => {
-        'product_id': item.product.id,
-        'quantity': item.quantity,
-      }).toList();
+      final items = orderItems
+          .map((item) => {
+                'product_id': item.product.id,
+                'variant_id': item.variant?.id,
+                'quantity': item.quantity,
+              })
+          .toList();
 
       final response = await shippingService.getShippingPreview(
         userLocationId: locationId,
@@ -280,7 +286,7 @@ class CheckoutController extends GetxController {
         debugPrint('Shipping calculation cancelled');
         return;
       }
-      
+
       if (!(_shippingCancelToken?.isCancelled ?? true)) {
         String errorMessage = 'Gagal menghitung biaya pengiriman';
         if (e.type == dio.DioExceptionType.connectionTimeout ||
@@ -288,7 +294,7 @@ class CheckoutController extends GetxController {
             e.type == dio.DioExceptionType.receiveTimeout) {
           errorMessage = 'Koneksi timeout. Silakan coba lagi.';
         }
-        
+
         debugPrint('Dio error in shipping calculation: ${e.message}');
         showCustomSnackbar(
           title: 'Error',
@@ -377,10 +383,12 @@ class CheckoutController extends GetxController {
       }
 
       final transactionPayload = _createTransactionPayload();
-      final createdTransaction = await transactionService.createTransaction(transactionPayload);
+      final createdTransaction =
+          await transactionService.createTransaction(transactionPayload);
 
       if (createdTransaction != null) {
-        debugPrint('Transaction created successfully: ${createdTransaction.id}');
+        debugPrint(
+            'Transaction created successfully: ${createdTransaction.id}');
         _clearCart();
         _navigateToSuccessPage(createdTransaction);
         Get.find<OrderController>().setTransactionData(createdTransaction);
@@ -398,7 +406,7 @@ class CheckoutController extends GetxController {
           e.type == dio.DioExceptionType.receiveTimeout) {
         errorMessage = 'Koneksi timeout. Silakan coba lagi.';
       }
-      
+
       debugPrint('Dio error in checkout: ${e.message}');
       showCustomSnackbar(
         title: 'Error',
@@ -416,10 +424,13 @@ class CheckoutController extends GetxController {
   Map<String, dynamic> _createTransactionPayload() {
     return {
       'user_location_id': selectedLocation.value?.id,
-      'payment_method': _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
+      'payment_method':
+          _mapPaymentMethod(selectedPaymentMethod.value ?? 'MANUAL'),
       'items': orderItems
           .map((item) => {
                 'product_id': item.product.id,
+                'variant_id': item.variant?.id,
+                'customer_note': item.customerNote,
                 'quantity': item.quantity,
                 'merchant_id': item.merchant.id,
               })
@@ -459,10 +470,12 @@ class CheckoutController extends GetxController {
     if (shippingDetails.value == null) {
       validationErrors.add('Informasi pengiriman tidak tersedia');
     } else if (!shippingDetails.value!.canProceedToCheckout) {
-      validationErrors.add(shippingDetails.value!.routeWarningMessage ?? 'Rute pengiriman tidak valid');
+      validationErrors.add(shippingDetails.value!.routeWarningMessage ??
+          'Rute pengiriman tidak valid');
     }
 
-    final invalidItems = orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+    final invalidItems =
+        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -521,7 +534,8 @@ class CheckoutController extends GetxController {
 
   void _clearCart() {
     try {
-      if (Get.arguments == null || (Get.arguments as Map)['type'] != 'direct_buy') {
+      if (Get.arguments == null ||
+          (Get.arguments as Map)['type'] != 'direct_buy') {
         cartController.clearCart();
       }
     } catch (e) {

@@ -1,7 +1,14 @@
 class Config {
-  static String baseUrl = 'https://dev.antarkanmaa.my.id/api';
-  static const int receiveTimeout = 30000; // Increased to 30 seconds
-  static const int connectTimeout = 30000; // Increased to 30 seconds
+  // Production: static String baseUrl = 'https://dev.antarkanmaa.my.id/api';
+
+  // HOST CONFIGURATION:
+  // 1. Localhost (ADB Reverse): 'http://localhost:8000/api' -> run: adb reverse tcp:8000 tcp:8000
+  // 2. Android Emulator: 'http://10.0.2.2:8000/api'
+  // 3. Physical Device (Local IP): 'http://192.168.x.x:8000/api'
+  static String baseUrl = 'http://localhost:8000/api';
+
+  static const int receiveTimeout = 45000; // Increased to 45 seconds
+  static const int connectTimeout = 45000; // Increased to 45 seconds
 
   // API Endpoints
   static const String products = '/products';

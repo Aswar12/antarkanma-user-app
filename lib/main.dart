@@ -12,6 +12,7 @@ import 'app/bindings/main_binding.dart';
 import 'app/services/auth_service.dart';
 import 'app/services/storage_service.dart';
 import 'app/services/fcm_token_service.dart';
+import 'package:antarkanma/app/controllers/theme_controller.dart';
 
 class CustomHttpOverrides extends HttpOverrides {
   @override
@@ -118,35 +119,55 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Antarkanma',
-      theme: ThemeData(
-        primarySwatch: primarySwatch,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    final themeController = Get.put(ThemeController());
+
+    return GetBuilder<ThemeController>(
+      init: themeController,
+      builder: (controller) => GetMaterialApp(
+        title: 'Antarkanma',
+        theme: ThemeData(
+          primarySwatch: primarySwatch,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+          brightness: Brightness.light,
+          scaffoldBackgroundColor: backgroundLight,
+        ),
+        darkTheme: ThemeData(
+          primarySwatch: primarySwatch,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: backgroundDark,
+          colorScheme: ColorScheme.dark(
+            primary: primaryOrange,
+            secondary: logoColorSecondary,
+            surface: navyColor,
+            background: backgroundDark,
+          ),
+        ),
+        themeMode: controller.themeMode.value,
+        debugShowCheckedModeBanner: false,
+        initialRoute: AppPages.initial,
+        getPages: AppPages.routes,
+        defaultTransition: Transition.fadeIn,
+        onInit: () {
+          if (kDebugMode) {
+            debugPrint('GetMaterialApp initialized');
+          }
+        },
+        onReady: () {
+          if (kDebugMode) {
+            debugPrint('GetMaterialApp ready');
+          }
+        },
+        builder: (context, child) {
+          return GestureDetector(
+            onTap: () {
+              // Dismiss keyboard when tapping outside
+              FocusScope.of(context).requestFocus(FocusNode());
+            },
+            child: child!,
+          );
+        },
       ),
-      debugShowCheckedModeBanner: kDebugMode,
-      initialRoute: AppPages.initial,
-      getPages: AppPages.routes,
-      defaultTransition: Transition.fadeIn,
-      onInit: () {
-        if (kDebugMode) {
-          debugPrint('GetMaterialApp initialized');
-        }
-      },
-      onReady: () {
-        if (kDebugMode) {
-          debugPrint('GetMaterialApp ready');
-        }
-      },
-      builder: (context, child) {
-        return GestureDetector(
-          onTap: () {
-            // Dismiss keyboard when tapping outside
-            FocusScope.of(context).requestFocus(FocusNode());
-          },
-          child: child!,
-        );
-      },
     );
   }
 }

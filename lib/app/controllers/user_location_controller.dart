@@ -20,6 +20,8 @@ class UserLocationController extends GetxController {
   bool get isLoading => _isLoading.value;
   String get errorMessage => _errorMessage.value;
   UserLocationModel? get selectedLocation => _selectedLocation.value;
+  String get currentAddress =>
+      _selectedLocation.value?.address ?? _defaultAddress.value?.address ?? '';
 
   @override
   void onInit() {

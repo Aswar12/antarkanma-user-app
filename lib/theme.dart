@@ -4,7 +4,38 @@ import 'package:flutter/material.dart';
 
 double defaultMargin = Dimenssions.height10;
 
-Color textColor = const Color(0xffccc7c5);
+// Unified Color Palette
+Color primaryColor = const Color(0xff38ABBE); // Teal
+Color secondaryColor = const Color(0xffF66000); // Orange
+Color logoColor = const Color(0xff0d2841);
+Color navyColor = const Color(0xff000040);
+Color primaryOrange = const Color(0xffFF6600);
+Color backgroundLight = const Color(0xfff8f9fa);
+Color backgroundDark = const Color(0xff000020);
+Color logoColorSecondary =
+    const Color(0xffFF6600); // Updated to match primaryOrange // Orange
+Color alertColor = const Color(0xffED6363); // Red
+Color priceColor = const Color(0xff2C96F1); // Blue
+
+// Backgrounds
+Color backgroundColor1 = const Color(0xFFFFFFFF); // White
+Color backgroundColor2 = const Color(0xFFFEFEFF); // Off-White
+Color backgroundColor3 = const Color(0xFFDDDDDD);
+Color backgroundColor4 = const Color(0xff252836);
+Color backgroundColor5 = const Color(0xFFD4D1D1);
+Color backgroundColor6 = const Color(0xFF000000);
+Color backgroundColor7 = const Color(0xFF000000);
+Color backgroundColor8 = const Color(0XFFf3f5f4);
+
+// Text Colors
+Color primaryTextColor = const Color(0xFF0C0C0C);
+Color secondaryTextColor = const Color(0xFF585858);
+Color subtitleColor = const Color(0xFF8E8E97);
+Color transparentColor = Colors.transparent;
+Color blackColor = const Color(0xff2E2E2E);
+Color textwhiteColor = const Color(0xFFFFFFFF);
+
+// Legacy/Other Colors (Keep for compatibility but encourage standard usage)
 Color mainColor = const Color(0xff82dad0);
 Color iconColor1 = const Color(0xffffd28d);
 Color iconColor = const Color(0xFFfcab88);
@@ -15,25 +46,13 @@ Color titlecoler = const Color(0xff5c524f);
 Color mainBlackColor = const Color(0xff332d2b);
 Color yellowColor = const Color(0xffffd379);
 
-Color primaryColor = const Color(0xff38ABBE);
-Color secondaryColor = const Color(0xff38ABBE);
-Color alertColor = const Color(0xffED6363);
-Color priceColor = const Color(0xff2C96F1);
-Color backgroundColor1 = const Color(0xFFFFFFFF);
-Color backgroundColor2 = const Color(0xFFFEFEFF);
-Color backgroundColor3 = const Color(0xFFDDDDDD);
-Color backgroundColor4 = const Color(0xff252836);
-Color backgroundColor5 = const Color(0xFFD4D1D1);
-Color backgroundColor6 = const Color(0xFF000000);
-Color backgroundColor7 = const Color(0xFF000000);
-Color backgroundColor8 = const Color(0XFFf3f5f4);
-Color primaryTextColor = const Color(0xFF0C0C0C);
-Color secondaryTextColor = const Color(0xFF585858);
-Color subtitleColor = const Color(0xFF8E8E97);
-Color transparentColor = Colors.transparent;
-Color blackColor = const Color(0xff2E2E2E);
-Color logoColor = const Color(0xff020238);
-Color logoColorSecondary = const Color(0xfffffff6600);
+// Chat Specific Colors
+Color chatPrimary = const Color(0xFF1E3A8A); // Navy Blue
+Color chatSecondary = const Color(0xFFF97316); // Bright Orange
+Color chatBackgroundLight = const Color(0xFFF8FAFC);
+Color chatBubbleMerchant = const Color(0xFFFFFFFF);
+Color chatTextDark = const Color(0xFF0F172A);
+Color chatTextSecondary = const Color(0xFF64748B); // Slate-500 equivalent
 
 const MaterialColor primarySwatch = MaterialColor(
   0xFFFF6600,

@@ -36,9 +36,9 @@ class NotificationProvider {
       {String? role}) async {
     try {
       final response = await _dio.post(
-        '/fcm/token/create', // Matches Laravel route exactly
+        '/fcm/token', // Updated to match api.php
         data: {
-          'token': fcmToken, // Renamed to be more explicit
+          'token': fcmToken,
           'user_id': userId,
           'role': role,
           'device_type': defaultTargetPlatform.name.toLowerCase(),
@@ -63,11 +63,20 @@ class NotificationProvider {
   Future<Response> updateFCMToken(
       String oldFcmToken, String newFcmToken) async {
     try {
+      // Logic for update might be the same as storeOrUpdateToken in backend,
+      // or if backend handles update via same endpoint.
+      // Assuming storeOrUpdateToken handles both based on token existence.
+      // But looking at api.php, there's only storeOrUpdateToken at /fcm/token.
+      // So we use that.
+
       final response = await _dio.post(
-        '/fcm/token/update', // Matches Laravel route exactly
+        '/fcm/token',
         data: {
-          'old_fcm_token': oldFcmToken, // Renamed to be more explicit
-          'new_fcm_token': newFcmToken, // Renamed to be more explicit
+          'token': newFcmToken, // Send new token
+          'old_token':
+              oldFcmToken, // Optional if backend supports it, otherwise just sending new one might be enough if it updates by user_id/device_id
+          // Re-sending other necessary fields if required by backend validation
+          'device_type': defaultTargetPlatform.name.toLowerCase(),
         },
       );
 
@@ -87,9 +96,10 @@ class NotificationProvider {
   Future<Response> unregisterFCMToken(String fcmToken) async {
     try {
       final response = await _dio.delete(
-        '/fcm/token', // Matches Laravel route exactly
+        '/fcm/token',
         data: {
-          'fcm_token': fcmToken, // Renamed to be more explicit
+          'token':
+              fcmToken, // Changed from fcm_token to token to match likely controller expectation
         },
       );
 

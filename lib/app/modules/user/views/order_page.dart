@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
+import 'package:antarkanma/app/widgets/order_status_timeline.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -220,6 +222,9 @@ class _OrderPageState extends State<OrderPage>
                       SizedBox(height: Dimenssions.height15),
 
                       // Shipping Address
+                      OrderStatusTimeline(transaction: transaction),
+                      SizedBox(height: Dimenssions.height15),
+
                       if (transaction.userLocation != null) ...[
                         Text(
                           'Alamat Pengiriman',
@@ -338,6 +343,48 @@ class _OrderPageState extends State<OrderPage>
                   ),
                 ),
               ),
+            ],
+            // Chat Button
+            if (['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
+                .contains(transaction.status.toUpperCase())) ...[
+              SizedBox(height: Dimenssions.height10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: Dimenssions.height15),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Get.back(); // Close bottom sheet
+                      Get.toNamed(Routes.userChat, arguments: {
+                        'chatId': null,
+                        'orderId': transaction.orders.isNotEmpty
+                            ? transaction.orders.first.id
+                            : transaction.id,
+                      });
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline,
+                        color: Colors.white),
+                    label: Text(
+                      'Chat Driver',
+                      style: primaryTextStyle.copyWith(
+                        color: Colors.white,
+                        fontSize: Dimenssions.font14,
+                        fontWeight: medium,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: primaryOrange,
+                      padding:
+                          EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius8),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: Dimenssions.height20),
             ],
           ],
         ),

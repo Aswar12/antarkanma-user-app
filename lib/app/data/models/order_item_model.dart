@@ -15,6 +15,8 @@ class OrderItemModel {
   final int quantity;
   final double price;
   final ProductInfo product;
+  final VariantInfo? variant;
+  final String? customerNote;
   final MerchantInfo merchant;
   final String status;
   final String? cancelReason;
@@ -26,6 +28,8 @@ class OrderItemModel {
     required this.quantity,
     required this.price,
     required this.product,
+    this.variant,
+    this.customerNote,
     required this.merchant,
     this.status = OrderItemStatus.pending,
     this.cancelReason,
@@ -38,19 +42,53 @@ class OrderItemModel {
     try {
       final double parsedPrice = _parsePrice(json['price']) ?? 0.0;
 
+      // Safe parses for relationships
+      ProductInfo? productInfo;
+      if (json['product'] is Map<String, dynamic>) {
+        productInfo = ProductInfo.fromJson(json['product']);
+      } else {
+        // Fallback placeholder if product is missing or wrong type
+        productInfo = ProductInfo(
+          id: _parseId(json['product_id']) ?? 0,
+          name: 'Unknown Product',
+          description: '',
+          price: parsedPrice,
+          galleries: [],
+          category: CategoryInfo(id: 0, name: ''),
+        );
+      }
+
+      VariantInfo? variantInfo;
+      if (json['variant'] is Map<String, dynamic>) {
+        variantInfo = VariantInfo.fromJson(json['variant']);
+      }
+
+      MerchantInfo? merchantInfo;
+      if (json['merchant'] is Map<String, dynamic>) {
+        merchantInfo = MerchantInfo.fromJson(json['merchant']);
+      } else if (json['product'] is Map<String, dynamic> &&
+          json['product']['merchant'] is Map<String, dynamic>) {
+        merchantInfo = MerchantInfo.fromJson(json['product']['merchant']);
+      } else {
+        merchantInfo =
+            MerchantInfo(id: 0, name: 'Unknown', address: '', phoneNumber: '');
+      }
+
       // Handle response format (when receiving from API)
       if (json['product'] != null) {
         return OrderItemModel(
           id: _parseId(json['id']),
           quantity: _parseQuantity(json['quantity']),
           price: parsedPrice,
-          product: ProductInfo.fromJson(json['product']),
-          merchant: json['merchant'] != null
-              ? MerchantInfo.fromJson(json['merchant'])
-              : MerchantInfo.fromJson(json['product']['merchant'] ?? {}),
+          product: productInfo,
+          variant: variantInfo,
+          customerNote: json['customer_note']?.toString(),
+          merchant: merchantInfo,
           status: json['status']?.toString() ?? OrderItemStatus.pending,
           cancelReason: json['cancel_reason']?.toString(),
-          canceledAt: json['canceled_at'] != null ? DateTime.parse(json['canceled_at']) : null,
+          canceledAt: json['canceled_at'] != null
+              ? DateTime.tryParse(json['canceled_at'])
+              : null,
           canCancel: json['can_cancel'] as bool?,
         );
       }
@@ -70,6 +108,11 @@ class OrderItemModel {
               ? MerchantInfo.fromJson(json['merchant'])
               : null,
         ),
+        variant: json['product_variant_id'] != null
+            ? VariantInfo(
+                id: _parseId(json['product_variant_id']) ?? 0, name: '')
+            : null,
+        customerNote: json['customer_note']?.toString(),
         merchant: MerchantInfo(
           id: json['merchant']?['id'] ?? 0,
           name: json['merchant']?['name'] ?? '',
@@ -123,6 +166,14 @@ class OrderItemModel {
         ),
         merchant: null,
       ),
+      variant: cartItem.selectedVariant != null
+          ? VariantInfo(
+              id: cartItem.selectedVariant!.id ?? 0,
+              name: cartItem.selectedVariant!.name,
+              priceAdjustment: cartItem.selectedVariant!.priceAdjustment,
+            )
+          : null,
+      customerNote: cartItem.customerNote,
       merchant: MerchantInfo(
         id: cartItem.merchant.id ?? 0,
         name: cartItem.merchant.name,
@@ -137,8 +188,11 @@ class OrderItemModel {
       'id': id,
       'product_id': product.id,
       'product': product.toJson(),
+      'variant_id': variant?.id,
+      'variant': variant?.toJson(),
       'quantity': quantity,
       'price': price,
+      'customer_note': customerNote,
       'merchant': merchant.toJson(),
       'status': status,
       'cancel_reason': cancelReason,
@@ -157,7 +211,8 @@ class OrderItemModel {
   bool get isPending => status.toUpperCase() == OrderItemStatus.pending;
   bool get isAccepted => status.toUpperCase() == OrderItemStatus.accepted;
   bool get isProcessing => status.toUpperCase() == OrderItemStatus.processing;
-  bool get isReadyForPickup => status.toUpperCase() == OrderItemStatus.readyForPickup;
+  bool get isReadyForPickup =>
+      status.toUpperCase() == OrderItemStatus.readyForPickup;
   bool get isCompleted => status.toUpperCase() == OrderItemStatus.completed;
 
   String get statusDisplay {
@@ -192,6 +247,8 @@ class OrderItemModel {
     int? quantity,
     double? price,
     ProductInfo? product,
+    VariantInfo? variant,
+    String? customerNote,
     MerchantInfo? merchant,
     String? status,
     String? cancelReason,
@@ -203,6 +260,8 @@ class OrderItemModel {
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
       product: product ?? this.product,
+      variant: variant ?? this.variant,
+      customerNote: customerNote ?? this.customerNote,
       merchant: merchant ?? this.merchant,
       status: status ?? this.status,
       cancelReason: cancelReason ?? this.cancelReason,
@@ -253,16 +312,24 @@ class ProductInfo {
         }
       }
 
+      CategoryInfo categoryInfo = CategoryInfo(id: 0, name: '');
+      if (json['category'] is Map<String, dynamic>) {
+        categoryInfo = CategoryInfo.fromJson(json['category']);
+      }
+
+      MerchantInfo? merchantInfo;
+      if (json['merchant'] is Map<String, dynamic>) {
+        merchantInfo = MerchantInfo.fromJson(json['merchant']);
+      }
+
       return ProductInfo(
         id: _parseId(json['id']) ?? 0,
         name: json['name']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
         price: parsedPrice,
         galleries: galleryUrls,
-        category: CategoryInfo.fromJson(json['category'] ?? {}),
-        merchant: json['merchant'] != null
-            ? MerchantInfo.fromJson(json['merchant'])
-            : null,
+        category: categoryInfo,
+        merchant: merchantInfo,
       );
     } catch (e, stackTrace) {
       print('Error parsing ProductInfo: $e');
@@ -381,6 +448,38 @@ class MerchantInfo {
       'name': name,
       'address': address,
       'phone_number': phoneNumber,
+    };
+  }
+}
+
+class VariantInfo {
+  final int id;
+  final String name;
+  final double priceAdjustment;
+
+  VariantInfo({
+    required this.id,
+    required this.name,
+    this.priceAdjustment = 0.0,
+  });
+
+  factory VariantInfo.fromJson(Map<String, dynamic> json) {
+    return VariantInfo(
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      name: json['name']?.toString() ?? '',
+      priceAdjustment: json['price_adjustment'] is num
+          ? (json['price_adjustment'] as num).toDouble()
+          : double.tryParse(json['price_adjustment']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'price_adjustment': priceAdjustment,
     };
   }
 }

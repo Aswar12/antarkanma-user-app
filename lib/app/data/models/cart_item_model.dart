@@ -7,6 +7,7 @@ class CartItemModel {
   final MerchantModel merchant; // Tidak nullable
   int quantity;
   final VariantModel? selectedVariant;
+  String? customerNote;
   bool isSelected;
 
   CartItemModel({
@@ -14,6 +15,7 @@ class CartItemModel {
     required this.merchant,
     required this.quantity,
     this.selectedVariant,
+    this.customerNote,
     this.isSelected = false,
   });
 
@@ -39,6 +41,7 @@ class CartItemModel {
       'merchant': merchant.toJson(),
       'quantity': quantity,
       'selectedVariant': selectedVariant?.toJson(),
+      'customerNote': customerNote,
       'isSelected': isSelected,
     };
   }
@@ -52,6 +55,7 @@ class CartItemModel {
       selectedVariant: json['selectedVariant'] != null
           ? VariantModel.fromJson(json['selectedVariant'])
           : null,
+      customerNote: json['customerNote'] as String?,
       isSelected: json['isSelected'] as bool? ?? false,
     );
   }
@@ -63,6 +67,7 @@ class CartItemModel {
       merchant: merchant,
       quantity: newQuantity,
       selectedVariant: selectedVariant,
+      customerNote: customerNote,
     );
   }
 
@@ -73,6 +78,7 @@ class CartItemModel {
       merchant: merchant,
       quantity: quantity,
       selectedVariant: newVariant,
+      customerNote: customerNote,
     );
   }
 }

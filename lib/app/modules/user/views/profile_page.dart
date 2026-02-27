@@ -10,12 +10,16 @@ import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:antarkanma/app/controllers/theme_controller.dart';
+
 class ProfilePage extends GetView<AuthController> {
   final AuthService authService = Get.find<AuthService>();
 
   ProfilePage({super.key});
 
   UserLocationController? _getLocationController() {
+    // ... existing code ...
+
     if (!authService.isLoggedIn.value) return null;
     try {
       return Get.find<UserLocationController>();
@@ -338,6 +342,11 @@ class ProfilePage extends GetView<AuthController> {
               },
             ),
             _MenuItem(
+              icon: Icons.brightness_6_outlined,
+              title: 'Tampilan',
+              onTap: () => _showThemeSelectionDialog(),
+            ),
+            _MenuItem(
               icon: Icons.star_outline,
               title: 'Rating Aplikasi',
               onTap: () => _showRatingDialog(),
@@ -510,6 +519,101 @@ class ProfilePage extends GetView<AuthController> {
         ),
       ),
     );
+  }
+
+  void _showThemeSelectionDialog() {
+    final themeController = Get.find<ThemeController>();
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.all(Dimenssions.height20),
+        decoration: BoxDecoration(
+          color: Theme.of(Get.context!).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(Dimenssions.radius20),
+            topRight: Radius.circular(Dimenssions.radius20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pilih Tampilan',
+              style: primaryTextStyle.copyWith(
+                fontSize: Dimenssions.font18,
+                fontWeight: semiBold,
+              ),
+            ),
+            SizedBox(height: Dimenssions.height20),
+            _buildThemeOption(
+              'Terang',
+              ThemeMode.light,
+              themeController,
+              Icons.wb_sunny_outlined,
+            ),
+            _buildThemeOption(
+              'Gelap',
+              ThemeMode.dark,
+              themeController,
+              Icons.nightlight_round_outlined,
+            ),
+            _buildThemeOption(
+              'Sistem',
+              ThemeMode.system,
+              themeController,
+              Icons.settings_system_daydream_outlined,
+            ),
+            SizedBox(height: Dimenssions.height20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(
+    String title,
+    ThemeMode mode,
+    ThemeController controller,
+    IconData icon,
+  ) {
+    return Obx(() {
+      final isSelected = controller.themeMode.value == mode;
+      return InkWell(
+        onTap: () {
+          controller.saveTheme(mode);
+          Get.back();
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: Dimenssions.height15),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? logoColorSecondary : secondaryTextColor,
+                size: Dimenssions.height24,
+              ),
+              SizedBox(width: Dimenssions.width15),
+              Expanded(
+                child: Text(
+                  title,
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font16,
+                    color: isSelected ? logoColorSecondary : null,
+                    fontWeight: isSelected ? semiBold : regular,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_circle,
+                  color: logoColorSecondary,
+                  size: Dimenssions.height24,
+                ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
 

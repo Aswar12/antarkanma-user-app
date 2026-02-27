@@ -7,6 +7,7 @@ import '../widgets/custom_snackbar.dart';
 import '../utils/validators.dart';
 import '../services/user_location_service.dart';
 import '../services/location_service.dart';
+import '../services/fcm_token_service.dart';
 import '../controllers/user_main_controller.dart';
 
 class AuthController extends GetxController {
@@ -270,6 +271,13 @@ class AuthController extends GetxController {
     try {
       if (!_isInitialized.value) {
         await _initializeController();
+      }
+
+      // Unregister FCM Token
+      try {
+        await Get.find<FCMTokenService>().unregisterToken();
+      } catch (e) {
+        debugPrint('Failed to unregister FCM token during logout: $e');
       }
 
       // Store remember me state and credentials before logout

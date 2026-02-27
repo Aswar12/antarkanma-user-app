@@ -120,7 +120,7 @@ class HomePageController extends GetxController {
     }
     final now = DateTime.now();
     return now.difference(_lastPopularProductsUpdate!) > cacheExpiration ||
-           now.difference(_lastMerchantsUpdate!) > cacheExpiration;
+        now.difference(_lastMerchantsUpdate!) > cacheExpiration;
   }
 
   Future<void> _refreshCachedData() async {
@@ -134,7 +134,9 @@ class HomePageController extends GetxController {
   }
 
   void _scrollListener() {
-    if (!isLoadingMore.value && hasMoreData.value && scrollController.hasClients) {
+    if (!isLoadingMore.value &&
+        hasMoreData.value &&
+        scrollController.hasClients) {
       final maxScroll = scrollController.position.maxScrollExtent;
       final currentScroll = scrollController.position.pixels;
       final delta = maxScroll * 0.2;
@@ -176,11 +178,12 @@ class HomePageController extends GetxController {
     try {
       isLoadingMerchants.value = true;
       final locationData = await _locationService.getCurrentLocation();
-      
+
       final paginatedResponse = await merchantService.getAllMerchants(
         page: _currentPage,
         pageSize: _pageSize,
-        category: selectedCategory.value == "Semua" ? null : selectedCategory.value,
+        category:
+            selectedCategory.value == "Semua" ? null : selectedCategory.value,
         latitude: locationData['latitude'],
         longitude: locationData['longitude'],
       );
@@ -221,22 +224,38 @@ class HomePageController extends GetxController {
       isLoadingMore.value = true;
       final locationData = await _locationService.getCurrentLocation();
 
-      final merchantResponse = await merchantService.getAllMerchants(
-        query: searchQuery.value,
-        page: _currentPage,
-        pageSize: _pageSize,
-        latitude: locationData['latitude'],
-        longitude: locationData['longitude'],
-      );
-
-      if (_currentPage == 1) {
-        merchantSearchResults.clear();
-      }
-
-      merchantSearchResults.addAll(merchantResponse.data);
-      _lastPage = merchantResponse.lastPage;
-      _totalItems = merchantResponse.total;
-      hasMoreData.value = _currentPage < _lastPage;
+      // Search Merchants and Products concurrently
+      await Future.wait([
+        merchantService
+            .getAllMerchants(
+          query: searchQuery.value,
+          page: _currentPage,
+          pageSize: _pageSize,
+          latitude: locationData['latitude'],
+          longitude: locationData['longitude'],
+        )
+            .then((response) {
+          if (_currentPage == 1) {
+            merchantSearchResults.clear();
+          }
+          merchantSearchResults.addAll(response.data);
+          // For now, pagination tracks merchants, but ideally should track both
+          _lastPage = response.lastPage;
+          _totalItems = response.total;
+          hasMoreData.value = _currentPage < _lastPage;
+        }),
+        productService
+            .getAllProducts(
+          query: searchQuery.value,
+          pageSize: _pageSize,
+        )
+            .then((response) {
+          if (_currentPage == 1) {
+            searchResults.clear();
+          }
+          searchResults.addAll(response.data);
+        }),
+      ]);
     } catch (e) {
       debugPrint('Error performing search: $e');
     } finally {
@@ -259,7 +278,8 @@ class HomePageController extends GetxController {
         return;
       }
 
-      final paginatedResponse = await productService.getAllProducts(pageSize: 10);
+      final paginatedResponse =
+          await productService.getAllProducts(pageSize: 10);
       popularProducts.assignAll(paginatedResponse.data);
       _lastPopularProductsUpdate = DateTime.now();
       _popularProductsCompleter?.complete();
@@ -390,7 +410,7 @@ class HomePageController extends GetxController {
 
       // Wait for location before loading merchants
       await locationFuture;
-      
+
       // Load fresh data
       await Future.wait([
         loadPopularProducts(),

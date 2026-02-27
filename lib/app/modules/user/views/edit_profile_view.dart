@@ -6,7 +6,7 @@ import 'package:antarkanma/app/widgets/custom_input_field.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 
 class EditProfileView extends GetView<EditProfileController> {
-  const EditProfileView({Key? key}) : super(key: key);
+  const EditProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {

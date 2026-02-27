@@ -495,7 +495,9 @@ class AuthService extends GetxService {
     try {
       if (!_isInitialized.value ||
           _authProvider == null ||
-          _storageService == null) return;
+          _storageService == null) {
+        return;
+      }
 
       final token = _storageService!.getToken();
       if (token != null) {

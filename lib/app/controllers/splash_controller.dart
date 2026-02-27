@@ -26,7 +26,7 @@ class SplashController extends GetxController {
   Future<void> _initializeApp() async {
     try {
       // Add a small delay to show splash screen
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 2, milliseconds: 500));
 
       // Check authentication status
       final token = _storageService.getToken();
@@ -41,30 +41,35 @@ class SplashController extends GetxController {
           const maxAttempts = 3;
           while (attempts < maxAttempts) {
             try {
-              final profile = await _authService.getProfile(showError: false)
-                .timeout(
-                  Duration(seconds: 30 + (attempts * 5)),
-                  onTimeout: () {
-                    debugPrint('Profile fetch timed out (Attempt ${attempts + 1}/$maxAttempts)');
-                    return null;
-                  },
-                );
-              
+              final profile =
+                  await _authService.getProfile(showError: false).timeout(
+                Duration(seconds: 30 + (attempts * 5)),
+                onTimeout: () {
+                  debugPrint(
+                      'Profile fetch timed out (Attempt ${attempts + 1}/$maxAttempts)');
+                  return null;
+                },
+              );
+
               if (profile != null) {
-                _isInitializing.value = false;
-                Get.offAllNamed(Routes.userMainPage);
+                await _navigateToNext(Routes.userMainPage);
                 return;
               }
-              
-              // If profile is null but no exception, break the loop
-              break;
+
+              // If profile is null, it might be a temporary error, we'll retry
+              attempts++;
+              if (attempts < maxAttempts) {
+                debugPrint('Retrying profile fetch... Attempt: $attempts');
+                await Future.delayed(Duration(seconds: attempts));
+              }
             } catch (e) {
               attempts++;
+              debugPrint('Error during profile fetch attempt $attempts: $e');
               if (attempts >= maxAttempts) {
-                debugPrint('Max attempts reached for profile fetch');
+                debugPrint(
+                    'Max attempts reached for profile fetch due to errors');
                 break;
               }
-              debugPrint('Retrying profile fetch... Attempt: $attempts');
               await Future.delayed(Duration(seconds: attempts));
             }
           }
@@ -83,22 +88,25 @@ class SplashController extends GetxController {
             showError: false,
           );
           if (success) {
-            _isInitializing.value = false;
-            Get.offAllNamed(Routes.userMainPage);
+            await _navigateToNext(Routes.userMainPage);
             return;
           }
         }
       }
 
       // If no valid auth or auto-login failed, go to login
-      _isInitializing.value = false;
-      Get.offAllNamed(Routes.login);
+      await _navigateToNext(Routes.login);
     } catch (e) {
       debugPrint('Error in splash initialization: $e');
       // In case of error, default to login page
-      _isInitializing.value = false;
-      Get.offAllNamed(Routes.login);
+      await _navigateToNext(Routes.login);
     }
+  }
+
+  Future<void> _navigateToNext(String route) async {
+    _isInitializing.value = false;
+    await Future.delayed(const Duration(milliseconds: 500));
+    Get.offAllNamed(route);
   }
 
   @override

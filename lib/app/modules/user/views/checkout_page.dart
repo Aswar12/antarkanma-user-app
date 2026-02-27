@@ -12,7 +12,6 @@ import 'package:antarkanma/app/data/models/user_location_model.dart';
 import 'package:antarkanma/app/modules/checkout/widgets/shipping_details_section_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/widgets/shipping_preview_skeleton_loading.dart';
-import 'package:antarkanma/app/data/models/shipping_details_model.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -41,7 +40,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       controller.autoSetInitialValues();
       // Calculate shipping only on first load
-      if (_isFirstLoad && controller.selectedLocation.value != null && controller.orderItems.isNotEmpty) {
+      if (_isFirstLoad &&
+          controller.selectedLocation.value != null &&
+          controller.orderItems.isNotEmpty) {
         controller.calculateShippingPreview();
         _isFirstLoad = false;
       }
@@ -566,7 +567,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.shopping_cart_outlined, size: 20, color: logoColorSecondary),
+              Icon(Icons.shopping_cart_outlined,
+                  size: 20, color: logoColorSecondary),
               const SizedBox(width: 8),
               Text(
                 'Kembali ke Keranjang',

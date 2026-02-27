@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
 import 'package:antarkanma/theme.dart';
-import 'package:antarkanma/app/bindings/main_binding.dart';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
 import 'package:antarkanma/app/modules/checkout/widgets/transaction_card_widget.dart';
 import 'package:antarkanma/app/data/models/transaction_model.dart';
@@ -118,7 +117,8 @@ class CheckoutSuccessPage extends StatelessWidget {
     final args = Get.arguments as Map<String, dynamic>;
     debugPrint('Arguments content: $args');
 
-    final List<TransactionModel> allTransactions = args['allTransactions'] ?? [];
+    final List<TransactionModel> allTransactions =
+        args['allTransactions'] ?? [];
     final orderItems = args['orderItems'];
     final subtotal = args['subtotal'];
     final shippingFee = args['shippingFee'];
@@ -254,16 +254,13 @@ class CheckoutSuccessPage extends StatelessWidget {
                 SizedBox(height: Dimenssions.height20),
 
                 // Transactions List
-                ...allTransactions
-                    .map((transaction) => Padding(
-                          padding:
-                              EdgeInsets.only(bottom: Dimenssions.height10),
-                          child: TransactionCardWidget(
-                            transaction: transaction,
-                            deliveryAddress: deliveryAddress,
-                          ),
-                        ))
-                    ,
+                ...allTransactions.map((transaction) => Padding(
+                      padding: EdgeInsets.only(bottom: Dimenssions.height10),
+                      child: TransactionCardWidget(
+                        transaction: transaction,
+                        deliveryAddress: deliveryAddress,
+                      ),
+                    )),
 
                 SizedBox(height: Dimenssions.height20),
 

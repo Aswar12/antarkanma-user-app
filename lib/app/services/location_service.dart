@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_android/geolocator_android.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dio/dio.dart';
 import '../controllers/permission_controller.dart';
 
 class LocationService extends GetxService {
@@ -78,7 +77,9 @@ class LocationService extends GetxService {
       try {
         if (isNetworkAvailable.value) {
           final lastKnown = await Geolocator.getLastKnownPosition();
-          if (lastKnown != null && lastKnown.latitude != 0 && lastKnown.longitude != 0) {
+          if (lastKnown != null &&
+              lastKnown.latitude != 0 &&
+              lastKnown.longitude != 0) {
             _updateLocation(lastKnown, isHighAccuracy: false);
           }
         }
@@ -122,7 +123,8 @@ class LocationService extends GetxService {
   Future<void> _initializeNetworkMonitoring() async {
     try {
       _connectivityStream?.cancel();
-      _connectivityStream = _connectivity.onConnectivityChanged.listen(_updateNetworkStatus);
+      _connectivityStream =
+          _connectivity.onConnectivityChanged.listen(_updateNetworkStatus);
       final result = await _connectivity.checkConnectivity();
       isNetworkAvailable.value = result != ConnectivityResult.none;
     } catch (e) {
@@ -136,7 +138,8 @@ class LocationService extends GetxService {
   }
 
   Future<void> _startLocationUpdates() async {
-    if (!await _checkAndRequestPermissions() || !await _checkAndRequestLocationService()) {
+    if (!await _checkAndRequestPermissions() ||
+        !await _checkAndRequestLocationService()) {
       return;
     }
 
@@ -253,7 +256,8 @@ class LocationService extends GetxService {
   }
 
   // Method used by homepage controller
-  Future<Map<String, dynamic>> getCurrentLocation({bool forceUpdate = false}) async {
+  Future<Map<String, dynamic>> getCurrentLocation(
+      {bool forceUpdate = false}) async {
     if (forceUpdate) {
       final position = await getHighAccuracyLocation();
       if (position != null) {

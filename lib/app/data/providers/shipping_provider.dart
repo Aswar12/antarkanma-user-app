@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:dio/dio.dart' as dio;
 import 'package:dio/io.dart';
 import 'package:get/get.dart';
@@ -14,27 +13,22 @@ class ShippingProvider extends GetxService {
 
   // Increased timeout durations
   // Increased timeouts for debug mode
-  static final Duration defaultConnectTimeout = kDebugMode 
-      ? const Duration(seconds: 90)
-      : const Duration(seconds: 45);
-  static final Duration defaultSendTimeout = kDebugMode
-      ? const Duration(seconds: 90)
-      : const Duration(seconds: 45);
-  static final Duration defaultReceiveTimeout = kDebugMode
-      ? const Duration(seconds: 90)
-      : const Duration(seconds: 45);
-  static final Duration defaultIdleTimeout = kDebugMode
-      ? const Duration(seconds: 90)
-      : const Duration(seconds: 45);
+  static final Duration defaultConnectTimeout =
+      kDebugMode ? const Duration(seconds: 90) : const Duration(seconds: 45);
+  static final Duration defaultSendTimeout =
+      kDebugMode ? const Duration(seconds: 90) : const Duration(seconds: 45);
+  static final Duration defaultReceiveTimeout =
+      kDebugMode ? const Duration(seconds: 90) : const Duration(seconds: 45);
+  static final Duration defaultIdleTimeout =
+      kDebugMode ? const Duration(seconds: 90) : const Duration(seconds: 45);
   // Adjust retry attempts and delay based on debug mode
   static final int maxRetryAttempts = kDebugMode ? 5 : 3;
-  static final Duration initialRetryDelay = kDebugMode 
-      ? const Duration(seconds: 2)
-      : const Duration(seconds: 1);
+  static final Duration initialRetryDelay =
+      kDebugMode ? const Duration(seconds: 2) : const Duration(seconds: 1);
 
   void _initializeDio() {
     if (_isInitialized) return;
-    
+
     _dio = dio.Dio();
     _setupBaseOptions();
     _setupInterceptors();
@@ -67,7 +61,7 @@ class ShippingProvider extends GetxService {
       followRedirects: true,
       persistentConnection: true,
     );
-    
+
     if (_dio.httpClientAdapter is IOHttpClientAdapter) {
       final adapter = _dio.httpClientAdapter as IOHttpClientAdapter;
       adapter.onHttpClientCreate = (client) {
@@ -93,18 +87,21 @@ class ShippingProvider extends GetxService {
 
             // Log request details in debug mode
             if (kDebugMode) {
-              debugPrint('🌐 REQUEST[${options.method}] => PATH: ${options.path}');
+              debugPrint(
+                  '🌐 REQUEST[${options.method}] => PATH: ${options.path}');
               debugPrint('🌐 Request URL: ${options.uri}');
               debugPrint('*** Request ***');
               debugPrint('uri: ${options.uri}');
               debugPrint('method: ${options.method}');
               debugPrint('responseType: ${options.responseType}');
               debugPrint('followRedirects: ${options.followRedirects}');
-              debugPrint('persistentConnection: ${options.persistentConnection}');
+              debugPrint(
+                  'persistentConnection: ${options.persistentConnection}');
               debugPrint('connectTimeout: ${options.connectTimeout}');
               debugPrint('sendTimeout: ${options.sendTimeout}');
               debugPrint('receiveTimeout: ${options.receiveTimeout}');
-              debugPrint('receiveDataWhenStatusError: ${options.receiveDataWhenStatusError}');
+              debugPrint(
+                  'receiveDataWhenStatusError: ${options.receiveDataWhenStatusError}');
               debugPrint('extra: ${options.extra}');
               debugPrint('headers:');
               options.headers.forEach((key, value) {
@@ -131,7 +128,8 @@ class ShippingProvider extends GetxService {
           try {
             // Log response in debug mode
             if (kDebugMode) {
-              debugPrint('✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+              debugPrint(
+                  '✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
               debugPrint('*** Response ***');
               debugPrint('uri: ${response.requestOptions.uri}');
               debugPrint('statusCode: ${response.statusCode}');
@@ -157,26 +155,32 @@ class ShippingProvider extends GetxService {
             error.requestOptions.extra['retryCount'] = 0;
           }
 
-          final int currentRetry = error.requestOptions.extra['retryCount'] as int;
-          final int maxRetries = error.requestOptions.extra['retryAttempts'] as int;
-          
+          final int currentRetry =
+              error.requestOptions.extra['retryCount'] as int;
+          final int maxRetries =
+              error.requestOptions.extra['retryAttempts'] as int;
+
           if (currentRetry < maxRetries) {
             error.requestOptions.extra['retryCount'] = currentRetry + 1;
-            
+
             debugPrint('🔴 Error Type: ${error.type}');
             debugPrint('🔴 Error Message: ${error.message}');
             debugPrint('🔄 Connection error occurred. Attempting retry...');
-            
+
             final delay = initialRetryDelay * (currentRetry + 1);
-            debugPrint('🔄 Waiting ${delay.inSeconds}s before retry ${currentRetry + 1}/$maxRetries');
+            debugPrint(
+                '🔄 Waiting ${delay.inSeconds}s before retry ${currentRetry + 1}/$maxRetries');
             await Future.delayed(delay);
 
             // Increase timeouts for retry
             // Exponential backoff for timeouts in debug mode
-            final multiplier = kDebugMode ? (currentRetry + 1) * 2 : (currentRetry + 1);
-            error.requestOptions.connectTimeout = defaultConnectTimeout * multiplier;
+            final multiplier =
+                kDebugMode ? (currentRetry + 1) * 2 : (currentRetry + 1);
+            error.requestOptions.connectTimeout =
+                defaultConnectTimeout * multiplier;
             error.requestOptions.sendTimeout = defaultSendTimeout * multiplier;
-            error.requestOptions.receiveTimeout = defaultReceiveTimeout * multiplier;
+            error.requestOptions.receiveTimeout =
+                defaultReceiveTimeout * multiplier;
 
             try {
               final response = await _dio.fetch(error.requestOptions);
@@ -186,7 +190,7 @@ class ShippingProvider extends GetxService {
               return handler.reject(error);
             }
           }
-          
+
           _handleError(error);
           return handler.next(error);
         },
@@ -198,7 +202,7 @@ class ShippingProvider extends GetxService {
     String message;
     debugPrint('🔴 DioException type: ${error.type}');
     debugPrint('🔴 DioException message: ${error.message}');
-    
+
     if (error.type == dio.DioExceptionType.connectionTimeout ||
         error.type == dio.DioExceptionType.sendTimeout ||
         error.type == dio.DioExceptionType.receiveTimeout) {
@@ -208,7 +212,7 @@ class ShippingProvider extends GetxService {
     if (error.type == dio.DioExceptionType.cancel) {
       throw TimeoutException('Request dibatalkan karena timeout.');
     }
-    
+
     switch (error.response?.statusCode) {
       case 401:
         message = 'Sesi telah berakhir. Silakan login kembali.';
@@ -221,11 +225,13 @@ class ShippingProvider extends GetxService {
         if (errors != null) {
           message = errors.toString();
         } else {
-          message = error.response?.data['message'] ?? 'Terjadi kesalahan validasi';
+          message =
+              error.response?.data['message'] ?? 'Terjadi kesalahan validasi';
         }
         break;
       default:
-        message = error.response?.data?['message'] ?? 'Terjadi kesalahan pada server';
+        message =
+            error.response?.data?['message'] ?? 'Terjadi kesalahan pada server';
     }
     throw Exception(message);
   }
@@ -240,25 +246,31 @@ class ShippingProvider extends GetxService {
 
     try {
       _initializeDio();
-      debugPrint('📤 Calculating shipping cost for location $userLocationId and merchant $merchantId');
+      debugPrint(
+          '📤 Calculating shipping cost for location $userLocationId and merchant $merchantId');
 
       while (retryCount < maxRetryAttempts) {
         timeoutTimer?.cancel();
         // Use exponential backoff for timeout timer in debug mode
-        final timeoutMultiplier = kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1);
+        final timeoutMultiplier =
+            kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1);
         timeoutTimer = Timer(defaultReceiveTimeout * timeoutMultiplier, () {
           if (!completer.isCompleted) {
-            debugPrint('🔴 Request timed out (attempt ${retryCount + 1}/$maxRetryAttempts)');
+            debugPrint(
+                '🔴 Request timed out (attempt ${retryCount + 1}/$maxRetryAttempts)');
             if (retryCount + 1 < maxRetryAttempts) {
               retryCount++;
               final delay = initialRetryDelay * (retryCount + 1);
-              debugPrint('🔄 Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
+              debugPrint(
+                  '🔄 Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
               Future.delayed(delay, () {
-                _retryCalculateShipping(userLocationId, merchantId, completer, retryCount);
+                _retryCalculateShipping(
+                    userLocationId, merchantId, completer, retryCount);
               });
             } else {
               completer.completeError(
-                TimeoutException('Kalkulasi biaya pengiriman timeout setelah $maxRetryAttempts percobaan'),
+                TimeoutException(
+                    'Kalkulasi biaya pengiriman timeout setelah $maxRetryAttempts percobaan'),
               );
             }
           }
@@ -273,8 +285,10 @@ class ShippingProvider extends GetxService {
             },
             options: dio.Options(
               // Use exponential backoff for timeouts in debug mode
-              sendTimeout: defaultSendTimeout * (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
-              receiveTimeout: defaultReceiveTimeout * (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
+              sendTimeout: defaultSendTimeout *
+                  (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
+              receiveTimeout: defaultReceiveTimeout *
+                  (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -284,7 +298,8 @@ class ShippingProvider extends GetxService {
 
           if (!completer.isCompleted) {
             if (response.data == null) {
-              completer.completeError(Exception('Server returned empty response'));
+              completer
+                  .completeError(Exception('Server returned empty response'));
             } else {
               debugPrint('📥 Shipping calculation response: ${response.data}');
               completer.complete(response);
@@ -292,10 +307,10 @@ class ShippingProvider extends GetxService {
           }
           break;
         } catch (e) {
-          if (e is dio.DioException && 
+          if (e is dio.DioException &&
               (e.type == dio.DioExceptionType.connectionTimeout ||
-               e.type == dio.DioExceptionType.sendTimeout ||
-               e.type == dio.DioExceptionType.receiveTimeout)) {
+                  e.type == dio.DioExceptionType.sendTimeout ||
+                  e.type == dio.DioExceptionType.receiveTimeout)) {
             retryCount++;
             if (retryCount >= maxRetryAttempts) {
               if (!completer.isCompleted) {
@@ -304,7 +319,8 @@ class ShippingProvider extends GetxService {
               break;
             }
             final delay = initialRetryDelay * retryCount;
-            debugPrint('🔄 Connection timeout. Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
+            debugPrint(
+                '🔄 Connection timeout. Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
             await Future.delayed(delay);
             continue;
           }
@@ -353,7 +369,8 @@ class ShippingProvider extends GetxService {
         if (response.data == null) {
           completer.completeError(Exception('Server returned empty response'));
         } else {
-          debugPrint('📥 Shipping calculation response (retry $retryCount): ${response.data}');
+          debugPrint(
+              '📥 Shipping calculation response (retry $retryCount): ${response.data}');
           completer.complete(response);
         }
       }
@@ -378,22 +395,28 @@ class ShippingProvider extends GetxService {
       debugPrint('📤 Getting shipping preview for location $userLocationId');
       debugPrint('Items: $items');
 
-      while (retryCount < maxRetryAttempts && (cancelToken?.isCancelled != true)) {
+      while (
+          retryCount < maxRetryAttempts && (cancelToken?.isCancelled != true)) {
         timeoutTimer?.cancel();
         timeoutTimer = Timer(defaultReceiveTimeout * (retryCount + 1), () {
           if (!completer.isCompleted) {
-            debugPrint('🔴 Request timed out (attempt ${retryCount + 1}/$maxRetryAttempts)');
+            debugPrint(
+                '🔴 Request timed out (attempt ${retryCount + 1}/$maxRetryAttempts)');
             if (retryCount + 1 < maxRetryAttempts) {
               retryCount++;
               final delay = initialRetryDelay * (retryCount + 1);
-              debugPrint('🔄 Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
+              debugPrint(
+                  '🔄 Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
               Future.delayed(delay, () {
-                _retryShippingPreview(userLocationId, items, cancelToken, completer, retryCount);
+                _retryShippingPreview(
+                    userLocationId, items, cancelToken, completer, retryCount);
               });
             } else {
-              cancelToken?.cancel('Request timed out after $maxRetryAttempts attempts');
+              cancelToken?.cancel(
+                  'Request timed out after $maxRetryAttempts attempts');
               completer.completeError(
-                TimeoutException('Preview pengiriman timeout setelah $maxRetryAttempts percobaan'),
+                TimeoutException(
+                    'Preview pengiriman timeout setelah $maxRetryAttempts percobaan'),
               );
             }
           }
@@ -408,8 +431,10 @@ class ShippingProvider extends GetxService {
             },
             options: dio.Options(
               // Use exponential backoff for timeouts in debug mode
-              sendTimeout: defaultSendTimeout * (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
-              receiveTimeout: defaultReceiveTimeout * (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
+              sendTimeout: defaultSendTimeout *
+                  (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
+              receiveTimeout: defaultReceiveTimeout *
+                  (kDebugMode ? (retryCount + 1) * 2 : (retryCount + 1)),
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -420,7 +445,8 @@ class ShippingProvider extends GetxService {
 
           if (!completer.isCompleted) {
             if (response.data == null) {
-              completer.completeError(Exception('Server returned empty response'));
+              completer
+                  .completeError(Exception('Server returned empty response'));
             } else {
               debugPrint('📥 Shipping preview response: ${response.data}');
               completer.complete(response);
@@ -435,10 +461,10 @@ class ShippingProvider extends GetxService {
             break;
           }
 
-          if (e is dio.DioException && 
+          if (e is dio.DioException &&
               (e.type == dio.DioExceptionType.connectionTimeout ||
-               e.type == dio.DioExceptionType.sendTimeout ||
-               e.type == dio.DioExceptionType.receiveTimeout)) {
+                  e.type == dio.DioExceptionType.sendTimeout ||
+                  e.type == dio.DioExceptionType.receiveTimeout)) {
             retryCount++;
             if (retryCount >= maxRetryAttempts) {
               if (!completer.isCompleted) {
@@ -447,7 +473,8 @@ class ShippingProvider extends GetxService {
               break;
             }
             final delay = initialRetryDelay * retryCount;
-            debugPrint('🔄 Connection timeout. Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
+            debugPrint(
+                '🔄 Connection timeout. Waiting ${delay.inSeconds}s before retry $retryCount/$maxRetryAttempts');
             await Future.delayed(delay);
             continue;
           }
@@ -502,7 +529,8 @@ class ShippingProvider extends GetxService {
         if (response.data == null) {
           completer.completeError(Exception('Server returned empty response'));
         } else {
-          debugPrint('📥 Shipping preview response (retry $retryCount): ${response.data}');
+          debugPrint(
+              '📥 Shipping preview response (retry $retryCount): ${response.data}');
           completer.complete(response);
         }
       }

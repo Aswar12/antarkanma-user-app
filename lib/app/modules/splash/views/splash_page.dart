@@ -1,7 +1,8 @@
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../controllers/splash_controller.dart';
+import 'package:antarkanma/app/controllers/splash_controller.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
 class SplashPage extends GetView<SplashController> {
   const SplashPage({super.key});
@@ -23,30 +24,32 @@ class SplashPage extends GetView<SplashController> {
                       // Logo
                       Image.asset(
                         'assets/Logo_AntarkanmaNoBg.png',
-                        width: 200,
-                        height: 200,
+                        width: Dimenssions.width150,
+                        height: Dimenssions.height150,
                       ),
-                      SizedBox(height: Dimenssions.height30),
+                      SizedBox(height: Dimenssions.height32),
 
-                      // Loading indicator
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(backgroundColor1),
-                      ),
-
-                      SizedBox(height: Dimenssions.height20),
-
-                      // Welcome Text
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimenssions.width20,
-                        ),
-                        child: Text(
-                          'Welcome to Antarkanma!',
-                          style: primaryTextStyle.copyWith(
-                            fontSize: Dimenssions.font16,
-                            fontWeight: medium,
-                          ),
-                          textAlign: TextAlign.center,
+                      // Custom Animated Progress Bar
+                      SizedBox(
+                        width: Dimenssions.width150 * 1.33,
+                        child: Column(
+                          children: [
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.0, end: 1.0),
+                              duration: const Duration(seconds: 2),
+                              builder: (context, value, _) =>
+                                  LinearPercentIndicator(
+                                width: Dimenssions.width150 * 1.33,
+                                lineHeight: 8.0,
+                                percent: value,
+                                animation: false,
+                                backgroundColor: Colors.white,
+                                progressColor: logoColorSecondary,
+                                barRadius: const Radius.circular(10),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

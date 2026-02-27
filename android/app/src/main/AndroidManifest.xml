@@ -28,7 +28,8 @@
     <application
         android:label="Antarkanma"
         android:name="${applicationName}"
-        android:icon="@drawable/logo">
+        android:icon="@drawable/logo"
+        android:usesCleartextTraffic="true">
         
         <!-- FCM Default Channel ID -->
         <meta-data
@@ -46,7 +47,7 @@
             android:resource="@color/notification_color" />
 
             <activity
-            android:name="com.antarkanma.user.MainActivity"
+            android:name="com.antarkanma.customer.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

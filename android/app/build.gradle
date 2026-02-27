@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.antarkanma.user"
+    namespace = "com.antarkanma.customer"
     compileSdk = 34 // Updated for latest Android support
     ndkVersion = flutter.ndkVersion
 
@@ -26,7 +26,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.antarkanma.user"
+        applicationId = "com.antarkanma.customer"
         minSdk = 21 // Updated for FCM support
         targetSdk = 34 // Updated to match compileSdk
         versionCode = flutter.versionCode

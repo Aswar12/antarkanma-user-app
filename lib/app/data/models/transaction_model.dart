@@ -21,9 +21,10 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     List<OrderItemModel> orderItems = [];
-    if (json['order_items'] != null) {
+    if (json['order_items'] != null && json['order_items'] is List) {
       orderItems = (json['order_items'] as List)
-          .map((item) => OrderItemModel.fromJson(item))
+          .where((item) => item is Map<String, dynamic>)
+          .map((item) => OrderItemModel.fromJson(item as Map<String, dynamic>))
           .toList();
     }
 
@@ -41,7 +42,9 @@ class OrderModel {
       id: json['id'],
       orderStatus: json['order_status']?.toString() ?? 'PENDING',
       totalAmount: amount,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
       orderItems: orderItems,
       merchantId: json['merchant_id'] ?? 0,
     );
@@ -81,6 +84,7 @@ class TransactionModel {
   final UserLocationModel? userLocation;
   final List<OrderModel> orders;
   final UserModel? user;
+  final String courierStatus;
 
   TransactionModel({
     this.id,
@@ -98,18 +102,23 @@ class TransactionModel {
     this.userLocation,
     required this.orders,
     this.user,
+    this.courierStatus = 'IDLE',
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     try {
       // Handle both old and new JSON structures
       final transactionData = json['data'] ?? json;
-      
+
       // Parse order items
       List<OrderItemModel> orderItems = [];
-      if (transactionData['order'] != null && transactionData['order']['order_items'] != null) {
+      if (transactionData['order'] != null &&
+          transactionData['order']['order_items'] != null &&
+          transactionData['order']['order_items'] is List) {
         orderItems = (transactionData['order']['order_items'] as List)
-            .map((item) => OrderItemModel.fromJson(item))
+            .where((item) => item is Map<String, dynamic>)
+            .map(
+                (item) => OrderItemModel.fromJson(item as Map<String, dynamic>))
             .toList();
       } else if (transactionData['items'] != null) {
         orderItems = _parseItems(transactionData['items']);
@@ -118,16 +127,19 @@ class TransactionModel {
       // Parse user location
       UserLocationModel? userLocation;
       if (transactionData['user_location'] != null) {
-        userLocation = UserLocationModel.fromJson(transactionData['user_location']);
+        userLocation =
+            UserLocationModel.fromJson(transactionData['user_location']);
       }
 
-      // Parse orders with new structure
       List<OrderModel> orders = [];
-      if (transactionData['orders'] != null) {
+      if (transactionData['orders'] != null &&
+          transactionData['orders'] is List) {
         orders = (transactionData['orders'] as List)
-            .map((order) => OrderModel.fromJson(order))
+            .where((order) => order is Map<String, dynamic>)
+            .map((order) => OrderModel.fromJson(order as Map<String, dynamic>))
             .toList();
-      } else if (transactionData['order'] != null) {
+      } else if (transactionData['order'] != null &&
+          transactionData['order'] is Map<String, dynamic>) {
         // Backward compatibility: if single order, wrap in list
         orders = [OrderModel.fromJson(transactionData['order'])];
       }
@@ -140,8 +152,10 @@ class TransactionModel {
 
       // Parse prices that could be string or number
       double totalPrice = 0.0;
-      if (transactionData['total_price'] != null || transactionData['total_amount'] != null) {
-        var priceValue = transactionData['total_price'] ?? transactionData['total_amount'];
+      if (transactionData['total_price'] != null ||
+          transactionData['total_amount'] != null) {
+        var priceValue =
+            transactionData['total_price'] ?? transactionData['total_amount'];
         if (priceValue is num) {
           totalPrice = priceValue.toDouble();
         } else if (priceValue is String) {
@@ -166,9 +180,11 @@ class TransactionModel {
         userLocationId: _parseId(transactionData['user_location_id']) ?? 0,
         totalPrice: totalPrice,
         shippingPrice: shippingPrice,
-        paymentMethod: transactionData['payment_method']?.toString() ?? 'MANUAL',
+        paymentMethod:
+            transactionData['payment_method']?.toString() ?? 'MANUAL',
         status: transactionData['status']?.toString() ?? 'PENDING',
-        paymentStatus: transactionData['payment_status']?.toString() ?? 'PENDING',
+        paymentStatus:
+            transactionData['payment_status']?.toString() ?? 'PENDING',
         createdAt: transactionData['created_at'] != null
             ? DateTime.tryParse(transactionData['created_at'].toString())
             : null,
@@ -177,6 +193,7 @@ class TransactionModel {
         userLocation: userLocation,
         orders: orders,
         user: user,
+        courierStatus: transactionData['courier_status']?.toString() ?? 'IDLE',
       );
     } catch (e, stackTrace) {
       print('Error parsing TransactionModel: $e');
@@ -225,6 +242,7 @@ class TransactionModel {
       'user_location': userLocation?.toJson(),
       'orders': orders.map((order) => order.toJson()).toList(),
       'user': user?.toJson(),
+      'courier_status': courierStatus,
     };
   }
 
@@ -280,6 +298,7 @@ class TransactionModel {
     UserLocationModel? userLocation,
     List<OrderModel>? orders,
     UserModel? user,
+    String? courierStatus,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -297,6 +316,7 @@ class TransactionModel {
       userLocation: userLocation ?? this.userLocation,
       orders: orders ?? this.orders,
       user: user ?? this.user,
+      courierStatus: courierStatus ?? this.courierStatus,
     );
   }
 }

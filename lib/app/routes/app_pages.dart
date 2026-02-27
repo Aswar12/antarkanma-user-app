@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../modules/auth/views/sign_in_page.dart';
-import '../modules/auth/views/sign_up_page.dart';
+import '../modules/auth/views/login_view.dart';
+import '../modules/auth/views/register_view.dart';
 import '../modules/checkout/views/checkout_success_page.dart';
 import '../modules/splash/views/splash_page.dart';
 import '../modules/user/views/add_edit_address_page.dart';
@@ -21,6 +21,10 @@ import '../modules/user/views/edit_profile_view.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../bindings/main_binding.dart';
+import '../modules/home/views/manual_order_page.dart';
+import '../modules/home/controllers/manual_order_controller.dart';
+import '../modules/chat/views/chat_view.dart';
+import '../modules/chat/bindings/chat_binding.dart';
 
 part 'app_routes.dart';
 
@@ -41,13 +45,13 @@ class AppPages {
     // Authentication Routes
     GetPage(
       name: _Paths.login,
-      page: () => SignInPage(),
+      page: () => LoginView(),
       middlewares: [LoginGuard()],
       transition: Transition.fadeIn,
     ),
     GetPage(
       name: _Paths.register,
-      page: () => SignUpPage(),
+      page: () => RegisterView(),
       middlewares: [LoginGuard()],
       transition: Transition.fadeIn,
     ),
@@ -82,7 +86,8 @@ class AppPages {
         // Communication Section
         GetPage(
           name: _Paths.chat,
-          page: () => const ChatPage(),
+          page: () => const ChatView(),
+          binding: ChatBinding(),
           transition: Transition.rightToLeft,
         ),
 
@@ -153,6 +158,14 @@ class AppPages {
       name: _Paths.merchantDetail,
       page: () => const MerchantDetailPage(),
       preventDuplicates: true,
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: _Paths.manualOrder,
+      page: () => const ManualOrderPage(),
+      binding: BindingsBuilder(() {
+        Get.put(ManualOrderController());
+      }),
       transition: Transition.rightToLeft,
     ),
   ];

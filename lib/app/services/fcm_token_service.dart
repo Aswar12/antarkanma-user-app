@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/providers/notification_provider.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/app/modules/chat/controllers/chat_controller.dart';
 
 class FCMTokenService extends GetxService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -28,13 +30,16 @@ class FCMTokenService extends GetxService {
     // Listen to token refresh
     _messaging.onTokenRefresh.listen(_handleTokenRefresh);
 
+    // Listen to foreground messages
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
     // Initialize AuthService lazily
     try {
       _authService = Get.find<AuthService>();
       // Listen to auth changes to handle token registration
       ever(_authService.currentUser, (user) {
-        if (user != null && 
-            _currentToken.value != null && 
+        if (user != null &&
+            _currentToken.value != null &&
             !_isTokenRegistered.value) {
           registerFCMToken(_currentToken.value!);
         }
@@ -72,7 +77,8 @@ class FCMTokenService extends GetxService {
 
   Future<void> _handleTokenRefresh(String newToken) async {
     try {
-      print('Handling token refresh. Old: ${_currentToken.value}, New: $newToken');
+      print(
+          'Handling token refresh. Old: ${_currentToken.value}, New: $newToken');
 
       final oldToken = _currentToken.value;
       _currentToken.value = newToken;
@@ -101,7 +107,8 @@ class FCMTokenService extends GetxService {
       final authService = Get.find<AuthService>();
       final user = authService.currentUser.value;
       if (user != null) {
-        print('Registering FCM token for user ${user.id} with role ${user.role}');
+        print(
+            'Registering FCM token for user ${user.id} with role ${user.role}');
 
         await _notificationProvider.registerFCMToken(
           fcmtoken,
@@ -134,6 +141,39 @@ class FCMTokenService extends GetxService {
       }
     } catch (e) {
       print('Error unregistering token: $e');
+    }
+  }
+
+  void _handleForegroundMessage(RemoteMessage message) {
+    print("Handling foreground message: ${message.messageId}");
+    print("Data: ${message.data}");
+    print(
+        "Notification: ${message.notification?.title}, ${message.notification?.body}");
+
+    if (message.data['type'] == 'chat') {
+      // Check if ChatController is active
+      if (Get.isRegistered<ChatController>()) {
+        // Only refresh if we are inside the chat flow.
+        print(
+            "ChatController found. Firestore stream should update UI automatically.");
+        // chatController.fetchMessages(silent: true); // No longer needed
+      } else {
+        // Show snackbar if not in chat
+        if (message.notification != null) {
+          Get.snackbar(
+            message.notification!.title ?? 'New Message',
+            message.notification!.body ?? '',
+            onTap: (_) {
+              // Handle tap to navigate to chat
+            },
+            backgroundColor: Get.theme.colorScheme.surface,
+            colorText: Get.theme.textTheme.bodyLarge?.color,
+            margin: const EdgeInsets.all(10),
+            borderRadius: 10,
+            duration: const Duration(seconds: 4),
+          );
+        }
+      }
     }
   }
 }

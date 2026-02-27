@@ -81,17 +81,20 @@ class AuthProvider {
 
             if (retryCount < maxRetries) {
               error.requestOptions.extra['retryCount'] = retryCount + 1;
-              
+
               // Calculate delay with exponential backoff starting at 2 seconds
               final delay = Duration(seconds: 2 * (1 << retryCount));
-              debugPrint('🔄 Waiting ${delay.inSeconds}s before retry ${retryCount + 1}/$maxRetries');
+              debugPrint(
+                  '🔄 Waiting ${delay.inSeconds}s before retry ${retryCount + 1}/$maxRetries');
               await Future.delayed(delay);
 
               try {
                 // Keep timeouts consistent at 45 seconds
-                error.requestOptions.connectTimeout = const Duration(seconds: 45);
+                error.requestOptions.connectTimeout =
+                    const Duration(seconds: 45);
                 error.requestOptions.sendTimeout = const Duration(seconds: 45);
-                error.requestOptions.receiveTimeout = const Duration(seconds: 45);
+                error.requestOptions.receiveTimeout =
+                    const Duration(seconds: 45);
 
                 final response = await _dio.fetch(error.requestOptions);
                 return handler.resolve(response);
@@ -361,17 +364,41 @@ class AuthProvider {
     }
 
     String message;
-    switch (error.response?.statusCode) {
-      case 401:
-        message = 'Unauthorized access. Please log in again.';
-        break;
-      case 422:
-        final errors = error.response?.data['errors'];
-        message = errors.toString();
-        break;
-      default:
-        message = error.response?.data['message'] ?? 'An error occurred';
+
+    // Handle specific DioException types first
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout) {
+      message =
+          'Koneksi timeout. Silakan cek koneksi internet Anda atau status server.';
+    } else if (error.type == DioExceptionType.connectionError) {
+      message =
+          'Tidak dapat terhubung ke server. Pastikan backend aktif (cek "adb reverse").';
+    } else {
+      // Handle response status codes
+      switch (error.response?.statusCode) {
+        case 401:
+          message = 'Sesi telah berakhir. Silakan login kembali.';
+          break;
+        case 422:
+          final responseData = error.response?.data;
+          if (responseData is Map && responseData['errors'] != null) {
+            final errors = responseData['errors'] as Map;
+            message = errors.values.expand((e) => e as List).join('\n');
+          } else {
+            message = responseData['message'] ?? 'Data tidak valid';
+          }
+          break;
+        case 500:
+          message = 'Terjadi kesalahan pada server. Silakan coba lagi nanti.';
+          break;
+        default:
+          message = error.response?.data?['message'] ??
+              'Terjadi kesalahan koneksi (${error.type})';
+      }
     }
+
+    debugPrint('🔴 AuthProvider Error: $message');
     throw Exception(message);
   }
 
