@@ -7,6 +7,7 @@ import 'package:antarkanma/app/widgets/order_status_badge.dart';
 import 'package:antarkanma/app/utils/order_utils.dart';
 import 'package:antarkanma/app/services/image_service.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 
 class OrderCard extends StatelessWidget {
   final TransactionModel transaction;
@@ -104,7 +105,7 @@ class OrderCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Order #$orderId',
+                        '#ANTAR-$orderId',
                         style: primaryTextStyle.copyWith(
                           fontSize: Dimenssions.font14,
                           fontWeight: semiBold,
@@ -300,55 +301,137 @@ class OrderCard extends StatelessWidget {
   }
 
   Widget _buildFooter(String status) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Total Pembayaran',
-              style: secondaryTextStyle.copyWith(
-                fontSize: Dimenssions.font12,
-              ),
-            ),
-            SizedBox(height: Dimenssions.height2),
-            Text(
-              transaction.formattedGrandTotal,
-              style: priceTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                fontWeight: semiBold,
-              ),
-            ),
-          ],
-        ),
-        if (status.toUpperCase() == 'PENDING')
-          TextButton(
-            onPressed: _showCancelDialog,
-            style: TextButton.styleFrom(
-              backgroundColor: alertColor.withOpacity(0.26),
-              padding: EdgeInsets.symmetric(
-                horizontal: Dimenssions.width8,
-                vertical: Dimenssions.height2,
-              ),
-              minimumSize: Size(0, 0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Dimenssions.radius6),
-                side: BorderSide(color: alertColor),
-              ),
-            ),
-            child: Text(
-              'Batalkan',
-              style: primaryTextStyle.copyWith(
-                color: alertColor,
-                fontSize: Dimenssions.font12,
-                fontWeight: medium,
-              ),
-            ),
+    // Determine button visibility based on order state
+    // Use canChatWithCourier getter from TransactionModel
+    final canChat = transaction.canChatWithCourier;
+    final canCancel = status.toUpperCase() == 'PENDING';
+
+    // Jika tidak ada button yang perlu ditampilkan
+    if (!canCancel && !canChat) {
+      // Tetap tampilkan total pembayaran
+      return _buildTotalPaymentSection();
+    }
+
+    return Container(
+      padding: EdgeInsets.all(Dimenssions.height12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: backgroundColor3.withOpacity(0.2),
+            width: 1,
           ),
-      ],
+        ),
+      ),
+      child: Row(
+        children: [
+          // Chat Button (primary action)
+          if (canChat)
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _navigateToChat,
+                icon: Icon(Icons.chat_bubble_outline, size: 18),
+                label: Text(
+                  'Chat Kurir',
+                  style: primaryTextStyle.copyWith(
+                    fontSize: Dimenssions.font13,
+                    fontWeight: medium,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryOrange,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+
+          // Spacer between buttons
+          if (canChat && canCancel) SizedBox(width: Dimenssions.width10),
+
+          // Cancel Button (secondary action - outlined style)
+          if (canCancel)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _showCancelDialog,
+                icon: Icon(Icons.cancel_outlined, size: 18),
+                label: Text(
+                  'Batalkan',
+                  style: primaryTextStyle.copyWith(
+                    color: alertColor,
+                    fontSize: Dimenssions.font13,
+                    fontWeight: medium,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: alertColor,
+                  side: BorderSide(color: alertColor, width: 1.2),
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  // Helper method untuk menampilkan total pembayaran
+  Widget _buildTotalPaymentSection() {
+    return Padding(
+      padding: EdgeInsets.all(Dimenssions.height12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total Pembayaran',
+                style: secondaryTextStyle.copyWith(
+                  fontSize: Dimenssions.font12,
+                ),
+              ),
+              SizedBox(height: Dimenssions.height2),
+              Text(
+                transaction.formattedGrandTotal,
+                style: priceTextStyle.copyWith(
+                  fontSize: Dimenssions.font14,
+                  fontWeight: semiBold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Navigate to chat with order context
+  void _navigateToChat() {
+    // Check if courier exists
+    if (transaction.courierId == null) {
+      Get.snackbar(
+        'Belum Ada Kurir',
+        'Pesanan Anda belum memiliki kurir. Silakan coba lagi nanti.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: alertColor.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Navigate to chat with order context
+    Get.toNamed(Routes.userChat, arguments: {
+      'chatId': null,
+      'orderId': transaction.id,
+      'courierStatus': transaction.courierStatus,
+    });
   }
 
   @override

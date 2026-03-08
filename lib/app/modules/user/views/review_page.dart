@@ -15,7 +15,7 @@ class ReviewPage extends StatefulWidget {
 }
 
 class _ReviewPageState extends State<ReviewPage> {
-  final ReviewProvider _reviewProvider = ReviewProvider();
+  final ReviewProvider _reviewProvider = Get.find<ReviewProvider>();
   bool _isSubmitting = false;
 
   // Courier review
@@ -60,7 +60,7 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   Future<void> _submitReview() async {
-    // At least one review must be provided
+    // At least one rating must be provided
     bool hasAnyRating = _courierRating > 0 ||
         _merchantRatings.values.any((r) => r > 0) ||
         _productRatings.values.any((r) => r > 0);
@@ -135,13 +135,13 @@ class _ReviewPageState extends State<ReviewPage> {
           response.data['meta']?['status'] == 'success') {
         CustomSnackbarX.showSuccess(
           title: 'Berhasil',
-          message: 'Terima kasih atas review Anda!',
+          message: 'Terima kasih atas penilaian Anda!',
           position: SnackPosition.BOTTOM,
         );
         Get.back(result: true);
       } else {
         final msg =
-            response.data['meta']?['message'] ?? 'Gagal menyimpan review';
+            response.data['meta']?['message'] ?? 'Gagal menyimpan penilaian';
         CustomSnackbarX.showError(
           title: 'Error',
           message: msg,
@@ -151,7 +151,7 @@ class _ReviewPageState extends State<ReviewPage> {
     } catch (e) {
       CustomSnackbarX.showError(
         title: 'Error',
-        message: 'Gagal menyimpan review: $e',
+        message: 'Gagal menyimpan penilaian: $e',
         position: SnackPosition.BOTTOM,
       );
     } finally {
@@ -165,7 +165,7 @@ class _ReviewPageState extends State<ReviewPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Beri Penilaian'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -174,19 +174,36 @@ class _ReviewPageState extends State<ReviewPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header Card with Orange Gradient
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.rate_review_rounded,
-                      color: Colors.white, size: 40),
-                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.rate_review_rounded,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   const Text(
                     'Bagaimana pengalaman Anda?',
                     style: TextStyle(
@@ -195,10 +212,13 @@ class _ReviewPageState extends State<ReviewPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    'Transaksi #${widget.transaction.id}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    '#ANTAR-${widget.transaction.id}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -214,7 +234,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   _buildInteractiveStars(_courierRating, (rating) {
                     setState(() => _courierRating = rating);
                   }),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: _courierNoteController,
                     maxLines: 2,
@@ -239,7 +259,7 @@ class _ReviewPageState extends State<ReviewPage> {
                             () => _merchantRatings[order.merchantId] = rating);
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: _merchantCommentControllers[order.merchantId],
                       maxLines: 2,
@@ -270,16 +290,17 @@ class _ReviewPageState extends State<ReviewPage> {
             // Submit Button
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 2,
+                  elevation: 4,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
@@ -287,13 +308,26 @@ class _ReviewPageState extends State<ReviewPage> {
                         height: 24,
                         child: CircularProgressIndicator(
                           color: Colors.white,
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                         ),
                       )
-                    : const Text(
-                        'Kirim Review',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Kirim Penilaian',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
                       ),
               ),
             ),
@@ -311,15 +345,19 @@ class _ReviewPageState extends State<ReviewPage> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -328,19 +366,32 @@ class _ReviewPageState extends State<ReviewPage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.primary, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],
           ),
-          const Divider(height: 20),
+          const Divider(height: 24),
           child,
         ],
       ),
@@ -355,12 +406,15 @@ class _ReviewPageState extends State<ReviewPage> {
         return GestureDetector(
           onTap: () => onTap(starIndex),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Icon(
-              starIndex <= currentRating ? Icons.star : Icons.star_border,
-              color:
-                  starIndex <= currentRating ? Colors.amber : AppColors.divider,
-              size: 36,
+              starIndex <= currentRating
+                  ? Icons.star_rounded
+                  : Icons.star_border_rounded,
+              color: starIndex <= currentRating
+                  ? AppColors.primary
+                  : AppColors.divider,
+              size: 48,
             ),
           ),
         );
@@ -371,7 +425,7 @@ class _ReviewPageState extends State<ReviewPage> {
   Widget _buildProductRatingTile(dynamic item) {
     final pid = item.product.id;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -379,25 +433,24 @@ class _ReviewPageState extends State<ReviewPage> {
             children: [
               // Product thumbnail
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                   color: AppColors.background,
                   child: item.product.firstImageUrl != null
                       ? Image.network(
                           item.product.firstImageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, __, ___) => Icon(
                             Icons.fastfood,
                             color: AppColors.textSecondary,
                           ),
                         )
-                      : const Icon(Icons.fastfood,
-                          color: AppColors.textSecondary),
+                      : Icon(Icons.fastfood, color: AppColors.textSecondary),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,17 +458,19 @@ class _ReviewPageState extends State<ReviewPage> {
                     Text(
                       item.product.name ?? 'Produk',
                       style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       '${item.quantity}x',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -423,20 +478,20 @@ class _ReviewPageState extends State<ReviewPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           _buildInteractiveStars(
             _productRatings[pid] ?? 0,
             (rating) {
               setState(() => _productRatings[pid] = rating);
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextField(
             controller: _productCommentControllers[pid],
             maxLines: 2,
             decoration: _inputDecoration('Komentar untuk produk ini...'),
           ),
-          if (pid != _productRatings.keys.last) const Divider(height: 24),
+          if (pid != _productRatings.keys.last) const Divider(height: 28),
         ],
       ),
     );
@@ -445,14 +500,29 @@ class _ReviewPageState extends State<ReviewPage> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      filled: true,
-      fillColor: AppColors.background,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
+      hintStyle: const TextStyle(
+        color: Color(0xFF9CA3AF),
+        fontSize: 14,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      filled: true,
+      fillColor: const Color(0xFFF9FAFB),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: Color(0xFFE5E7EB),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: Color(0xFFE5E7EB),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

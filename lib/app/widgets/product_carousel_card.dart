@@ -1,9 +1,11 @@
 import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/widgets/cached_image_view.dart';
 import 'package:antarkanma/app/widgets/star_rating.dart';
+import 'package:antarkanma/app/controllers/wishlist_controller.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart';
 
 class ProductCarouselCard extends StatelessWidget {
   final ProductModel product;
@@ -72,6 +74,39 @@ class ProductCarouselCard extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // Wishlist Heart Icon
+              if (product.id != null)
+                Positioned(
+                  top: Dimenssions.height8,
+                  right: Dimenssions.width8,
+                  child: GetBuilder<WishlistController>(
+                    init: Get.find<WishlistController>(),
+                    builder: (wishlistCtrl) {
+                      return Obx(() {
+                        final isFav = wishlistCtrl.isWishlisted(product.id!);
+                        return GestureDetector(
+                          onTap: () => wishlistCtrl.toggleWishlist(
+                            product.id!,
+                            product: product,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: isFav ? Colors.red : Colors.grey[600],
+                              size: 24,
+                            ),
+                          ),
+                        );
+                      });
+                    },
+                  ),
+                ),
 
               // Content
               Padding(

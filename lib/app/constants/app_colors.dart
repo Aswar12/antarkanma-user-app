@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Light Theme Colors
-  static const Color primary = Color(0xFF2196F3);
+  static const Color primary = Color(0xFFFF6600); // Orange brand
   static const Color secondary = Color(0xFF03A9F4);
   static const Color background = Color(0xFFF5F5F5);
   // lib/app/constants/app_colors.dart (lanjutan)
@@ -14,9 +14,10 @@ class AppColors {
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFFC107);
   static const Color info = Color(0xFF2196F3);
+  static const Color navy = Color(0xFF000033); // Navy blue header
 
   // Dark Theme Colors
-  static const Color primaryDark = Color(0xFF1976D2);
+  static const Color primaryDark = Color(0xFFFF6600);
   static const Color secondaryDark = Color(0xFF0288D1);
   static const Color backgroundDark = Color(0xFF121212);
   static const Color surfaceDark = Color(0xFF1E1E1E);
@@ -33,8 +34,18 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF2196F3),
-      Color(0xFF1976D2),
+      Color(0xFFFF6600),
+      Color(0xFFE65C00),
+    ],
+  );
+  
+  // Navy Gradient for Header
+  static const LinearGradient navyGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF000033),
+      Color(0xFF000066),
     ],
   );
 

@@ -7,18 +7,18 @@ import 'dart:io';
 
 class ImageService extends GetxService {
   static ImageService get to => Get.find<ImageService>();
-  
+
   // Custom cache manager
   DefaultCacheManager? _cacheManager;
   final RxBool _isInitialized = false.obs;
 
   Future<void> _initializeService() async {
     if (_isInitialized.value) return;
-    
+
     try {
       debugPrint('ImageService: Starting initialization');
       _cacheManager = DefaultCacheManager();
-      
+
       // Clear old cache if cache manager is ready
       if (_cacheManager != null) {
         try {
@@ -45,30 +45,36 @@ class ImageService extends GetxService {
     }
   }
 
-  Future<String> getOptimizedUrl(String originalUrl, {double? width, double? height}) async {
+  Future<String> getOptimizedUrl(String originalUrl,
+      {double? width, double? height}) async {
     if (!_isInitialized.value) {
       await ensureInitialized();
     }
 
     try {
-      // First try to resolve the hostname to check DNS
+      // Only do manual DNS lookup for local development domains (.test, .local)
+      // to avoid triggering raw SocketExceptions on IDE debuggers for dead public S3 domains.
       final uri = Uri.parse(originalUrl);
-      try {
-        await InternetAddress.lookup(uri.host);
-      } catch (e) {
-        debugPrint('ImageService: DNS lookup failed for ${uri.host}: $e');
-        // If DNS lookup fails, try to transform the URL to use IP address
-        // This assumes the API provides the correct URL format
-        return originalUrl.replaceAll(uri.host, uri.host.replaceAll('.', '-'));
+      if (uri.hasAuthority &&
+          uri.host.isNotEmpty &&
+          (uri.host.endsWith('.test') || uri.host.endsWith('.local'))) {
+        try {
+          await InternetAddress.lookup(uri.host)
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('ImageService: DNS lookup failed for ${uri.host}: $e');
+          // For local development domains that fail, apply local proxy rewrite.
+          return originalUrl.replaceAll(
+              uri.host, uri.host.replaceAll('.', '-'));
+        }
       }
-
-      // Add size parameters if provided
       if (width != null || height != null) {
-        final Map<String, String> queryParams = Map<String, String>.from(uri.queryParameters);
-        
+        final Map<String, String> queryParams =
+            Map<String, String>.from(uri.queryParameters);
+
         if (width != null) queryParams['w'] = width.round().toString();
         if (height != null) queryParams['h'] = height.round().toString();
-        
+
         return uri.replace(queryParameters: queryParams).toString();
       }
 
@@ -85,6 +91,25 @@ class ImageService extends GetxService {
     BoxFit fit = BoxFit.cover,
     String? heroTag,
   }) {
+    // Basic validation to prevent flutter_cache_manager crash on invalid URLs
+    if (imageUrl.isEmpty ||
+        (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
+      debugPrint('ImageService: Invalid URL format: $imageUrl');
+      return _buildPlaceholder(size);
+    }
+
+    // Explicitly block known dead or problematic URLs
+    final blockedDomains = [
+      'dev.antarkanmaa.my.id',
+      'is3.cloudhost.id',
+      'antarkanma.my.id',
+    ];
+    
+    if (blockedDomains.any((domain) => imageUrl.contains(domain))) {
+      debugPrint('ImageService: BLOCKED problematic URL: $imageUrl');
+      return _buildPlaceholder(size);
+    }
+
     // Ensure service is initialized before building widget
     if (!_isInitialized.value) {
       ensureInitialized();
@@ -92,35 +117,46 @@ class ImageService extends GetxService {
 
     // Show placeholder if service isn't ready
     if (_cacheManager == null) {
+      debugPrint('ImageService: Cache manager not ready');
       return _buildPlaceholder(size);
     }
 
     return FutureBuilder<String>(
-      future: getOptimizedUrl(imageUrl, width: size, height: size),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          debugPrint('ImageService: URL optimization error: ${snapshot.error}');
-          return _buildPlaceholder(size);
-        }
-        
-        final optimizedUrl = snapshot.data ?? imageUrl;
-        
-        return CachedNetworkImage(
-          imageUrl: optimizedUrl,
-          fit: fit,
-          memCacheWidth: size.round(),
-          memCacheHeight: size.round(),
-          cacheManager: _cacheManager,
-          maxWidthDiskCache: 1000,
-          maxHeightDiskCache: 1000,
-          placeholder: (context, url) => _buildLoadingPlaceholder(size),
-          errorWidget: (context, url, error) {
-            debugPrint('ImageService: Image load error: $error for URL: $url');
+        future: getOptimizedUrl(imageUrl, width: size, height: size),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint(
+                'ImageService: URL optimization error: ${snapshot.error}');
             return _buildPlaceholder(size);
-          },
-        );
-      }
-    );
+          }
+
+          final optimizedUrl = snapshot.data ?? imageUrl;
+
+          // Double-check: block problematic URLs even after optimization
+          if (optimizedUrl.isEmpty || 
+              blockedDomains.any((domain) => optimizedUrl.contains(domain))) {
+            debugPrint('ImageService: BLOCKED after optimization: $optimizedUrl');
+            return _buildPlaceholder(size);
+          }
+
+          return CachedNetworkImage(
+            imageUrl: optimizedUrl,
+            fit: fit,
+            memCacheWidth: size.round(),
+            memCacheHeight: size.round(),
+            cacheManager: _cacheManager,
+            maxWidthDiskCache: 1000,
+            maxHeightDiskCache: 1000,
+            placeholder: (context, url) => _buildLoadingPlaceholder(size),
+            errorWidget: (context, url, error) {
+              // Silent fail for blocked domains (already expected)
+              if (!blockedDomains.any((domain) => url.contains(domain))) {
+                debugPrint('ImageService: Image load error: $error for URL: $url');
+              }
+              return _buildPlaceholder(size);
+            },
+          );
+        });
   }
 
   Widget _buildPlaceholder(double size) {

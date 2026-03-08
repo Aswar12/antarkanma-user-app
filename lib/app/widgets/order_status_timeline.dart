@@ -95,8 +95,13 @@ class OrderStatusTimeline extends StatelessWidget {
     switch (cs) {
       case 'IDLE':
         // Check order status if still pending vs processing
-        bool isAnyProcessing = transaction.orders.any((o) =>
-            o.orderStatus == 'PROCESSING' || o.orderStatus == 'READYTOPICKUP');
+        // Support both underscore and non-underscore formats
+        bool isAnyProcessing = transaction.orders.any((o) {
+          final status = o.orderStatus.toUpperCase();
+          return status == 'PROCESSING' || 
+                 status == 'READY_FOR_PICKUP' || 
+                 status == 'READYTOPICKUP'; // Legacy support
+        });
         return isAnyProcessing ? 1 : 0;
       case 'HEADING_TO_MERCHANT':
         return 2;

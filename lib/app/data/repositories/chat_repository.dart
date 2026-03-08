@@ -1,103 +1,647 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'package:dio/dio.dart' as dio;
-import 'package:antarkanma/config.dart';
-import 'package:antarkanma/app/services/storage_service.dart';
-import 'package:antarkanma/app/data/models/chat_model.dart';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
+import 'package:antarkanma/app/data/models/chat_model.dart';
+import 'package:antarkanma/app/services/auth_service.dart';
+import 'package:antarkanma/config.dart';
 
 class ChatRepository {
-  final dio.Dio _dio = dio.Dio();
+  final AuthService _authService = Get.find<AuthService>();
+  final String baseUrl = Config.baseUrl;
 
-  String? get _token => StorageService.instance.getToken();
-
-  Future<Chat?> initiateChat(int orderId, {int? driverId}) async {
+  Future<List<ChatModel>?> getChatList() async {
     try {
-      final response = await _dio.post(
-        '${Config.baseUrl}/chat/initiate',
-        data: {
-          'order_id': orderId,
-          if (driverId != null) 'driver_id': driverId,
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('No auth token found');
+        return null;
+      }
+
+      debugPrint('Fetching chat list from: $baseUrl/chats');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/chats'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
         },
-        options: dio.Options(
-          headers: {
-            'Authorization': 'Bearer $_token',
-            'Accept': 'application/json',
-          },
-        ),
+      ).timeout(
+        Duration(milliseconds: Config.connectTimeout),
+        onTimeout: () {
+          debugPrint('Request timeout - server not responding');
+          throw Exception('Connection timeout');
+        },
       );
 
-      if (response.statusCode == 200 &&
-          response.data['meta']['status'] == 'success') {
-        return Chat.fromJson(response.data['data']);
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final chatsList = data['data']['chats'] as List;
+          debugPrint('Successfully fetched ${chatsList.length} chats');
+          return chatsList.map((chat) => ChatModel.fromJson(chat)).toList();
+        } else {
+          debugPrint('Unexpected response format: $data');
+          return null;
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('Unauthorized - token may be invalid');
+        return null;
+      } else if (response.statusCode == 404) {
+        debugPrint('Endpoint not found - check API route');
+        return null;
+      } else {
+        debugPrint('Server error: ${response.statusCode}');
+        return null;
       }
+    } on SocketException catch (e) {
+      debugPrint('Network error: ${e.message}');
+      debugPrint('Check if server is running and device has internet');
       return null;
-    } catch (e) {
-      print('Chat Error: $e');
+    } on HttpException catch (e) {
+      debugPrint('HTTP error: ${e.message}');
+      return null;
+    } on FormatException catch (e) {
+      debugPrint('JSON parse error: ${e.message}');
+      debugPrint('Response may not be valid JSON');
+      return null;
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout error: ${e.message}');
+      debugPrint('Server took too long to respond');
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('Unexpected error: $e');
+      debugPrint('Stack trace: $stackTrace');
       return null;
     }
   }
 
-  Future<List<ChatMessage>> getMessages(int chatId) async {
+  Future<Chat?> initiateChat(int orderId,
+      {int? merchantId, int? courierId}) async {
     try {
-      final response = await _dio.get(
-        '${Config.baseUrl}/chat/$chatId/messages',
-        options: dio.Options(
-          headers: {
-            'Authorization': 'Bearer $_token',
-            'Accept': 'application/json',
-          },
-        ),
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('initiateChat: No auth token');
+        return null;
+      }
+
+      final Map<String, dynamic> body = {
+        'order_id': orderId,
+      };
+
+      if (merchantId != null) {
+        body['merchant_id'] = merchantId;
+      } else if (courierId != null) {
+        body['courier_id'] = courierId;
+      } else {
+        print('Error: Either merchantId or courierId must be provided');
+        return null;
+      }
+
+      debugPrint(
+          'initiateChat: Sending request to ${Config.baseUrl}/chat/initiate');
+      debugPrint('initiateChat: Body: $body');
+
+      final response = await http
+          .post(
+        Uri.parse('${Config.baseUrl}/chat/initiate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(body),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('initiateChat: Request timeout after 10 seconds');
+          throw Exception('Request timeout - server tidak merespon');
+        },
       );
 
-      if (response.statusCode == 200 &&
-          response.data['meta']['status'] == 'success') {
-        final List data = response.data['data'];
-        return data.map((json) => ChatMessage.fromJson(json)).toList();
+      debugPrint(
+          'initiateChat response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          debugPrint('initiateChat: SUCCESS - Chat ID: ${data['data']['id']}');
+          return Chat.fromJson(data['data']);
+        } else {
+          debugPrint('initiateChat: Response not successful - $data');
+        }
+      } else {
+        debugPrint(
+            'initiateChat: Failed with status ${response.statusCode} - ${response.body}');
       }
-      return [];
+      return null;
     } catch (e) {
-      print('Get Messages Error: $e');
-      return [];
+      debugPrint('initiateChat: Exception caught: $e');
+      return null;
+    }
+  }
+
+  Future<Chat?> initiateDirectMerchantChat(int merchantId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return null;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/chat/initiate'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({
+              'merchant_id': merchantId,
+            }),
+          )
+          .timeout(Duration(seconds: Config.connectTimeout));
+
+      debugPrint(
+          'initiateDirectMerchantChat response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return Chat.fromJson(data['data']);
+        }
+      } else {
+        debugPrint(
+            'Failed to initiate direct merchant chat: ${response.statusCode} - ${response.body}');
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error initiating direct merchant chat: $e');
+      return null;
+    }
+  }
+
+  Future<Chat?> initiateChatWithTransaction(int transactionId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('initiateChatWithTransaction: No auth token');
+        return null;
+      }
+
+      debugPrint(
+          'initiateChatWithTransaction: Initiating chat with transaction_id: $transactionId');
+      debugPrint(
+          'initiateChatWithTransaction: URL: ${Config.baseUrl}/chat/initiate');
+
+      final response = await http
+          .post(
+        Uri.parse('$baseUrl/chat/initiate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'transaction_id': transactionId,
+        }),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint(
+              'initiateChatWithTransaction: Request timeout after 10 seconds');
+          throw Exception('Request timeout - server tidak merespon');
+        },
+      );
+
+      debugPrint(
+          'initiateChatWithTransaction: Response status: ${response.statusCode}');
+      debugPrint(
+          'initiateChatWithTransaction: Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          debugPrint(
+              'initiateChatWithTransaction: SUCCESS - Chat ID: ${data['data']['id']}');
+          return Chat.fromJson(data['data']);
+        } else {
+          debugPrint(
+              'initiateChatWithTransaction: Response not successful - $data');
+        }
+      } else {
+        debugPrint(
+            'initiateChatWithTransaction: Failed with status: ${response.statusCode}');
+        debugPrint(
+            'initiateChatWithTransaction: Error response: ${response.body}');
+      }
+      return null;
+    } catch (e) {
+      debugPrint('initiateChatWithTransaction: Exception caught: $e');
+      return null;
     }
   }
 
   Future<ChatMessage?> sendMessage(int chatId,
       {String? message, File? image}) async {
     try {
-      final dynamic data;
+      final token = await _authService.getToken();
+      if (token == null) return null;
 
+      // Handle image upload via multipart
       if (image != null) {
-        data = dio.FormData.fromMap({
-          'message': message,
-          'image': await dio.MultipartFile.fromFile(image.path),
-        });
-      } else {
-        data = {
-          'message': message,
-        };
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/chat/$chatId/send'),
+        );
+        request.headers['Authorization'] = 'Bearer $token';
+        request.headers['Accept'] = 'application/json';
+        
+        // Add image file
+        var imageFile = await http.MultipartFile.fromPath(
+          'attachment',
+          image.path,
+        );
+        request.files.add(imageFile);
+        
+        // Add optional message
+        if (message != null && message.isNotEmpty) {
+          request.fields['message'] = message;
+        }
+
+        var streamedResponse = await request.send().timeout(
+          Duration(seconds: Config.connectTimeout),
+        );
+        var response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(response.body);
+          if (data['success'] == true && data['data'] != null) {
+            return ChatMessage.fromJson(data['data']);
+          }
+        }
+        return null;
       }
 
-      final response = await _dio.post(
-        '${Config.baseUrl}/chat/$chatId/send',
-        data: data,
-        options: dio.Options(
-          headers: {
-            'Authorization': 'Bearer $_token',
-            'Accept': 'application/json',
-            if (image == null) 'Content-Type': 'application/json',
-          },
-        ),
-      );
+      // Handle text message
+      if (message != null) {
+        final response = await http
+            .post(
+              Uri.parse('$baseUrl/chat/$chatId/send'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: json.encode({
+                'message': message,
+              }),
+            )
+            .timeout(Duration(seconds: Config.connectTimeout));
 
-      if (response.statusCode == 200 &&
-          response.data['meta']['status'] == 'success') {
-        print('DEBUG RESPONSE DATA: ${response.data['data']}');
-        return ChatMessage.fromJson(response.data['data']);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(response.body);
+          if (data['success'] == true && data['data'] != null) {
+            return ChatMessage.fromJson(data['data']);
+          }
+        }
       }
       return null;
     } catch (e) {
-      print('Send Message Error: $e');
+      print('Error sending message: $e');
       return null;
+    }
+  }
+
+  /// Share location via chat
+  Future<ChatMessage?> shareLocation(int chatId, {
+    required double latitude,
+    required double longitude,
+    double? locationAccuracy,
+    String? locationAddress,
+    String? locationName,
+    String? message,
+  }) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return null;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/chat/$chatId/share-location'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({
+              'latitude': latitude,
+              'longitude': longitude,
+              if (locationAccuracy != null) 'location_accuracy': locationAccuracy,
+              if (locationAddress != null) 'location_address': locationAddress,
+              if (locationName != null) 'location_name': locationName,
+              if (message != null) 'message': message,
+            }),
+          )
+          .timeout(Duration(seconds: Config.connectTimeout));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return ChatMessage.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error sharing location: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getChatDetails(int chatId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/$chatId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: Config.connectTimeout));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final chatData = data['data'];
+          return {
+            'recipientName': chatData['recipient_name'] ?? 'Chat',
+            'recipientType': chatData['recipient_type'] ?? '',
+            'recipientAvatar': chatData['recipient_avatar'] ?? '',
+            'status': chatData['status'] ?? 'ACTIVE',
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching chat details: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getOrderData(int orderId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/orders/$orderId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: Config.connectTimeout));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final orderData = data['data'];
+          return {
+            'merchantName': orderData['merchant_info']?['name'] ?? 'Merchant',
+            'merchantAvatar': orderData['merchant_info']?['avatar'],
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching order data: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getTransactionData(int transactionId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('getTransactionData: No auth token');
+        return null;
+      }
+
+      debugPrint(
+          'getTransactionData: Fetching transaction $transactionId from ${Config.baseUrl}/transactions/$transactionId');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/transactions/$transactionId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: Config.connectTimeout));
+
+      debugPrint('getTransactionData: Response status: ${response.statusCode}');
+      debugPrint(
+          'getTransactionData: Response body preview: ${response.body.substring(0, math.min(200, response.body.length))}...');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Handle different response structures
+        // Structure 1: {meta: {...}, data: {...}}
+        // Structure 2: {success: true, data: {...}}
+
+        Map<String, dynamic>? transactionData;
+
+        if (data['data'] != null) {
+          transactionData = data['data'] as Map<String, dynamic>;
+          debugPrint('getTransactionData: Found transaction data');
+        } else {
+          debugPrint('getTransactionData: No data field in response');
+          return null;
+        }
+
+        // Extract courier info - handle both 'courier' object and flat fields
+        final courierInfo = transactionData['courier'];
+        String? courierName;
+        String? courierStatus;
+
+        if (courierInfo != null && courierInfo is Map<String, dynamic>) {
+          // Courier info is an object
+          courierName = courierInfo['name'] as String?;
+          courierStatus = (transactionData['courier_status'] as String?) ?? '';
+        } else {
+          // Fallback to flat structure or courier_id only
+          courierName = transactionData['courier_name'] as String?;
+          courierStatus = (transactionData['courier_status'] as String?) ?? '';
+        }
+
+        // If courier_id exists but name is null, use courier_id to check assignment
+        final courierId = transactionData['courier_id'];
+        if (courierId != null &&
+            (courierName == null ||
+                courierName == 'Kurir' ||
+                courierName.isEmpty)) {
+          // Courier is assigned but name might not be loaded
+          courierName =
+              'Kurir Ditemukan'; // Placeholder to indicate courier exists
+        }
+
+        debugPrint('getTransactionData: Courier ID: $courierId');
+        debugPrint('getTransactionData: Courier name: $courierName');
+        debugPrint('getTransactionData: Courier status: $courierStatus');
+
+        return {
+          'courierName': courierName ?? 'Kurir',
+          'courierAvatar': (courierInfo as Map<String, dynamic>?)?['photo'] ??
+              transactionData['courier_photo'],
+          'courierStatus': courierStatus,
+          'courierId': courierId,
+        };
+      } else {
+        debugPrint(
+            'getTransactionData: Failed with status ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      debugPrint('getTransactionData: Exception caught: $e');
+      return null;
+    }
+  }
+
+  Future<List<ChatMessage>?> getMessages(int chatId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/$chatId/messages'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: Config.connectTimeout));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true &&
+            data['data'] != null &&
+            data['data']['messages'] != null) {
+          final messagesList = data['data']['messages'] as List;
+          return messagesList.map((m) => ChatMessage.fromJson(m)).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching messages: $e');
+      return null;
+    }
+  }
+
+  Future<void> markChatAsRead(int chatId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return;
+
+      await http.put(
+        Uri.parse('$baseUrl/chat/$chatId/read'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(Duration(seconds: Config.connectTimeout));
+    } catch (e) {
+      print('Error marking chat as read: $e');
+    }
+  }
+
+  Future<bool> deleteChat(int chatId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('deleteChat: No auth token');
+        return false;
+      }
+
+      debugPrint('deleteChat: Sending DELETE request to ${Config.baseUrl}/chat/$chatId');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/chat/$chatId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('deleteChat: Request timeout');
+          throw Exception('Request timeout');
+        },
+      );
+
+      debugPrint('deleteChat: Response status: ${response.statusCode}');
+      debugPrint('deleteChat: Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          debugPrint('deleteChat: Success - ${data['message']}');
+          return true;
+        }
+      }
+      
+      debugPrint('deleteChat: Failed - ${response.statusCode}');
+      return false;
+    } catch (e) {
+      debugPrint('deleteChat: Exception: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteMessage(int chatId, int messageId) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) {
+        debugPrint('deleteMessage: No auth token');
+        return false;
+      }
+
+      debugPrint('deleteMessage: Deleting message $messageId from chat $chatId');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/chat/$chatId/messages/$messageId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('deleteMessage: Request timeout');
+          throw Exception('Request timeout');
+        },
+      );
+
+      debugPrint('deleteMessage: Response status: ${response.statusCode}');
+      debugPrint('deleteMessage: Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          debugPrint('deleteMessage: Success - ${data['message']}');
+          return true;
+        }
+      }
+      
+      debugPrint('deleteMessage: Failed - ${response.statusCode}');
+      return false;
+    } catch (e) {
+      debugPrint('deleteMessage: Exception: $e');
+      return false;
     }
   }
 }

@@ -1,7 +1,6 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'package:antarkanma/app/controllers/user_main_controller.dart';
+import 'package:antarkanma/app/modules/chat/views/chat_list_page.dart';
 import 'package:antarkanma/app/modules/user/views/cart_page.dart';
 import 'package:antarkanma/app/modules/user/views/home_page.dart';
 import 'package:antarkanma/app/modules/user/views/order_page.dart';
@@ -174,6 +173,7 @@ class _UserMainPageState extends State<UserMainPage>
       _buildHomePage(),
       const CartPage(),
       const OrderPage(),
+      const ChatListPage(), // NEW: Chat List
       ProfilePage(),
     ];
   }
@@ -256,7 +256,8 @@ class _UserMainPageState extends State<UserMainPage>
                     createNavItem('assets/icon_home.png', 'Home', 0),
                     createNavItem('assets/icon_cart.png', 'Keranjang', 1),
                     createNavItem('assets/list.png', 'Pesanan', 2),
-                    createNavItem('assets/icon_profile.png', 'Profile', 3),
+                    createNavItem('assets/icon_chat.png', 'Chat', 3), // NEW
+                    createNavItem('assets/icon_profile.png', 'Profile', 4),
                   ],
                 ),
               ),

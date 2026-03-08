@@ -10,6 +10,8 @@ class CachedImageView extends StatelessWidget {
   final BoxFit fit;
   final String? placeholder;
   final BorderRadius? borderRadius;
+  final Alignment alignment;
+  final Widget? placeholderWidget;
 
   const CachedImageView({
     super.key,
@@ -19,6 +21,8 @@ class CachedImageView extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.placeholder = 'assets/image_shoes.png',
     this.borderRadius,
+    this.alignment = Alignment.center,
+    this.placeholderWidget,
   });
 
   bool _isValidUrl(String url) {
@@ -30,7 +34,7 @@ class CachedImageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!_isValidUrl(imageUrl)) {
-      return _buildPlaceholder();
+      return placeholderWidget ?? _buildPlaceholder();
     }
 
     return ClipRRect(
@@ -40,15 +44,16 @@ class CachedImageView extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        alignment: alignment,
         maxWidthDiskCache: 1000,
         maxHeightDiskCache: 1000,
         memCacheWidth: 800,
         memCacheHeight: 800,
-        placeholder: (context, url) => _buildLoadingState(),
+        placeholder: (context, url) => placeholderWidget ?? _buildLoadingState(),
         errorWidget: (context, url, error) {
           debugPrint('Error loading image: $url');
           debugPrint('Error details: $error');
-          return _buildPlaceholder();
+          return placeholderWidget ?? _buildPlaceholder();
         },
         fadeInDuration: const Duration(milliseconds: 300),
       ),

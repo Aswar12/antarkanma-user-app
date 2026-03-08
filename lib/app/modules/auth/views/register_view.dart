@@ -22,11 +22,13 @@ class RegisterView extends GetView<AuthController> {
               key: _signUpFormKey,
               child: Column(
                 children: [
+                  SizedBox(height: Dimenssions.height20),
                   header(),
-                  SizedBox(height: Dimenssions.height30),
+                  SizedBox(height: Dimenssions.height40),
                   registrationForm(controller),
                   signButton(controller),
                   footer(),
+                  SizedBox(height: Dimenssions.height20),
                 ],
               ),
             ),
@@ -41,11 +43,10 @@ class RegisterView extends GetView<AuthController> {
       children: [
         Image.asset(
           'assets/logo.png',
-          height: Dimenssions
-              .height65, // Reduced from height80 to height65 (20% smaller)
+          height: Dimenssions.height80,
           fit: BoxFit.contain,
         ),
-        SizedBox(height: Dimenssions.height20),
+        SizedBox(height: Dimenssions.height30),
         Text(
           'Buat Akun Baru',
           style: primaryTextStyle.copyWith(
@@ -68,17 +69,20 @@ class RegisterView extends GetView<AuthController> {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor2,
-        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        borderRadius: BorderRadius.circular(Dimenssions.radius20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
+            color: Colors.grey.withValues(alpha: 0.08),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: EdgeInsets.all(Dimenssions.height20),
+      padding: EdgeInsets.symmetric(
+        horizontal: Dimenssions.width20,
+        vertical: Dimenssions.height30,
+      ),
       child: Column(
         children: [
           _buildInputField(
@@ -88,7 +92,7 @@ class RegisterView extends GetView<AuthController> {
             validator: controller.validateName,
             icon: 'assets/icon_name.png',
           ),
-          SizedBox(height: Dimenssions.height15),
+          SizedBox(height: Dimenssions.height20),
           _buildInputField(
             label: 'Alamat Email',
             hintText: 'Masukkan Alamat Email Kamu',
@@ -96,7 +100,7 @@ class RegisterView extends GetView<AuthController> {
             validator: controller.validateEmail,
             icon: 'assets/icon_email.png',
           ),
-          SizedBox(height: Dimenssions.height15),
+          SizedBox(height: Dimenssions.height20),
           _buildInputField(
             label: 'Telepon/WA',
             hintText: 'Masukkan Nomor Telepon/WA Kamu',
@@ -104,7 +108,7 @@ class RegisterView extends GetView<AuthController> {
             validator: controller.validatePhoneNumber,
             icon: 'assets/phone_icon.png',
           ),
-          SizedBox(height: Dimenssions.height15),
+          SizedBox(height: Dimenssions.height20),
           _buildInputField(
             label: 'Password',
             hintText: 'Masukkan Password Kamu',
@@ -114,7 +118,7 @@ class RegisterView extends GetView<AuthController> {
             initialObscureText: true,
             showVisibilityToggle: true,
           ),
-          SizedBox(height: Dimenssions.height15),
+          SizedBox(height: Dimenssions.height20),
           _buildInputField(
             label: 'Konfirmasi Password',
             hintText: 'Masukkan Konfirmasi Password Kamu',

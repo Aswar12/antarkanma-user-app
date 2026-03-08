@@ -6,7 +6,6 @@ class FirestoreService {
 
   // Collection References
   CollectionReference get _chatsCollection => _firestore.collection('chats');
-  CollectionReference get _usersCollection => _firestore.collection('users');
 
   // Create or Get Chat
   Future<void> createChat(int orderId, int customerId, int? driverId) async {
@@ -33,15 +32,14 @@ class FirestoreService {
       'sender_id': message.senderId,
       'text': message.message,
       'type': message.type,
-      'image_url': message
-          .imagePath, // Assuming imagePath stores URL or local path (needs handling for upload)
+      'image_url': message.attachmentUrl,
       'timestamp': FieldValue.serverTimestamp(),
       'is_read': false,
     });
 
     await chatDoc.update({
       'last_message': {
-        'text': message.type == 'image' ? 'Sent an image' : message.message,
+        'text': message.type == 'IMAGE' ? 'Sent an image' : message.message,
         'sender_id': message.senderId,
         'timestamp': FieldValue.serverTimestamp(),
         'is_read': false,
@@ -59,7 +57,7 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
 
         // Handle Timestamp conversion
         String createdAt = '';
@@ -74,11 +72,10 @@ class FirestoreService {
           chatId: orderId,
           senderId: data['sender_id'],
           message: data['text'] ?? '',
-          type: data['type'] ?? 'text',
-          imagePath: data['image_url'], // Map back to model field
+          type: data['type'] ?? 'TEXT',
+          attachmentUrl: data['image_url'],
           isRead: data['is_read'] ?? false,
           createdAt: createdAt,
-          updatedAt: createdAt,
         );
       }).toList();
     });

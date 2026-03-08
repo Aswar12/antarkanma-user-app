@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'package:antarkanma/app/services/transaction_service.dart';
+import 'package:antarkanma/app/controllers/order_controller.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
+import 'package:antarkanma/app/controllers/notification_controller.dart';
+import 'package:antarkanma/app/modules/chat/controllers/chat_list_controller.dart';
+import 'package:antarkanma/app/modules/chat/controllers/chat_controller.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -164,6 +168,15 @@ class NotificationService extends GetxService {
       sound: true,
     );
 
+    // Handle initial message if app was terminated
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      print('Initial app opened from terminated state via notification');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleMessageOpenedApp(initialMessage);
+      });
+    }
+
     // Get FCM token
     String? token = await _messaging.getToken();
     print('FCM Token: $token');
@@ -236,9 +249,40 @@ class NotificationService extends GetxService {
 
     _notificationCount.value++;
 
+    // Refresh Notification Inbox if open or in memory
+    try {
+      if (Get.isRegistered<NotificationController>()) {
+        Get.find<NotificationController>().refreshNotifications();
+      }
+    } catch (_) {}
+
     // Convert message data to Map and ensure it's not null
     Map<String, dynamic> notificationData =
         Map<String, dynamic>.from(message.data);
+
+    // Refresh Chat Controllers
+    if (notificationData['type'] == 'CHAT_MESSAGE' ||
+        notificationData['type'] == 'chat_message') {
+      try {
+        if (Get.isRegistered<ChatController>()) {
+          Get.find<ChatController>().refreshMessages();
+        }
+        if (Get.isRegistered<ChatListController>()) {
+          Get.find<ChatListController>().fetchChats();
+        }
+      } catch (_) {}
+    }
+
+    // Refresh Order Controller
+    if (notificationData['type'] == 'new_order' ||
+        notificationData['type'] == 'order_ready' ||
+        notificationData.containsKey('order_id')) {
+      try {
+        if (Get.isRegistered<OrderController>()) {
+          Get.find<OrderController>().refreshOrders();
+        }
+      } catch (_) {}
+    }
 
     // Get order items if available
     List<dynamic>? items = [];
@@ -337,13 +381,47 @@ class NotificationService extends GetxService {
 
   Future<void> _handleNotificationData(Map<String, dynamic> data) async {
     print('Handling notification data: $data');
+
+    // Handle Chat Navigation
+    if (data['type'] == 'CHAT_MESSAGE' || data.containsKey('chatId')) {
+      try {
+        String? chatId = data['chatId']?.toString();
+        // Fallback if the raw message has it in another format, though fcm_token_service uses 'chatId'
+        if (chatId == null && data.containsKey('chat_id')) {
+          chatId = data['chat_id']?.toString();
+        }
+
+        if (chatId != null) {
+          await Get.offAllNamed(Routes.userMainPage);
+          await Future.delayed(const Duration(milliseconds: 300));
+
+          Get.toNamed(Routes.userChat, arguments: {
+            'chatId': int.tryParse(chatId),
+          });
+        }
+      } catch (e) {
+        print('Error handling chat notification tap: $e');
+        await Get.offAllNamed(Routes.userMainPage);
+      }
+      return; // Exit early since we handled the chat interaction
+    }
+
+    // Handle Order Navigation
     String? orderId = data['order_id'];
     if (orderId != null) {
       try {
+        // Trigger order refresh event
+        Get.forceAppUpdate();
+
         // Navigate to order page
         await Get.offAllNamed(Routes.userMainPage);
         await Future.delayed(const Duration(milliseconds: 300));
         Get.toNamed(Routes.userOrder);
+
+        // Refresh orders after navigation
+        if (Get.isRegistered<OrderController>()) {
+          Get.find<OrderController>().refreshOrders();
+        }
       } catch (e) {
         print('Error handling notification tap: $e');
         // Fallback navigation

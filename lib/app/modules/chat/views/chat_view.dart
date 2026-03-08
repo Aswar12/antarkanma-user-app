@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:antarkanma/app/data/models/chat_model.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../controllers/chat_controller.dart';
 
 class ChatView extends GetView<ChatController> {
@@ -59,32 +60,40 @@ class ChatView extends GetView<ChatController> {
                       left: 16,
                       right: 16,
                     ),
+                    reverse: true, // Show newest messages at bottom
                     itemCount: controller.messages.length,
                     itemBuilder: (context, index) {
                       final message = controller.messages[index];
                       final bool isMe =
                           message.senderId == controller.currentUserId;
 
-                      // Show date separator if needed (simplified logic for now)
-                      bool showDate = false;
-                      if (index == 0) {
-                        showDate = true;
+                      // Show date separator at the LAST message of each day (oldest message of that day)
+                      // This ensures the badge stays in place and doesn't move when new messages arrive
+                      bool showDateSeparator = false;
+                      
+                      // Check if this is the LAST message of its day (next message is from different day)
+                      if (index == controller.messages.length - 1) {
+                        // Last item in list (oldest message) always show date separator
+                        showDateSeparator = true;
                       } else {
-                        final prevDate = DateTime.parse(
-                                controller.messages[index - 1].createdAt)
+                        // Check if next message is from a different day
+                        final nextDate = DateTime.parse(
+                                controller.messages[index + 1].createdAt)
                             .toLocal();
                         final currDate =
                             DateTime.parse(message.createdAt).toLocal();
-                        if (prevDate.day != currDate.day ||
-                            prevDate.month != currDate.month ||
-                            prevDate.year != currDate.year) {
-                          showDate = true;
+                        // If next message is from different day, this is the last message of current day
+                        if (nextDate.year != currDate.year ||
+                            nextDate.month != currDate.month ||
+                            nextDate.day != currDate.day) {
+                          showDateSeparator = true;
                         }
                       }
 
                       return Column(
                         children: [
-                          if (showDate) _buildDateSeparator(message.createdAt),
+                          if (showDateSeparator)
+                            _buildDateSeparator(message.createdAt),
                           _buildMessageBubble(message, isMe),
                         ],
                       );
@@ -149,8 +158,19 @@ class ChatView extends GetView<ChatController> {
                                   color: Colors.grey.shade200,
                                 ),
                                 child: ClipOval(
-                                  // Placeholder image or NetworkImage if available
-                                  child: Icon(Icons.person, color: Colors.grey),
+                                  child: Obx(() {
+                                    final avatar = controller.recipientAvatar.value;
+                                    if (avatar.isNotEmpty) {
+                                      return Image.network(
+                                        avatar,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Icon(Icons.person, color: Colors.grey);
+                                        },
+                                      );
+                                    }
+                                    return Icon(Icons.person, color: Colors.grey);
+                                  }),
                                 ),
                               ),
                               Positioned(
@@ -170,12 +190,11 @@ class ChatView extends GetView<ChatController> {
                             ],
                           ),
                           SizedBox(width: 12),
-                          Column(
+                          Obx(() => Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                // TODO: Get name dynamically from controller
-                                "Driver",
+                                controller.recipientName.value,
                                 style: TextStyle(
                                   fontFamily: 'Plus Jakarta Sans',
                                   fontWeight: FontWeight.w700,
@@ -184,7 +203,7 @@ class ChatView extends GetView<ChatController> {
                                 ),
                               ),
                               Text(
-                                "Driver Antarkanma",
+                                _getRecipientSubtitle(),
                                 style: TextStyle(
                                   fontFamily: 'Plus Jakarta Sans',
                                   fontWeight: FontWeight.w500,
@@ -193,7 +212,7 @@ class ChatView extends GetView<ChatController> {
                                 ),
                               ),
                             ],
-                          ),
+                          )),
                         ],
                       ),
                     ),
@@ -210,7 +229,7 @@ class ChatView extends GetView<ChatController> {
                 ),
               ),
               // Status Bar
-              Container(
+              Obx(() => Container(
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -226,7 +245,7 @@ class ChatView extends GetView<ChatController> {
                         Icon(Icons.moped, size: 16, color: chatSecondary),
                         SizedBox(width: 8),
                         Text(
-                          "Driver sedang menuju lokasi",
+                          _getStatusText(),
                           style: TextStyle(
                             fontFamily: 'Plus Jakarta Sans',
                             fontWeight: FontWeight.w700,
@@ -247,7 +266,7 @@ class ChatView extends GetView<ChatController> {
                     ),
                   ],
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -255,8 +274,45 @@ class ChatView extends GetView<ChatController> {
     );
   }
 
+  String _getRecipientSubtitle() {
+    final type = controller.recipientType.value;
+    switch (type) {
+      case 'MERCHANT':
+        return 'Merchant';
+      case 'COURIER':
+        return 'Kurir Antarkanma';
+      default:
+        return 'Chat';
+    }
+  }
+
+  String _getStatusText() {
+    final type = controller.recipientType.value;
+    final status = controller.chatStatus.value;
+    
+    switch (type) {
+      case 'MERCHANT':
+        return 'Merchant sedang mempersiapkan pesanan';
+      case 'COURIER':
+        if (status.contains('HEADING_TO_MERCHANT')) {
+          return 'Kurir sedang menuju lokasi merchant';
+        } else if (status.contains('AT_MERCHANT')) {
+          return 'Kurir sudah di merchant';
+        } else if (status.contains('HEADING_TO_CUSTOMER')) {
+          return 'Kurir sedang menuju lokasi Anda';
+        } else if (status.contains('AT_CUSTOMER')) {
+          return 'Kurir sudah tiba di lokasi';
+        } else if (status.contains('DELIVERED')) {
+          return 'Pesanan sudah terkirim';
+        }
+        return 'Kurir sedang menuju lokasi';
+      default:
+        return 'Status tidak tersedia';
+    }
+  }
+
   Widget _buildDateSeparator(String timestamp) {
-    // Ideally format this based on logic (Today, Yesterday, Date)
+    final label = _getDateLabel(timestamp);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
@@ -267,7 +323,7 @@ class ChatView extends GetView<ChatController> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            "HARI INI", // Placeholder, use DateFormat
+            label,
             style: TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w700,
@@ -279,6 +335,38 @@ class ChatView extends GetView<ChatController> {
         ),
       ),
     );
+  }
+
+  String _getDateLabel(String timestamp) {
+    try {
+      final messageDate = DateTime.parse(timestamp).toLocal();
+      final now = DateTime.now().toLocal();
+      final yesterday = now.subtract(const Duration(days: 1));
+
+      // Check if today
+      if (messageDate.year == now.year &&
+          messageDate.month == now.month &&
+          messageDate.day == now.day) {
+        return 'HARI INI';
+      }
+
+      // Check if yesterday
+      if (messageDate.year == yesterday.year &&
+          messageDate.month == yesterday.month &&
+          messageDate.day == yesterday.day) {
+        return 'KEMARIN';
+      }
+
+      // Otherwise, return formatted date (e.g., "01 Mar 2026")
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      final monthName = months[messageDate.month - 1];
+      return '${messageDate.day.toString().padLeft(2, '0')} ${monthName} ${messageDate.year}';
+    } catch (e) {
+      return 'HARI INI'; // Fallback
+    }
   }
 
   Widget _buildMessageBubble(ChatMessage message, bool isMe) {
@@ -293,44 +381,87 @@ class ChatView extends GetView<ChatController> {
           textDirection: isMe ? TextDirection.rtl : TextDirection.ltr,
           children: [
             Flexible(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isMe ? chatPrimary : chatBubbleMerchant,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                    bottomLeft: isMe ? Radius.circular(16) : Radius.circular(0),
-                    bottomRight:
-                        isMe ? Radius.circular(0) : Radius.circular(16),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 2,
-                      offset: Offset(0, 1),
+              child: GestureDetector(
+                onLongPress: isMe ? () => _showDeleteMessageDialog(message) : null,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isMe ? chatPrimary : chatBubbleMerchant,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomLeft: isMe ? Radius.circular(16) : Radius.circular(0),
+                      bottomRight:
+                          isMe ? Radius.circular(0) : Radius.circular(16),
                     ),
-                  ],
-                  border: isMe ? null : Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (message.type == 'image' && message.imagePath != null)
-                      // Placeholder for Image Display
-                      Icon(Icons.image,
-                          color: isMe ? Colors.white : chatTextDark),
-                    if (message.message != null && message.message!.isNotEmpty)
-                      Text(
-                        message.message!,
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          color: isMe ? Colors.white : chatTextDark,
-                          fontSize: 14,
-                        ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
                       ),
-                  ],
+                    ],
+                    border: isMe ? null : Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image Message
+                      if (message.isImage && message.attachmentUrl != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            message.attachmentUrl!,
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: 200,
+                                height: 200,
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 200,
+                                height: 200,
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: Icon(Icons.image_not_supported, size: 40),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      
+                      // Location Message
+                      if (message.isLocation && message.latitude != null)
+                        _buildLocationMessage(message, isMe),
+                      
+                      // Text Message
+                      if (message.message != null && message.message!.isNotEmpty)
+                        Text(
+                          message.message!,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            color: isMe ? Colors.white : chatTextDark,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -355,24 +486,159 @@ class ChatView extends GetView<ChatController> {
     );
   }
 
+  Widget _buildLocationMessage(ChatMessage message, bool isMe) {
+    final locationName = message.locationName ?? 'Lokasi';
+    final accuracy = message.locationAccuracy != null 
+        ? '±${message.locationAccuracy!.toStringAsFixed(1)}m' 
+        : '';
+    
+    return GestureDetector(
+      onTap: () {
+        // Open Google Maps
+        final url = message.googleMapsUrl;
+        if (url != null) {
+          launchUrl(Uri.parse(url));
+        }
+      },
+      child: Container(
+        width: 200,
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.white.withOpacity(0.2) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: isMe ? Colors.white : Colors.red,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    locationName,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : chatTextDark,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (accuracy.isNotEmpty) ...[
+              SizedBox(height: 4),
+              Text(
+                'Akurasi: $accuracy',
+                style: TextStyle(
+                  color: isMe ? Colors.white.withOpacity(0.8) : chatTextSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+            if (message.locationAddress != null) ...[
+              SizedBox(height: 4),
+              Text(
+                message.locationAddress!,
+                style: TextStyle(
+                  color: isMe ? Colors.white.withOpacity(0.8) : chatTextSecondary,
+                  fontSize: 11,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Buka di Maps',
+                  style: TextStyle(
+                    color: isMe ? Colors.white : chatSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Icon(
+                  Icons.open_in_new,
+                  size: 12,
+                  color: isMe ? Colors.white : chatSecondary,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteMessageDialog(ChatMessage message) {
+    Get.dialog(
+      AlertDialog(
+        title: Text('Hapus Pesan'),
+        content: Text('Apakah Anda yakin ingin menghapus pesan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteMessage(message);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: alertColor,
+            ),
+            child: Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputArea() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Quick Replies
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              _buildQuickReplyButton("Sudah sampai mana?"),
-              SizedBox(width: 8),
-              _buildQuickReplyButton("Sesuai aplikasi ya"),
-              SizedBox(width: 8),
-              _buildQuickReplyButton("Terima kasih"),
-            ],
-          ),
-        ),
+        // Quick Replies - Contextual based on recipient type
+        Obx(() {
+          // Different quick replies for courier vs merchant
+          final isCourierChat = controller.recipientType.value == 'COURIER';
+          final quickReplies = isCourierChat
+              ? [
+                  'Sudah sampai mana?',
+                  'Kapan sampai?',
+                  'Saya sudah di rumah',
+                  'Bisa telepon?',
+                  'Sesuai aplikasi ya',
+                  'Terima kasih',
+                ]
+              : [
+                  'Pesanan sudah dibayar?',
+                  'Bisa request kurang pedas?',
+                  'Minta bantuan',
+                  'Terima kasih',
+                ];
+          
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: quickReplies.map((text) => Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: _buildQuickReplyButton(text),
+              )).toList(),
+            ),
+          );
+        }),
 
         // Input Field
         Container(
@@ -386,8 +652,7 @@ class ChatView extends GetView<ChatController> {
               IconButton(
                 icon: Icon(Icons.add_circle, color: chatTextSecondary),
                 onPressed: () {
-                  // TODO: Show attachment options
-                  controller.sendImage();
+                  controller.showAttachmentOptions();
                 },
               ),
               Expanded(

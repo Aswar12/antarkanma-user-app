@@ -30,22 +30,55 @@ class MerchantDetailSection extends StatelessWidget {
           // Header Image and Info
           Stack(
             children: [
-              // Background Image or Color
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: backgroundColor3,
-                  image: merchant.logoUrl != null && merchant.logoUrl!.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(merchant.logoUrl!),
+              // Background Image with Hero
+              Hero(
+                tag: 'merchant-${merchant.id}',
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: backgroundColor3,
+                  ),
+                  child: merchant.logoUrl != null && merchant.logoUrl!.isNotEmpty
+                      ? Image.network(
+                          merchant.logoUrl!,
                           fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(
-                            Colors.black.withOpacity(0.4),
-                            BlendMode.darken,
-                          ),
+                          alignment: Alignment.center,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: backgroundColor3,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: logoColorSecondary,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: backgroundColor3,
+                              child: Center(
+                                child: Icon(
+                                  Icons.store_rounded,
+                                  color: secondaryTextColor.withOpacity(0.5),
+                                  size: Dimenssions.iconSize24 * 2,
+                                ),
+                              ),
+                            );
+                          },
                         )
-                      : null,
+                      : Center(
+                          child: Icon(
+                            Icons.store_rounded,
+                            color: secondaryTextColor.withOpacity(0.5),
+                            size: Dimenssions.iconSize24 * 2,
+                          ),
+                        ),
                 ),
               ),
               // Merchant Info Overlay

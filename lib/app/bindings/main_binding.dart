@@ -6,6 +6,7 @@ import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/data/providers/shipping_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import '../controllers/homepage_controller.dart';
 import '../controllers/auth_controller.dart';
@@ -15,6 +16,7 @@ import '../controllers/permission_controller.dart';
 import '../controllers/cart_controller.dart';
 import '../controllers/order_controller.dart';
 import '../controllers/user_location_controller.dart';
+import '../controllers/wishlist_controller.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../services/user_location_service.dart';
@@ -29,6 +31,7 @@ import '../data/providers/transaction_provider.dart';
 import '../data/providers/product_category_provider.dart';
 import '../data/providers/merchant_provider.dart';
 import '../data/providers/product_provider.dart';
+import '../data/providers/review_provider.dart';
 import 'package:flutter/foundation.dart';
 
 class MainBinding extends Bindings {
@@ -113,7 +116,7 @@ class MainBinding extends Bindings {
   Future<void> _initializeBaseServices() async {
     try {
       debugPrint('Initializing base services...');
-      
+
       // Initialize StorageService
       final storageService = StorageService.instance;
       Get.put<StorageService>(
@@ -135,6 +138,27 @@ class MainBinding extends Bindings {
         imageService,
         permanent: true,
       );
+
+      // Initialize FlutterLocalNotificationsPlugin
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      const androidSettings = AndroidInitializationSettings(
+          '@mipmap/ic_launcher'); // Use app icon as fallback
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      const settings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+      await flutterLocalNotificationsPlugin.initialize(settings);
+      Get.put<FlutterLocalNotificationsPlugin>(
+        flutterLocalNotificationsPlugin,
+        permanent: true,
+      );
+      debugPrint('FlutterLocalNotificationsPlugin initialized');
+
       debugPrint('Base services initialized successfully');
     } catch (e) {
       debugPrint('Error initializing base services: $e');
@@ -176,6 +200,12 @@ class MainBinding extends Bindings {
         permanent: true,
       );
 
+      // Register ReviewProvider
+      Get.put<ReviewProvider>(
+        ReviewProvider(),
+        permanent: true,
+      );
+
       // Register ShippingProvider lazily
       Get.lazyPut<ShippingProvider>(
         () => ShippingProvider(),
@@ -202,33 +232,32 @@ class MainBinding extends Bindings {
 
       try {
         // Wait for all permissions to be properly initialized with timeout
-        await permissionController.checkInitialPermissions()
-          .timeout(const Duration(seconds: 30));
+        await permissionController
+            .checkInitialPermissions()
+            .timeout(const Duration(seconds: 30));
         debugPrint('Permissions initialized successfully');
       } catch (e) {
-        debugPrint('Warning: Permission initialization timed out or failed: $e');
+        debugPrint(
+            'Warning: Permission initialization timed out or failed: $e');
         // Continue initialization even if permissions fail
       }
 
       // Initialize core location service with retry and timeout
-      await _retryWithDelay(
-        () async {
-          final locationService = LocationService();
-          await locationService.init()
-              .timeout(const Duration(seconds: 15));
-          Get.put<LocationService>(
-            locationService,
-            permanent: true,
-          );
-          debugPrint('Core location service initialized');
-        },
-        maxRetries: 2
-      );
+      await _retryWithDelay(() async {
+        final locationService = LocationService();
+        await locationService.init().timeout(const Duration(seconds: 15));
+        Get.put<LocationService>(
+          locationService,
+          permanent: true,
+        );
+        debugPrint('Core location service initialized');
+      }, maxRetries: 2);
 
       // Initialize user location service
       final userLocationService = UserLocationService();
       try {
-        await userLocationService.ensureInitialized()
+        await userLocationService
+            .ensureInitialized()
             .timeout(const Duration(seconds: 15));
         Get.put<UserLocationService>(
           userLocationService,
@@ -296,23 +325,23 @@ class MainBinding extends Bindings {
       );
 
       debugPrint('Initializing critical controllers...');
-      
+
       // Initialize core controllers first
       Get.put<AuthController>(
         AuthController(),
         permanent: true,
       );
-      
+
       Get.put<CartController>(
         CartController(),
         permanent: true,
       );
-      
+
       Get.put<OrderController>(
         OrderController(),
         permanent: true,
       );
-      
+
       Get.put<UserLocationController>(
         UserLocationController(),
         permanent: true,
@@ -337,7 +366,7 @@ class MainBinding extends Bindings {
 
       // Initialize CheckoutController lazily when needed
       Get.lazyPut<ShippingService>(() => ShippingService(), fenix: true);
-      
+
       Get.lazyPut<CheckoutController>(
         () => CheckoutController(
           userLocationController: Get.find<UserLocationController>(),
@@ -362,13 +391,18 @@ class MainBinding extends Bindings {
       Get.lazyPut<ProductDetailController>(
         () => ProductDetailController(
           reviewRepository: ReviewRepository(
-            provider: Get.find<ProductProvider>(),
+            provider: Get.find<ReviewProvider>(),
           ),
           merchantService: Get.find<MerchantService>(),
         ),
         fenix: true,
       );
 
+      // Initialize WishlistController
+      Get.put<WishlistController>(
+        WishlistController(),
+        permanent: true,
+      );
 
       debugPrint('Controllers initialized successfully');
     } catch (e) {

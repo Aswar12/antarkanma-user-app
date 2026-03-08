@@ -19,6 +19,8 @@ abstract class Routes {
   static const userChat = _Paths.userMainPage + _Paths.chat;
   static const userOrder = _Paths.userMainPage + _Paths.order;
   static const userHome = _Paths.userMainPage + _Paths.home;
+  static const userNotificationInbox =
+      _Paths.userMainPage + _Paths.notificationInbox;
 
   // Address Management Routes
   static const userAddress = _Paths.userMainPage + _Paths.address;
@@ -35,6 +37,7 @@ abstract class Routes {
   static const userCheckout = _Paths.userMainPage + _Paths.checkout;
   static const userEditProfile = _Paths.userMainPage + _Paths.editProfile;
   static const manualOrder = _Paths.manualOrder;
+  static const wishlist = _Paths.wishlist;
 }
 
 abstract class _Paths {
@@ -44,8 +47,10 @@ abstract class _Paths {
   static const userMainPage = '/usermain';
   static const profile = '/profile';
   static const chat = '/chat';
+  static const chatList = '/chat-list'; // NEW
   static const order = '/order';
   static const home = '/home';
+  static const notificationInbox = '/notification-inbox';
   static const address = '/address';
   static const addAddress = '/add-address';
   static const editAddress = '/edit-address';
@@ -58,4 +63,5 @@ abstract class _Paths {
   static const checkout = '/checkout';
   static const editProfile = '/edit-profile';
   static const manualOrder = '/manual-order';
+  static const wishlist = '/wishlist';
 }

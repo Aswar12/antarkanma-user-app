@@ -1,10 +1,12 @@
 import 'package:antarkanma/app/data/models/product_review_model.dart';
-import 'package:antarkanma/app/data/providers/product_provider.dart';
+import 'package:antarkanma/app/data/providers/review_provider.dart';
+import 'package:dio/dio.dart' as dio;
 
 class ReviewRepository {
-  final ProductProvider provider;
+  final ReviewProvider provider;
 
   ReviewRepository({required this.provider});
+  
   Future<List<ProductReviewModel>> getProductReviews(
     int productId, {
     int? rating,
@@ -73,29 +75,38 @@ class ReviewRepository {
     }
   }
 
-  Future<void> submitReview(
-      Map<String, dynamic> reviewData, String token) async {
+  Future<dio.Response> submitReview(
+      int transactionId, Map<String, dynamic> reviewData) async {
     try {
-      await provider.submitProductReview(reviewData, token);
+      return await provider.submitReview(transactionId, reviewData);
     } catch (e) {
       throw Exception('Failed to submit review: $e');
     }
   }
 
-  Future<void> updateReview(
-      int reviewId, Map<String, dynamic> reviewData, String token) async {
+  Future<dio.Response> getReviewStatus(int transactionId) async {
     try {
-      await provider.updateProductReview(reviewId, reviewData, token);
+      return await provider.getReviewStatus(transactionId);
     } catch (e) {
-      throw Exception('Failed to update review: $e');
+      throw Exception('Failed to get review status: $e');
     }
   }
 
-  Future<void> deleteReview(int reviewId, String token) async {
+  Future<dio.Response> getMerchantReviews(int merchantId,
+      {int? rating, int limit = 10}) async {
     try {
-      await provider.deleteProductReview(reviewId, token);
+      return await provider.getMerchantReviews(merchantId, rating: rating, limit: limit);
     } catch (e) {
-      throw Exception('Failed to delete review: $e');
+      throw Exception('Failed to get merchant reviews: $e');
+    }
+  }
+
+  Future<dio.Response> getCourierReviews(int courierId,
+      {int limit = 10}) async {
+    try {
+      return await provider.getCourierReviews(courierId, limit: limit);
+    } catch (e) {
+      throw Exception('Failed to get courier reviews: $e');
     }
   }
 }

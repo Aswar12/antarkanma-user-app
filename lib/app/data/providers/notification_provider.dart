@@ -35,6 +35,14 @@ class NotificationProvider {
   Future<Response> registerFCMToken(String fcmToken, String userId,
       {String? role}) async {
     try {
+      if (fcmToken == null || fcmToken.isEmpty) {
+        debugPrint('FCM token is null or empty, skipping registration');
+        throw Exception('FCM token is required');
+      }
+
+      debugPrint('Registering FCM token for user $userId with role $role');
+      debugPrint('Current token from storage: ${_storage.read('token')?.substring(0, 20)}...');
+      
       final response = await _dio.post(
         '/fcm/token', // Updated to match api.php
         data: {
@@ -47,16 +55,35 @@ class NotificationProvider {
         },
       );
 
+      if (response.statusCode == 401) {
+        debugPrint('401 Unauthorized - Token may be expired. Clearing storage and retrying...');
+        // Clear invalid token
+        await _storage.remove('token');
+        throw Exception('Authentication failed: Token expired or invalid');
+      }
+
       if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint('Failed to register FCM token. Status: ${response.statusCode}');
+        debugPrint('Response: ${response.data}');
         throw Exception(
             'Failed to register FCM token. Status: ${response.statusCode}');
       }
 
-      print('FCM Token registration successful: ${response.data}');
+      debugPrint('FCM Token registration successful: ${response.data}');
       return response;
+    } on DioException catch (e) {
+      debugPrint('Dio error registering FCM token: ${e.message}');
+      if (e.response != null) {
+        debugPrint('Response status: ${e.response!.statusCode}');
+        debugPrint('Response data: ${e.response!.data}');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Authentication failed: Please login again');
+      }
+      throw Exception('Network error: ${e.message}');
     } catch (e) {
-      print('Error registering FCM token: $e');
-      throw Exception('Failed to register FCM token: $e');
+      debugPrint('Error registering FCM token: $e');
+      rethrow;
     }
   }
 

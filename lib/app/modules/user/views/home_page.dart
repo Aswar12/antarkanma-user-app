@@ -195,7 +195,7 @@ class _HomePageState extends State<HomePage>
           // Main Content
           Padding(
             padding: EdgeInsets.only(
-                top: Dimenssions.height100 * 1), // Reduced from 1.55
+                top: Dimenssions.height100 * 1.1), // Adjusted for new header
             child: RefreshIndicator(
               onRefresh: _handleRefresh,
               color: primaryOrange,
@@ -394,7 +394,7 @@ class _HomePageState extends State<HomePage>
 
           // Floating Search Bar
           Positioned(
-            top: Dimenssions.height100 * 0.75, // Reduced from 1.15
+            top: Dimenssions.height100 * 0.85,
             left: Dimenssions.width15,
             right: Dimenssions.width15,
             child: Container(

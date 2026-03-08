@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/controllers/user_location_controller.dart';
+import 'package:antarkanma/app/controllers/notification_controller.dart';
 
 import 'package:flutter/services.dart';
 
@@ -10,21 +11,20 @@ class HomeAppBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Attempt to find controller, if not found, we handle gracefully or let GetX handle injection elsewhere
     final locationController = Get.put(UserLocationController());
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark, // For iOS
+        statusBarBrightness: Brightness.dark,
       ),
       child: Container(
         padding: EdgeInsets.only(
-          left: Dimenssions.width15,
-          right: Dimenssions.width15,
-          top: MediaQuery.of(context).padding.top + Dimenssions.height10,
-          bottom: Dimenssions.height15, // Reduced padding for compact look
+          left: Dimenssions.width20,
+          right: Dimenssions.width20,
+          top: MediaQuery.of(context).padding.top + Dimenssions.height12,
+          bottom: Dimenssions.height12,
         ),
         decoration: BoxDecoration(
           color: navyColor,
@@ -32,6 +32,13 @@ class HomeAppBarWidget extends StatelessWidget {
             bottomLeft: Radius.circular(Dimenssions.radius30),
             bottomRight: Radius.circular(Dimenssions.radius30),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: navyColor.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -44,19 +51,12 @@ class HomeAppBarWidget extends StatelessWidget {
                       Container(
                         padding: EdgeInsets.all(Dimenssions.width8),
                         decoration: BoxDecoration(
-                          color: primaryOrange,
+                          color: primaryOrange.withOpacity(0.15),
                           shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Icon(
-                          Icons.location_on,
-                          color: Colors.white,
+                          Icons.location_on_rounded,
+                          color: primaryOrange,
                           size: Dimenssions.iconSize20,
                         ),
                       ),
@@ -71,7 +71,7 @@ class HomeAppBarWidget extends StatelessWidget {
                                 fontSize: Dimenssions.font10,
                                 color: primaryOrange.withOpacity(0.9),
                                 fontWeight: semiBold,
-                                letterSpacing: 1.2,
+                                letterSpacing: 0.5,
                               ),
                             ),
                             Obx(() {
@@ -81,10 +81,10 @@ class HomeAppBarWidget extends StatelessWidget {
                                   Flexible(
                                     child: Text(
                                       address.isEmpty
-                                          ? 'Pilih Lokasi Pengiriman'
+                                          ? 'Pilih Lokasi'
                                           : address,
                                       style: primaryTextStyle.copyWith(
-                                        fontSize: Dimenssions.font14,
+                                        fontSize: Dimenssions.font12,
                                         color: Colors.white,
                                         fontWeight: bold,
                                         overflow: TextOverflow.ellipsis,
@@ -92,10 +92,9 @@ class HomeAppBarWidget extends StatelessWidget {
                                     ),
                                   ),
                                   Icon(
-                                    Icons.expand_more,
-                                    color: Colors.white.withOpacity(0.6),
-                                    size: Dimenssions
-                                        .iconSize16, // slightly smaller
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Colors.white.withOpacity(0.7),
+                                    size: Dimenssions.iconSize16,
                                   ),
                                 ],
                               );
@@ -109,33 +108,42 @@ class HomeAppBarWidget extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(Dimenssions.radius12),
                   ),
-                  child: IconButton(
-                    onPressed: () {},
-                    icon: Stack(
-                      children: [
-                        Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.white,
-                          size: Dimenssions.iconSize24,
-                        ),
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: primaryOrange,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: navyColor, width: 1.5),
+                  child: GetBuilder<NotificationController>(
+                    init: NotificationController(),
+                    builder: (notificationController) {
+                      return Stack(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              Get.toNamed('/usermain/notification-inbox');
+                            },
+                            icon: Icon(
+                              Icons.notifications_outlined,
+                              color: Colors.white,
+                              size: Dimenssions.iconSize24,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          Obx(() => notificationController.unreadCount.value > 0
+                              ? Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: primaryOrange,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: navyColor, width: 2.5),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink()),
+                        ],
+                      );
+                    }),
                 ),
               ],
             ),

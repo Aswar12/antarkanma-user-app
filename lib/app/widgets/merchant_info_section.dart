@@ -44,7 +44,7 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
         ),
       );
     }
-    
+
     return Container(
       padding: EdgeInsets.all(Dimenssions.height12),
       decoration: BoxDecoration(
@@ -151,13 +151,16 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                               color: merchant.isActive
                                   ? Colors.green.withOpacity(0.1)
                                   : alertColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius8),
                             ),
                             child: Text(
                               merchant.isActive ? 'Buka' : 'Tutup',
                               style: primaryTextStyle.copyWith(
                                 fontSize: Dimenssions.font12,
-                                color: merchant.isActive ? Colors.green : alertColor,
+                                color: merchant.isActive
+                                    ? Colors.green
+                                    : alertColor,
                                 fontWeight: medium,
                               ),
                             ),
@@ -176,7 +179,8 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                 ),
               ],
             ),
-            if (merchant.description != null && merchant.description!.isNotEmpty) ...[
+            if (merchant.description != null &&
+                merchant.description!.isNotEmpty) ...[
               SizedBox(height: Dimenssions.height12),
               Text(
                 merchant.description!,
@@ -233,24 +237,24 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                     ],
                   ),
                   ...[
-                  SizedBox(height: Dimenssions.height8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.shopping_bag,
-                        color: logoColorSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: Dimenssions.width8),
-                      Text(
-                        '${merchant.productCount} Produk',
-                        style: secondaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font14,
+                    SizedBox(height: Dimenssions.height8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.shopping_bag,
+                          color: logoColorSecondary,
+                          size: 20,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        SizedBox(width: Dimenssions.width8),
+                        Text(
+                          '${merchant.productCount} Produk',
+                          style: secondaryTextStyle.copyWith(
+                            fontSize: Dimenssions.font14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -264,6 +268,8 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                         Get.toNamed('/chat', arguments: {
                           'merchantId': merchant.id,
                           'merchantName': merchant.name,
+                          'merchantAvatar': merchant.effectiveLogoUrl,
+                          'productId': controller.product.value.id,
                         });
                       }
                     },
@@ -275,9 +281,11 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: logoColorSecondary,
                       side: BorderSide(color: logoColorSecondary),
-                      padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                      padding:
+                          EdgeInsets.symmetric(vertical: Dimenssions.height12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius12),
                       ),
                     ),
                   ),
@@ -302,9 +310,11 @@ class MerchantInfoSection extends GetView<ProductDetailController> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: logoColorSecondary,
                       side: BorderSide(color: logoColorSecondary),
-                      padding: EdgeInsets.symmetric(vertical: Dimenssions.height12),
+                      padding:
+                          EdgeInsets.symmetric(vertical: Dimenssions.height12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
+                        borderRadius:
+                            BorderRadius.circular(Dimenssions.radius12),
                       ),
                     ),
                   ),

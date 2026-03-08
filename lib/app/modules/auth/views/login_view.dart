@@ -29,12 +29,13 @@ class LoginView extends GetView<AuthController> {
               padding: EdgeInsets.all(Dimenssions.height20),
               child: Column(
                 children: [
-                  header(),
-                  SizedBox(height: Dimenssions.height30),
-                  loginForm(),
                   SizedBox(height: Dimenssions.height20),
-                  signButton(),
+                  header(),
+                  SizedBox(height: Dimenssions.height40),
+                  loginForm(),
                   SizedBox(height: Dimenssions.height30),
+                  signButton(),
+                  SizedBox(height: Dimenssions.height40),
                   footer(),
                   SizedBox(height: Dimenssions.height20),
                 ],
@@ -54,7 +55,7 @@ class LoginView extends GetView<AuthController> {
           height: Dimenssions.height80,
           fit: BoxFit.contain,
         ),
-        SizedBox(height: Dimenssions.height20),
+        SizedBox(height: Dimenssions.height30),
         Text(
           'Selamat Datang Kembali!',
           style: primaryTextStyle.copyWith(
@@ -77,23 +78,26 @@ class LoginView extends GetView<AuthController> {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor2,
-        borderRadius: BorderRadius.circular(Dimenssions.radius15),
+        borderRadius: BorderRadius.circular(Dimenssions.radius20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
+            color: Colors.grey.withValues(alpha: 0.08),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: EdgeInsets.all(Dimenssions.height20),
+      padding: EdgeInsets.symmetric(
+        horizontal: Dimenssions.width20,
+        vertical: Dimenssions.height30,
+      ),
       child: Column(
         children: [
           emailInput(),
-          SizedBox(height: Dimenssions.height15),
+          SizedBox(height: Dimenssions.height20),
           passwordInput(),
-          SizedBox(height: Dimenssions.height10),
+          SizedBox(height: Dimenssions.height15),
           rememberMeCheckbox(),
         ],
       ),

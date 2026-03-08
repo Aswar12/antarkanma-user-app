@@ -7,6 +7,7 @@ import 'package:antarkanma/app/widgets/logout_confirmation_dialog.dart';
 import 'package:antarkanma/app/widgets/profile_image.dart';
 import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/theme.dart';
+import 'package:antarkanma/app/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -18,8 +19,6 @@ class ProfilePage extends GetView<AuthController> {
   ProfilePage({super.key});
 
   UserLocationController? _getLocationController() {
-    // ... existing code ...
-
     if (!authService.isLoggedIn.value) return null;
     try {
       return Get.find<UserLocationController>();
@@ -31,130 +30,192 @@ class ProfilePage extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor3,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              _buildHeader(authService),
-              if (authService.isLoggedIn.value) _buildAddressCard(),
-              _buildMenuSection(),
-              SizedBox(height: Dimenssions.height10),
-            ],
-          ),
+      backgroundColor:
+          Get.isDarkMode ? AppColors.navy : const Color(0xFFF5F7FA),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            _buildHeader(authService, context),
+            if (authService.isLoggedIn.value) ...[
+              _buildFloatingStatsCard(),
+              _buildMenuSections(),
+            ] else
+              _buildGuestMenu(),
+            SizedBox(height: Dimenssions.height30),
+            _buildVersionInfo(),
+            SizedBox(height: Dimenssions.height40),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(AuthService authService) {
+  Widget _buildHeader(AuthService authService, BuildContext context) {
     final user = authService.getUser();
-    return SizedBox(
-      height: Dimenssions.height250,
+    final isGuest = !authService.isLoggedIn.value;
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
+      ),
       child: Stack(
         children: [
-          // Background Image with Overlay
-          SizedBox(
-            width: double.infinity,
-            height: Dimenssions.height250,
-            child: Stack(
-              children: [
-                // Background Image
-                Image.asset(
-                  'assets/image_profile.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-                // Dark Overlay
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                ),
-              ],
+          // Background decorations
+          Positioned(
+            top: -80,
+            right: -80,
+            child: Container(
+              width: 256,
+              height: 256,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
             ),
           ),
-          Align(
-            alignment: Alignment.center,
+          Positioned(
+            bottom: -40,
+            left: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          // Content
+          Padding(
+            padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 20,
+                bottom: 40,
+                left: 24,
+                right: 24),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Profile Image
-                GestureDetector(
-                  onTap: () => Get.toNamed(Routes.userEditProfile),
-                  child: Container(
-                    margin: EdgeInsets.only(top: Dimenssions.height30),
-                    child: Stack(
-                      children: [
-                        Hero(
-                          tag: 'profile_image',
-                          child: Container(
+                Align(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                    onTap: isGuest
+                        ? null
+                        : () => Get.toNamed(Routes.userEditProfile),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Stack(
+                        children: [
+                          Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white,
-                                width: 3,
+                                color: Colors.white.withOpacity(0.2),
+                                width: 4,
                               ),
                             ),
                             child: user != null
                                 ? ProfileImage(
                                     user: user,
-                                    size: Dimenssions.height100,
+                                    size: 96,
                                   )
                                 : CircleAvatar(
-                                    radius: Dimenssions.height50,
+                                    radius: 48,
                                     backgroundColor: Colors.grey[300],
                                     child: Icon(
                                       Icons.person,
-                                      size: Dimenssions.height50,
+                                      size: 48,
                                       color: Colors.grey[600],
                                     ),
                                   ),
                           ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(Dimenssions.height5),
-                            decoration: BoxDecoration(
-                              color: logoColorSecondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
+                          if (!isGuest)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: AppColors.navy, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                            child: Icon(
-                              Icons.edit,
-                              size: Dimenssions.height15,
-                              color: backgroundColor1,
-                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Text(
+                  authService.userName ?? 'Guest User',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  authService.userPhone ?? '',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                if (!isGuest)
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFFFB923C)],
+                      ),
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.stars, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'MEMBER SILVER',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                SizedBox(height: Dimenssions.height15),
-                // User Info
-                Text(
-                  authService.userName ?? 'Guest User',
-                  style: primaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font20,
-                    fontWeight: semiBold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: Dimenssions.height5),
-                Text(
-                  authService.userPhone ?? 'No phone number',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
               ],
             ),
           ),
@@ -163,108 +224,208 @@ class ProfilePage extends GetView<AuthController> {
     );
   }
 
-  Widget _buildAddressCard() {
-    final locationController = _getLocationController();
-    if (locationController == null) return const SizedBox.shrink();
-
-    return GetBuilder<UserLocationController>(
-      builder: (controller) {
-        return Container(
-          margin: EdgeInsets.all(Dimenssions.height15),
-          padding: EdgeInsets.all(Dimenssions.height15),
-          decoration: BoxDecoration(
-            color: backgroundColor2,
-            borderRadius: BorderRadius.circular(Dimenssions.radius15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 1),
-              ),
-            ],
+  Widget _buildFloatingStatsCard() {
+    return Transform.translate(
+      offset: const Offset(0, -28),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Get.isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: Get.isDarkMode
+                ? const Color(0xFF334155)
+                : const Color(0xFFF1F5F9),
           ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildStatItem(
+                icon: Icons.confirmation_number_outlined,
+                iconColor: AppColors.primary,
+                iconBgColor: Get.isDarkMode
+                    ? Colors.orange.withOpacity(0.2)
+                    : Colors.orange.shade50,
+                label: 'Voucher',
+                value: '12',
+                valueColor: Get.isDarkMode ? Colors.white : Colors.black),
+            _buildDivider(),
+            _buildStatItem(
+                icon: Icons.control_point_duplicate,
+                iconColor: Colors.blue,
+                iconBgColor: Get.isDarkMode
+                    ? Colors.blue.withOpacity(0.2)
+                    : Colors.blue.shade50,
+                label: 'AntarPoints',
+                value: '2.450',
+                valueColor: Get.isDarkMode ? Colors.white : Colors.black),
+            _buildDivider(),
+            _buildStatItem(
+                icon: Icons.account_balance_wallet_outlined,
+                iconColor: Colors.green,
+                iconBgColor: Get.isDarkMode
+                    ? Colors.green.withOpacity(0.2)
+                    : Colors.green.shade50,
+                label: 'AntarPay',
+                value: 'Rp 500k',
+                valueColor: Get.isDarkMode
+                    ? Colors.green.shade400
+                    : Colors.green.shade600),
+            _buildDivider(),
+            _buildStatItem(
+                icon: Icons.share_outlined,
+                iconColor: Colors.purple,
+                iconBgColor: Get.isDarkMode
+                    ? Colors.purple.withOpacity(0.2)
+                    : Colors.purple.shade50,
+                label: 'Referral',
+                value: 'Earn',
+                valueColor: Get.isDarkMode ? Colors.white : Colors.black),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Container(
+      height: 32,
+      width: 1,
+      color: Get.isDarkMode ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Get.isDarkMode
+                  ? const Color(0xFF94A3B8)
+                  : const Color(0xFF64748B),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSections() {
+    return GetBuilder<UserLocationController>(
+      init: _getLocationController(),
+      builder: (locationController) {
+        String addressSubtitle = 'Tambahkan alamat pengiriman';
+        if (locationController.defaultAddress != null) {
+          addressSubtitle = locationController.defaultAddress!.fullAddress;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: logoColorSecondary,
-                        size: Dimenssions.height22,
-                      ),
-                      SizedBox(width: Dimenssions.width10),
-                      Text(
-                        'Alamat Pengiriman',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font16,
-                          fontWeight: semiBold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  TextButton(
-                    onPressed: () => Get.toNamed(Routes.userAddress),
-                    child: Text(
-                      'Lihat Semua',
-                      style: primaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
-                        color: logoColorSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: Dimenssions.height10),
-              if (controller.defaultAddress != null) ...[
-                Container(
-                  padding: EdgeInsets.all(Dimenssions.height10),
-                  decoration: BoxDecoration(
-                    color: backgroundColor3,
-                    borderRadius: BorderRadius.circular(Dimenssions.radius15),
-                  ),
-                  child: Obx(() => Text(
-                        controller.defaultAddress!.fullAddress,
-                        style: secondaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font14,
-                        ),
-                      )),
+              _buildMenuGroup('AKUN', [
+                _buildMenuItem(
+                  icon: Icons.person_outline,
+                  title: 'Edit Profil',
+                  onTap: () => Get.toNamed(Routes.userEditProfile),
                 ),
-              ] else ...[
-                Text(
-                  'Tambahkan alamat pengiriman Anda untuk memudahkan proses pengiriman',
-                  style: secondaryTextStyle.copyWith(
-                    fontSize: Dimenssions.font14,
-                  ),
+                _buildMenuItem(
+                  icon: Icons.location_on_outlined,
+                  title: 'Alamat Pengiriman',
+                  subtitle: addressSubtitle,
+                  onTap: () => Get.toNamed(Routes.userAddress),
                 ),
-                SizedBox(height: Dimenssions.height15),
-                SizedBox(
-                  height: Dimenssions.height45,
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Get.toNamed(Routes.userAddAddress),
-                    style: TextButton.styleFrom(
-                      backgroundColor: logoColorSecondary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius15),
-                      ),
-                    ),
-                    child: Text(
-                      'Tambah Alamat',
-                      style: primaryTextStyle.copyWith(
-                        fontSize: Dimenssions.font14,
-                        color: backgroundColor1,
-                        fontWeight: medium,
-                      ),
-                    ),
-                  ),
+              ]),
+              const SizedBox(height: 24),
+              _buildMenuGroup('AKTIVITAS', [
+                _buildMenuItem(
+                  icon: Icons.shopping_bag_outlined,
+                  title: 'Orderan Kamu',
+                  onTap: () => Get.toNamed(Routes.userOrder),
                 ),
-              ],
+                _buildMenuItem(
+                  icon: Icons.favorite_border,
+                  title: 'Favorit Saya',
+                  onTap: () => Get.toNamed(Routes.wishlist),
+                ),
+              ]),
+              const SizedBox(height: 24),
+              _buildMenuGroup('LAINNYA', [
+                _buildMenuItem(
+                  icon: Icons.brightness_6_outlined,
+                  title: 'Tampilan Tema',
+                  onTap: () => _showThemeSelectionDialog(),
+                ),
+                _buildMenuItem(
+                  icon: Icons.star_outline,
+                  title: 'Rating Aplikasi',
+                  onTap: () => _showRatingDialog(),
+                ),
+                _buildMenuItem(
+                  icon: Icons.help_outline,
+                  title: 'Bantuan & Pusat Dukungan',
+                  onTap: () => Get.snackbar(
+                      'Info', 'Fitur bantuan akan segera hadir',
+                      snackPosition: SnackPosition.BOTTOM),
+                ),
+                _buildMenuItem(
+                  icon: Icons.description_outlined,
+                  title: 'Syarat & Ketentuan',
+                  onTap: () => Get.snackbar(
+                      'Info', 'Syarat & Ketentuan akan segera hadir',
+                      snackPosition: SnackPosition.BOTTOM),
+                ),
+                _buildMenuItem(
+                  icon: Icons.logout,
+                  title: 'Keluar Sesi',
+                  titleColor: Colors.red.shade500,
+                  iconColor: Colors.red.shade500,
+                  showChevron: false,
+                  onTap: () => Get.dialog(const LogoutConfirmationDialog()),
+                ),
+              ]),
             ],
           ),
         );
@@ -272,170 +433,177 @@ class ProfilePage extends GetView<AuthController> {
     );
   }
 
-  Widget _buildMenuSection() {
-    return Container(
-      margin: EdgeInsets.all(Dimenssions.height15),
-      padding: EdgeInsets.all(Dimenssions.height15),
-      decoration: BoxDecoration(
-        color: backgroundColor2,
-        borderRadius: BorderRadius.circular(Dimenssions.radius15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+  Widget _buildGuestMenu() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildMenuGroup('Akun', [
-            _MenuItem(
-              icon: Icons.person_outline,
-              title: 'Edit Profil',
-              onTap: () => Get.toNamed(Routes.userEditProfile),
-            ),
-            _MenuItem(
-              icon: Icons.shopping_bag_outlined,
-              title: 'Orderan Kamu',
-              onTap: () => Get.toNamed(Routes.userOrder),
-            ),
-            _MenuItem(
-              icon: Icons.headset_mic_outlined,
-              title: 'Bantuan',
-              onTap: () {
-                // TODO: Implement help page navigation when available
-                Get.snackbar(
-                  'Info',
-                  'Fitur bantuan akan segera hadir',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              },
-            ),
-          ]),
-          SizedBox(height: Dimenssions.height20),
-          _buildMenuGroup('Umum', [
-            _MenuItem(
-              icon: Icons.privacy_tip_outlined,
-              title: 'Kebijakan & Privasi',
-              onTap: () {
-                // TODO: Implement privacy policy page navigation when available
-                Get.snackbar(
-                  'Info',
-                  'Halaman kebijakan & privasi akan segera hadir',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              },
-            ),
-            _MenuItem(
-              icon: Icons.description_outlined,
-              title: 'Ketentuan Layanan',
-              onTap: () {
-                // TODO: Implement terms of service page navigation when available
-                Get.snackbar(
-                  'Info',
-                  'Halaman ketentuan layanan akan segera hadir',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              },
-            ),
-            _MenuItem(
+          _buildMenuGroup('LAINNYA', [
+            _buildMenuItem(
               icon: Icons.brightness_6_outlined,
-              title: 'Tampilan',
+              title: 'Tampilan Tema',
               onTap: () => _showThemeSelectionDialog(),
             ),
-            _MenuItem(
-              icon: Icons.star_outline,
-              title: 'Rating Aplikasi',
-              onTap: () => _showRatingDialog(),
+            _buildMenuItem(
+              icon: Icons.help_outline,
+              title: 'Bantuan & Pusat Dukungan',
+              onTap: () => Get.snackbar(
+                  'Info', 'Fitur bantuan akan segera hadir',
+                  snackPosition: SnackPosition.BOTTOM),
+            ),
+            _buildMenuItem(
+              icon: Icons.login,
+              title: 'Masuk / Daftar',
+              titleColor: AppColors.primary,
+              iconColor: AppColors.primary,
+              showChevron: false,
+              onTap: () => Get.offAllNamed(Routes.login),
             ),
           ]),
-          SizedBox(height: Dimenssions.height20),
-          SizedBox(
-            height: Dimenssions.height45,
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => Get.dialog(const LogoutConfirmationDialog()),
-              style: TextButton.styleFrom(
-                backgroundColor: alertColor.withOpacity(0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Dimenssions.radius15),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.logout,
-                    color: alertColor,
-                    size: Dimenssions.height20,
-                  ),
-                  SizedBox(width: Dimenssions.width10),
-                  Text(
-                    'Keluar',
-                    style: primaryTextStyle.copyWith(
-                      color: alertColor,
-                      fontSize: Dimenssions.font14,
-                      fontWeight: medium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuGroup(String title, List<_MenuItem> items) {
+  Widget _buildMenuGroup(String header, List<Widget> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: primaryTextStyle.copyWith(
-            fontSize: Dimenssions.font16,
-            fontWeight: semiBold,
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            header,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Get.isDarkMode
+                  ? const Color(0xFF64748B)
+                  : const Color(0xFF94A3B8),
+              letterSpacing: 1.5,
+            ),
           ),
         ),
-        SizedBox(height: Dimenssions.height10),
-        ...items.map((item) => _buildMenuItemWidget(item)),
+        Container(
+          decoration: BoxDecoration(
+            color: Get.isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Get.isDarkMode
+                  ? const Color(0xFF334155)
+                  : const Color(0xFFF1F5F9),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.01),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: items.asMap().entries.map((entry) {
+              final int idx = entry.key;
+              final Widget item = entry.value;
+              return Column(
+                children: [
+                  item,
+                  if (idx != items.length - 1)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Get.isDarkMode
+                          ? const Color(0xFF334155).withOpacity(0.5)
+                          : const Color(0xFFF8FAFC),
+                      indent: 56,
+                    ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildMenuItemWidget(_MenuItem item) {
-    return InkWell(
-      onTap: item.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: Dimenssions.height15,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              item.icon,
-              color: logoColorSecondary,
-              size: Dimenssions.height20,
-            ),
-            SizedBox(width: Dimenssions.width15),
-            Expanded(
-              child: Text(
-                item.title,
-                style: secondaryTextStyle.copyWith(
-                  fontSize: Dimenssions.font14,
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Color? titleColor,
+    Color? iconColor,
+    bool showChevron = true,
+    required VoidCallback onTap,
+  }) {
+    final tColor = titleColor ??
+        (Get.isDarkMode ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A));
+    final iColor = iconColor ?? AppColors.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, color: iColor, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: tColor,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Get.isDarkMode
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF94A3B8),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: secondaryTextColor,
-              size: Dimenssions.height15,
-            ),
-          ],
+              if (showChevron)
+                Icon(
+                  Icons.chevron_right,
+                  color: Get.isDarkMode
+                      ? const Color(0xFF475569)
+                      : const Color(0xFFCBD5E1),
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionInfo() {
+    return Center(
+      child: Text(
+        'Antarkanma Version 2.4.0',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Get.isDarkMode
+              ? const Color(0xFF475569)
+              : const Color(0xFF94A3B8),
         ),
       ),
     );
@@ -538,7 +706,7 @@ class ProfilePage extends GetView<AuthController> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Pilih Tampilan',
+              'Pilih Tampilan Tema',
               style: primaryTextStyle.copyWith(
                 fontSize: Dimenssions.font18,
                 fontWeight: semiBold,
@@ -615,16 +783,4 @@ class ProfilePage extends GetView<AuthController> {
       );
     });
   }
-}
-
-class _MenuItem {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  _MenuItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
 }

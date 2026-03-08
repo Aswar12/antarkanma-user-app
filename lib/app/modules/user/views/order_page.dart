@@ -8,6 +8,7 @@ import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:antarkanma/app/widgets/order_card.dart';
 import 'package:antarkanma/app/widgets/order_status_badge.dart';
 import 'package:antarkanma/app/widgets/order_status_timeline.dart';
+import 'package:antarkanma/app/modules/user/views/review_page.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -46,39 +47,79 @@ class _OrderPageState extends State<OrderPage>
     return Scaffold(
       backgroundColor: backgroundColor3,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(Dimenssions.height70),
-        child: AppBar(
-          toolbarHeight: Dimenssions.height25,
-          title: Text(
-            'Pesanan Saya',
-            style: primaryTextStyle.copyWith(
-              fontSize: Dimenssions.font20,
-              fontWeight: regular,
+        preferredSize: Size.fromHeight(Dimenssions.height85),
+        child: Container(
+          decoration: BoxDecoration(
+            color: navyColor,
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(Dimenssions.radius30),
+              bottomRight: Radius.circular(Dimenssions.radius30),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: navyColor.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          centerTitle: true,
-          backgroundColor: backgroundColor2,
-          foregroundColor: primaryTextColor,
-          iconTheme: IconThemeData(
-            color: logoColorSecondary,
-          ),
-          elevation: 0.5,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight),
-            child: GetBuilder<OrderController>(
-              builder: (controller) {
-                return TabBar(
-                  controller: _tabController,
-                  onTap: controller.onTabChanged,
-                  tabs: const [
-                    Tab(text: 'Aktif'),
-                    Tab(text: 'Riwayat'),
-                  ],
-                  labelColor: logoColorSecondary,
-                  unselectedLabelColor: secondaryTextColor,
-                  indicatorColor: logoColorSecondary,
-                );
-              },
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Header Title
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: Dimenssions.width20,
+                    right: Dimenssions.width20,
+                    top: Dimenssions.height12,
+                    bottom: Dimenssions.height12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Pesanan Saya',
+                        style: primaryTextStyle.copyWith(
+                          fontSize: Dimenssions.font20,
+                          fontWeight: semiBold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Tab Bar
+                Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: Dimenssions.width20),
+                  child: GetBuilder<OrderController>(
+                    builder: (controller) {
+                      return TabBar(
+                        controller: _tabController,
+                        onTap: controller.onTabChanged,
+                        tabs: const [
+                          Tab(text: 'Aktif'),
+                          Tab(text: 'Riwayat'),
+                        ],
+                        labelColor: primaryOrange,
+                        unselectedLabelColor: Colors.white.withOpacity(0.6),
+                        indicatorColor: primaryOrange,
+                        indicatorWeight: 3,
+                        labelStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: Dimenssions.height10),
+              ],
             ),
           ),
         ),
@@ -171,7 +212,7 @@ class _OrderPageState extends State<OrderPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Order #${transaction.id}',
+                            '#ANTAR-${transaction.id}',
                             style: primaryTextStyle.copyWith(
                               fontSize: Dimenssions.font16,
                               fontWeight: semiBold,
@@ -313,79 +354,113 @@ class _OrderPageState extends State<OrderPage>
                 ),
               ),
             ),
-            // Cancel Button at Bottom
-            if (transaction.status.toUpperCase() == 'PENDING') ...[
-              Padding(
-                padding: EdgeInsets.all(Dimenssions.height15),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => _showCancelDialog(transaction),
-                    style: TextButton.styleFrom(
-                      backgroundColor: alertColor.withOpacity(0.1),
-                      padding: EdgeInsets.symmetric(
-                        vertical: Dimenssions.height12,
+            // Bottom Action Buttons (Cancel & Chat Driver)
+            Padding(
+              padding: EdgeInsets.all(Dimenssions.height15),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Chat Driver Button (primary action)
+                  if (['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
+                      .contains(transaction.status.toUpperCase()))
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Get.back(); // Close bottom sheet
+                        Get.toNamed(Routes.userChat, arguments: {
+                          'chatId': null,
+                          'orderId': transaction.id,
+                        });
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline,
+                          color: Colors.white, size: 20),
+                      label: Text(
+                        'Chat dengan Kurir',
+                        style: primaryTextStyle.copyWith(
+                          color: Colors.white,
+                          fontSize: Dimenssions.font14,
+                          fontWeight: medium,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius8),
-                        side: BorderSide(color: alertColor),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryOrange,
+                        padding: EdgeInsets.symmetric(
+                            vertical: Dimenssions.height12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius8),
+                        ),
+                        elevation: 0,
                       ),
                     ),
-                    child: Text(
-                      'Batalkan Pesanan',
-                      style: primaryTextStyle.copyWith(
-                        color: alertColor,
-                        fontSize: Dimenssions.font14,
-                        fontWeight: medium,
+
+                  // Spacer between buttons
+                  if (transaction.status.toUpperCase() == 'PENDING' &&
+                      ['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
+                          .contains(transaction.status.toUpperCase()))
+                    SizedBox(height: Dimenssions.height8),
+
+                  // Cancel Button (secondary action - outlined style)
+                  if (transaction.status.toUpperCase() == 'PENDING')
+                    OutlinedButton.icon(
+                      onPressed: () => _showCancelDialog(transaction),
+                      icon: Icon(Icons.cancel_outlined, size: 20),
+                      label: Text(
+                        'Batalkan Pesanan',
+                        style: primaryTextStyle.copyWith(
+                          color: alertColor,
+                          fontSize: Dimenssions.font14,
+                          fontWeight: medium,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: alertColor,
+                        side: BorderSide(color: alertColor, width: 1.5),
+                        padding: EdgeInsets.symmetric(
+                            vertical: Dimenssions.height12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(Dimenssions.radius8),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+
+                  // Review Button for completed orders
+                  if (['COMPLETED', 'DELIVERED']
+                      .contains(transaction.status.toUpperCase()))
+                    Padding(
+                      padding: EdgeInsets.only(top: Dimenssions.height8),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back(); // Close bottom sheet
+                          Get.to(() => ReviewPage(transaction: transaction));
+                        },
+                        icon: const Icon(Icons.star_rounded, size: 20),
+                        label: Text(
+                          'Beri Ulasan',
+                          style: primaryTextStyle.copyWith(
+                            color: Colors.white,
+                            fontSize: Dimenssions.font14,
+                            fontWeight: medium,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFA726),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              vertical: Dimenssions.height12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius8),
+                          ),
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 0),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-            // Chat Button
-            if (['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
-                .contains(transaction.status.toUpperCase())) ...[
-              SizedBox(height: Dimenssions.height10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: Dimenssions.height15),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      Get.back(); // Close bottom sheet
-                      Get.toNamed(Routes.userChat, arguments: {
-                        'chatId': null,
-                        'orderId': transaction.orders.isNotEmpty
-                            ? transaction.orders.first.id
-                            : transaction.id,
-                      });
-                    },
-                    icon: const Icon(Icons.chat_bubble_outline,
-                        color: Colors.white),
-                    label: Text(
-                      'Chat Driver',
-                      style: primaryTextStyle.copyWith(
-                        color: Colors.white,
-                        fontSize: Dimenssions.font14,
-                        fontWeight: medium,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      backgroundColor: primaryOrange,
-                      padding:
-                          EdgeInsets.symmetric(vertical: Dimenssions.height12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(Dimenssions.radius8),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: Dimenssions.height20),
-            ],
+            ),
           ],
         ),
       ),
@@ -400,14 +475,52 @@ class _OrderPageState extends State<OrderPage>
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Merchant: ${order.merchantName}',
-              style: primaryTextStyle.copyWith(
-                fontSize: Dimenssions.font14,
-                fontWeight: medium,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Merchant: ${order.merchantName}',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font14,
+                      fontWeight: medium,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: Dimenssions.height4),
+                  InkWell(
+                    onTap: () {
+                      Get.back(); // Close bottom sheet
+                      Get.toNamed(Routes.userChat, arguments: {
+                        'chatId': null,
+                        'orderId': order.id,
+                        'merchantId': order.merchantId,
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat_bubble_outline,
+                            color: Colors.green, size: Dimenssions.font14),
+                        SizedBox(width: Dimenssions.width4),
+                        Text(
+                          'Chat Merchant',
+                          style: primaryTextStyle.copyWith(
+                            color: Colors.green,
+                            fontSize: Dimenssions.font12,
+                            fontWeight: medium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+            SizedBox(width: Dimenssions.width10),
             OrderStatusBadge(status: order.orderStatus),
           ],
         ),

@@ -99,4 +99,21 @@ class ReviewProvider {
       rethrow;
     }
   }
+
+  /// Get product reviews (for backward compatibility)
+  Future<dio.Response> getProductReviews(int productId,
+      {String? token, int? rating}) async {
+    try {
+      final response = await _dio.get(
+        '/products/$productId/reviews',
+        queryParameters: {
+          if (rating != null) 'rating': rating,
+        },
+      );
+      return response;
+    } on dio.DioException catch (e) {
+      debugPrint('Product reviews error: ${e.message}');
+      rethrow;
+    }
+  }
 }

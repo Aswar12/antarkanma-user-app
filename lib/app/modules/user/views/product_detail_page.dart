@@ -17,6 +17,7 @@ import 'package:antarkanma/app/widgets/product_bottom_nav.dart';
 import 'package:antarkanma/app/widgets/cart_button.dart';
 import 'package:antarkanma/app/widgets/back_button.dart';
 import 'package:antarkanma/app/widgets/curved_bottom_decoration.dart';
+import 'package:antarkanma/app/controllers/wishlist_controller.dart';
 import 'package:antarkanma/theme.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -27,7 +28,8 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  final ProductDetailController controller = Get.find<ProductDetailController>();
+  final ProductDetailController controller =
+      Get.find<ProductDetailController>();
   final CartController cartController = Get.find<CartController>();
   final UserMainController userMainController = Get.find<UserMainController>();
 
@@ -211,7 +213,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 )),
                             Obx(() => VariantSelectorSection(
                                   product: controller.product.value,
-                                  selectedVariant: controller.selectedVariant.value,
+                                  selectedVariant:
+                                      controller.selectedVariant.value,
                                   onVariantSelected: controller.selectVariant,
                                 )),
                             Obx(() => MerchantInfoSection(
@@ -254,6 +257,31 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         backgroundColor: backgroundColor1,
       ),
       actions: [
+        // Wishlist toggle
+        Obx(() {
+          final wishlistCtrl = Get.find<WishlistController>();
+          final productId = controller.product.value.id;
+          if (productId == null) return const SizedBox();
+          final isFav = wishlistCtrl.isWishlisted(productId);
+          return Container(
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: backgroundColor1.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(
+                isFav ? Icons.favorite : Icons.favorite_border,
+                color: isFav ? Colors.red : Colors.grey,
+                size: 22,
+              ),
+              onPressed: () => wishlistCtrl.toggleWishlist(
+                productId,
+                product: controller.product.value,
+              ),
+            ),
+          );
+        }),
         Obx(() => CartButton(
               itemCount: cartController.itemCount,
               onPressed: _navigateToCart,

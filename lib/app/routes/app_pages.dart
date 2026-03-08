@@ -18,6 +18,7 @@ import '../modules/user/views/product_detail_page.dart';
 import '../modules/user/views/profile_page.dart';
 import '../modules/user/views/user_main_page.dart';
 import '../modules/user/views/edit_profile_view.dart';
+import '../modules/user/controllers/edit_profile_controller.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../bindings/main_binding.dart';
@@ -25,6 +26,10 @@ import '../modules/home/views/manual_order_page.dart';
 import '../modules/home/controllers/manual_order_controller.dart';
 import '../modules/chat/views/chat_view.dart';
 import '../modules/chat/bindings/chat_binding.dart';
+import '../modules/chat/views/chat_list_page.dart';
+import '../modules/chat/controllers/chat_list_controller.dart';
+import '../modules/user/views/wishlist_page.dart';
+import '../modules/user/views/notification_inbox_page.dart';
 
 part 'app_routes.dart';
 
@@ -70,6 +75,11 @@ class AppPages {
           preventDuplicates: true,
           transition: Transition.fadeIn,
         ),
+        GetPage(
+          name: _Paths.notificationInbox,
+          page: () => const NotificationInboxPage(),
+          transition: Transition.rightToLeft,
+        ),
 
         // Profile Section
         GetPage(
@@ -80,6 +90,9 @@ class AppPages {
         GetPage(
           name: _Paths.editProfile,
           page: () => const EditProfileView(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut<EditProfileController>(() => EditProfileController());
+          }),
           transition: Transition.rightToLeft,
         ),
 
@@ -89,6 +102,14 @@ class AppPages {
           page: () => const ChatView(),
           binding: ChatBinding(),
           transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.chatList,
+          page: () => const ChatListPage(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut<ChatListController>(() => ChatListController());
+          }),
+          transition: Transition.fadeIn,
         ),
 
         // Order Management
@@ -166,6 +187,12 @@ class AppPages {
       binding: BindingsBuilder(() {
         Get.put(ManualOrderController());
       }),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: _Paths.wishlist,
+      page: () => const WishlistPage(),
+      middlewares: [AuthGuard()],
       transition: Transition.rightToLeft,
     ),
   ];

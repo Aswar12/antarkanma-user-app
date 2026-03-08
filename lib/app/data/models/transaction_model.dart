@@ -38,9 +38,13 @@ class OrderModel {
       }
     }
 
+    // Normalize order status: replace underscores to match frontend constants
+    // Backend: READY_FOR_PICKUP → Frontend: READY_FOR_PICKUP (keep as is)
+    String orderStatus = json['order_status']?.toString() ?? 'PENDING';
+    
     return OrderModel(
       id: json['id'],
-      orderStatus: json['order_status']?.toString() ?? 'PENDING',
+      orderStatus: orderStatus,
       totalAmount: amount,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -84,7 +88,9 @@ class TransactionModel {
   final UserLocationModel? userLocation;
   final List<OrderModel> orders;
   final UserModel? user;
+  final dynamic courierId;
   final String courierStatus;
+  final Map<String, dynamic>? courierInfo;
 
   TransactionModel({
     this.id,
@@ -102,7 +108,9 @@ class TransactionModel {
     this.userLocation,
     required this.orders,
     this.user,
+    this.courierId,
     this.courierStatus = 'IDLE',
+    this.courierInfo,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -193,7 +201,9 @@ class TransactionModel {
         userLocation: userLocation,
         orders: orders,
         user: user,
+        courierId: _parseId(transactionData['courier_id']),
         courierStatus: transactionData['courier_status']?.toString() ?? 'IDLE',
+        courierInfo: transactionData['courier'] as Map<String, dynamic>?,
       );
     } catch (e, stackTrace) {
       print('Error parsing TransactionModel: $e');
@@ -242,9 +252,22 @@ class TransactionModel {
       'user_location': userLocation?.toJson(),
       'orders': orders.map((order) => order.toJson()).toList(),
       'user': user?.toJson(),
+      'courier_id': courierId,
       'courier_status': courierStatus,
+      'courier': courierInfo,
     };
   }
+
+  // Getter untuk can_chat_with_courier sesuai dokumentasi
+  bool get canChatWithCourier => courierId != null && 
+      !['COMPLETED', 'CANCELED'].contains(status.toUpperCase());
+
+  // Getter untuk informasi kurir
+  String? get courierName => courierInfo?['name'] ?? courierInfo?['courier_name'];
+  String? get courierPhone => courierInfo?['phone'] ?? courierInfo?['courier_phone'];
+  String? get courierVehicleType => courierInfo?['vehicle_type'];
+  String? get courierLicensePlate => courierInfo?['license_plate'];
+  String? get courierPhoto => courierInfo?['photo'] ?? courierInfo?['courier_photo'];
 
   // Getters for formatted values
   double get subtotal => totalPrice;
@@ -258,19 +281,27 @@ class TransactionModel {
   String get formattedDate => createdAt?.toString() ?? '-';
 
   String get statusDisplay {
-    switch (status.toUpperCase()) {
+    // Normalize status for consistent matching
+    final normalizedStatus = status.toUpperCase().replaceAll('_', '');
+    
+    switch (normalizedStatus) {
       case 'PENDING':
         return 'Menunggu Konfirmasi';
-      case 'ACCEPTED':
-        return 'Diterima';
-      case 'REJECTED':
-        return 'Ditolak';
+      case 'WAITINGAPPROVAL':
+        return 'Menunggu Konfirmasi Merchant';
       case 'PROCESSING':
         return 'Sedang Diproses';
+      case 'READYFORPICKUP':
       case 'READYTOPICKUP':
         return 'Siap Antar';
+      case 'PICKEDUP':
+        return 'Sedang Dikirim';
       case 'SHIPPED':
+      case 'ONDELIVERY':
+      case 'HEADINGTOCUSTOMER':
         return 'Dalam Pengiriman';
+      case 'ATCUSTOMER':
+        return 'Kurir Tiba di Lokasi';
       case 'DELIVERED':
         return 'Terkirim';
       case 'COMPLETED':
@@ -298,6 +329,7 @@ class TransactionModel {
     UserLocationModel? userLocation,
     List<OrderModel>? orders,
     UserModel? user,
+    dynamic courierId,
     String? courierStatus,
   }) {
     return TransactionModel(
@@ -316,6 +348,7 @@ class TransactionModel {
       userLocation: userLocation ?? this.userLocation,
       orders: orders ?? this.orders,
       user: user ?? this.user,
+      courierId: courierId ?? this.courierId,
       courierStatus: courierStatus ?? this.courierStatus,
     );
   }

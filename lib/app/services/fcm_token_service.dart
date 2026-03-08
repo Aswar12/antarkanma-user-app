@@ -1,13 +1,18 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:antarkanma/app/data/providers/notification_provider.dart';
 import 'package:antarkanma/app/services/auth_service.dart';
 import 'package:antarkanma/app/modules/chat/controllers/chat_controller.dart';
+import 'package:antarkanma/app/modules/chat/controllers/chat_list_controller.dart';
+import 'package:antarkanma/app/controllers/order_controller.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class FCMTokenService extends GetxService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final NotificationProvider _notificationProvider = NotificationProvider();
+  FlutterLocalNotificationsPlugin? _localNotifications;
   late final AuthService _authService;
 
   final _currentToken = RxnString();
@@ -23,6 +28,9 @@ class FCMTokenService extends GetxService {
       badge: true,
       sound: true,
     );
+
+    // Initialize local notifications
+    await _initializeLocalNotifications();
 
     // Get initial FCM token
     await _initializeFCMToken();
@@ -49,6 +57,33 @@ class FCMTokenService extends GetxService {
     }
 
     return this;
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    _localNotifications = FlutterLocalNotificationsPlugin();
+
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@drawable/notification_icon');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    
+    await _localNotifications!.initialize(initializationSettings);
+
+    // Create notification channel for order updates
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'antarkanma_order_channel',
+      'Pesanan',
+      description: 'Notifikasi untuk update status pesanan',
+      importance: Importance.high,
+      enableVibration: true,
+      playSound: true,
+      showBadge: true,
+    );
+
+    await _localNotifications!
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   Future<void> _initializeFCMToken() async {
@@ -106,8 +141,9 @@ class FCMTokenService extends GetxService {
     try {
       final authService = Get.find<AuthService>();
       final user = authService.currentUser.value;
+      
       if (user != null) {
-        print(
+        debugPrint(
             'Registering FCM token for user ${user.id} with role ${user.role}');
 
         await _notificationProvider.registerFCMToken(
@@ -117,13 +153,27 @@ class FCMTokenService extends GetxService {
         );
 
         _isTokenRegistered.value = true;
-        print('FCM token registered successfully');
+        debugPrint('FCM token registered successfully');
       } else {
-        print('Cannot register FCM token: No user logged in');
+        debugPrint('Cannot register FCM token: No user logged in (skipping silently)');
+        // Don't set _isTokenRegistered to false here, as we want to retry when user logs in
       }
     } catch (e) {
       _isTokenRegistered.value = false;
-      print('Error registering token with backend: $e');
+      debugPrint('Error registering token with backend: $e');
+      
+      // If 401 error, trigger re-authentication
+      if (e.toString().contains('Authentication failed')) {
+        debugPrint('Token expired, clearing auth state...');
+        try {
+          final authService = Get.find<AuthService>();
+          await authService.logout(); // Logout to clear storage
+          Get.offAllNamed('/login'); // Redirect to login
+        } catch (logoutError) {
+          debugPrint('Error during logout: $logoutError');
+        }
+      }
+      // Don't rethrow, just log the error
     }
   }
 
@@ -150,30 +200,176 @@ class FCMTokenService extends GetxService {
     print(
         "Notification: ${message.notification?.title}, ${message.notification?.body}");
 
-    if (message.data['type'] == 'chat') {
-      // Check if ChatController is active
-      if (Get.isRegistered<ChatController>()) {
-        // Only refresh if we are inside the chat flow.
-        print(
-            "ChatController found. Firestore stream should update UI automatically.");
-        // chatController.fetchMessages(silent: true); // No longer needed
-      } else {
-        // Show snackbar if not in chat
-        if (message.notification != null) {
-          Get.snackbar(
-            message.notification!.title ?? 'New Message',
-            message.notification!.body ?? '',
-            onTap: (_) {
-              // Handle tap to navigate to chat
-            },
-            backgroundColor: Get.theme.colorScheme.surface,
-            colorText: Get.theme.textTheme.bodyLarge?.color,
-            margin: const EdgeInsets.all(10),
-            borderRadius: 10,
-            duration: const Duration(seconds: 4),
-          );
+    // Handle chat messages
+    if (message.data['type'] == 'CHAT_MESSAGE') {
+      _handleChatMessage(message);
+    } else if (message.data['type'] == 'chat') {
+      // Legacy handler for backward compatibility
+      _handleLegacyChatMessage(message);
+    }
+    
+    // Handle order update messages - trigger refresh
+    if (message.data.containsKey('order_id')) {
+      _handleOrderUpdate(message);
+    }
+  }
+
+  void _handleOrderUpdate(RemoteMessage message) {
+    print("Order update received, triggering refresh...");
+    
+    // Refresh orders if OrderController is available
+    if (Get.isRegistered<OrderController>()) {
+      try {
+        Get.find<OrderController>().refreshOrders();
+        print("Orders refreshed successfully");
+      } catch (e) {
+        print("Error refreshing orders: $e");
+      }
+    }
+    
+    // Show local notification for order update
+    _showOrderUpdateNotification(message);
+  }
+
+  void _showOrderUpdateNotification(RemoteMessage message) async {
+    try {
+      final title = message.notification?.title ?? 'Update Pesanan';
+      final body = message.notification?.body ?? 'Pesanan Anda telah diperbarui';
+      
+      await _localNotifications?.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'antarkanma_order_channel',
+            'Pesanan',
+            channelDescription: 'Notifikasi update status pesanan',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@drawable/notification_icon',
+          ),
+        ),
+        payload: json.encode(message.data),
+      );
+    } catch (e) {
+      print("Error showing order update notification: $e");
+    }
+  }
+
+  void _handleChatMessage(RemoteMessage message) {
+    final data = message.data;
+
+    print("Chat message received from: ${data['sender_name']}");
+    print("Chat ID: ${data['chat_id']}, Order ID: ${data['order_id']}");
+
+    // Show local notification immediately
+    _showChatNotification(
+      title: data['sender_name'] ?? 'Pesan Baru',
+      body: message.notification?.body ?? 'Anda memiliki pesan baru',
+      chatId: data['chat_id'],
+    );
+
+    // 1. Refresh chat list in background (if controller exists)
+    if (Get.isRegistered<ChatListController>()) {
+      print("ChatListController found, refreshing chat list...");
+      Get.find<ChatListController>().fetchChats();
+    }
+
+    // 2. If chat page is open for this chat, fetch new messages
+    if (Get.isRegistered<ChatController>()) {
+      try {
+        final chatController = Get.find<ChatController>();
+        final currentChatId = chatController.chatId;
+        
+        if (currentChatId?.toString() == data['chat_id']) {
+          print("Chat page is open for this chat, fetching new messages...");
+          chatController.fetchMessages(); // Fetch new messages
+        } else {
+          print("Chat page is open but for different chat: $currentChatId vs ${data['chat_id']}");
+        }
+      } catch (e) {
+        print("Error checking chat controller: $e");
+      }
+    }
+
+    // Legacy handler for backward compatibility
+    if (data['type'] == 'chat') {
+      _handleLegacyChatMessage(message);
+    }
+  }
+
+  void _handleLegacyChatMessage(RemoteMessage message) {
+    // Legacy handler for backward compatibility
+    print("Legacy chat message received");
+    
+    if (Get.isRegistered<ChatController>()) {
+      print("ChatController found, Firestore stream should update UI");
+    } else {
+      // Show snackbar if not in chat
+      if (message.notification != null) {
+        Get.snackbar(
+          message.notification!.title ?? 'Pesan Baru',
+          message.notification!.body ?? '',
+          onTap: (_) {
+            // Handle tap to navigate to chat
+          },
+          backgroundColor: Get.theme.colorScheme.surface,
+          colorText: Get.theme.textTheme.bodyLarge?.color,
+          margin: const EdgeInsets.all(10),
+          borderRadius: 10,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    }
+  }
+
+  void _showChatNotification({
+    required String title,
+    required String body,
+    String? chatId,
+  }) async {
+    try {
+      print("Showing local notification: $title - $body");
+      
+      // Lazy initialize FlutterLocalNotificationsPlugin if needed
+      if (_localNotifications == null) {
+        try {
+          _localNotifications = Get.find<FlutterLocalNotificationsPlugin>();
+        } catch (e) {
+          print("FlutterLocalNotificationsPlugin not registered, skipping local notification");
+          return;
         }
       }
+      
+      await _localNotifications!.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'chat_channel',
+            'Chat Messages',
+            channelDescription: 'Notifikasi pesan chat',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_notification',
+            showWhen: true,
+            enableVibration: true,
+            playSound: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: json.encode({'chatId': chatId, 'type': 'CHAT_MESSAGE'}),
+      );
+      
+      print("Local notification shown successfully");
+    } catch (e) {
+      print("Error showing local notification: $e");
     }
   }
 }

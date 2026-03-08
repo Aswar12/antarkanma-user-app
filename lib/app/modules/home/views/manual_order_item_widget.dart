@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -20,12 +19,12 @@ class ManualOrderItemWidget extends StatelessWidget {
   final VoidCallback onPickImage;
 
   const ManualOrderItemWidget({
-    Key? key,
+    super.key,
     required this.item,
     required this.index,
     required this.onRemove,
     required this.onPickImage,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

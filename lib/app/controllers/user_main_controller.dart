@@ -44,7 +44,7 @@ class UserMainController extends GetxController {
 
         // Load state with proper error handling
         await _loadSavedState();
-        
+
         isInitialized.value = true;
         debugPrint('UserMainController: Initialized successfully');
       } catch (e) {
@@ -68,7 +68,7 @@ class UserMainController extends GetxController {
   Future<void> _loadSavedState() async {
     try {
       debugPrint('UserMainController: Loading saved state');
-      
+
       // Initialize basic state
       currentIndex.value = 0;
       isSearching.value = false;
@@ -93,7 +93,7 @@ class UserMainController extends GetxController {
         return;
       }
 
-      if (index < 0 || index > 3) {
+      if (index < 0 || index > 4) {
         debugPrint('Invalid page index: $index');
         return;
       }
@@ -107,7 +107,8 @@ class UserMainController extends GetxController {
   void toggleSearch() {
     try {
       if (!isInitialized.value) {
-        debugPrint('UserMainController: Cannot toggle search - not initialized');
+        debugPrint(
+            'UserMainController: Cannot toggle search - not initialized');
         return;
       }
       isSearching.toggle();

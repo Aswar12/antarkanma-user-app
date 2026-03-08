@@ -51,12 +51,21 @@ class OrderStatusBadge extends StatelessWidget {
   }
 
   StatusInfo _getStatusInfo(String status) {
-    switch (status.toUpperCase()) {
+    // Normalize status: replace underscores for consistent matching
+    final normalizedStatus = status.toUpperCase().replaceAll('_', '');
+    
+    switch (normalizedStatus) {
       case 'PENDING':
         return StatusInfo(
           color: priceColor,
           text: 'Menunggu',
           icon: Icons.hourglass_empty,
+        );
+      case 'WAITINGAPPROVAL':
+        return StatusInfo(
+          color: Colors.amber,
+          text: 'Menunggu Konfirmasi',
+          icon: Icons.help_outline,
         );
       case 'PROCESSING':
         return StatusInfo(
@@ -64,18 +73,31 @@ class OrderStatusBadge extends StatelessWidget {
           text: 'Diproses',
           icon: Icons.sync,
         );
-      case 'READYTOPICKUP':
+      case 'READYFORPICKUP':
         return StatusInfo(
           color: Colors.orange,
           text: 'Siap Antar',
           icon: Icons.delivery_dining,
         );
+      case 'PICKEDUP':
+        return StatusInfo(
+          color: Colors.blue,
+          text: 'Diambil',
+          icon: Icons.inventory,
+        );
       case 'SHIPPED':
-      case 'ON_DELIVERY':
+      case 'ONDELIVERY':
+      case 'HEADINGTOCUSTOMER':
         return StatusInfo(
           color: Colors.blue,
           text: 'Dikirim',
           icon: Icons.local_shipping_outlined,
+        );
+      case 'ATCUSTOMER':
+        return StatusInfo(
+          color: Colors.purple,
+          text: 'Tiba di Lokasi',
+          icon: Icons.location_on,
         );
       case 'DELIVERED':
         return StatusInfo(

@@ -17,8 +17,11 @@ class OrderController extends GetxController {
 
   // Define order status constants
   static const String ORDER_STATUS_PENDING = 'PENDING';
+  static const String ORDER_STATUS_WAITING_APPROVAL = 'WAITING_APPROVAL';
   static const String ORDER_STATUS_PROCESSING = 'PROCESSING';
-  static const String ORDER_STATUS_READYTOPICKUP = 'READYTOPICKUP';
+  static const String ORDER_STATUS_READY_FOR_PICKUP = 'READY_FOR_PICKUP';
+  static const String ORDER_STATUS_READYTOPICKUP = 'READYTOPICKUP'; // Legacy support
+  static const String ORDER_STATUS_PICKED_UP = 'PICKED_UP';
   static const String ORDER_STATUS_SHIPPED = 'SHIPPED';
   static const String ORDER_STATUS_DELIVERED = 'DELIVERED';
   static const String ORDER_STATUS_COMPLETED = 'COMPLETED';
@@ -129,8 +132,11 @@ class OrderController extends GetxController {
         debugPrint(
             'Checking transaction ${t.id} order with status: $orderStatus');
         return orderStatus == ORDER_STATUS_PENDING ||
+            orderStatus == ORDER_STATUS_WAITING_APPROVAL ||
             orderStatus == ORDER_STATUS_PROCESSING ||
-            orderStatus == ORDER_STATUS_READYTOPICKUP ||
+            orderStatus == ORDER_STATUS_READY_FOR_PICKUP ||
+            orderStatus == ORDER_STATUS_READYTOPICKUP || // Legacy support
+            orderStatus == ORDER_STATUS_PICKED_UP ||
             orderStatus == ORDER_STATUS_SHIPPED;
       });
     }).toList();
