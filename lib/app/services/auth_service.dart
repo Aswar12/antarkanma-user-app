@@ -122,6 +122,52 @@ class AuthService extends GetxService {
     }
   }
 
+  /// Get user-friendly error message based on error type
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    // Handle DioException for HTTP errors
+    if (error is DioException) {
+      // Check response status code
+      final statusCode = error.response?.statusCode;
+
+      if (statusCode == 401 || statusCode == 400) {
+        return 'Email/nomor telepon atau password yang Anda masukkan salah.';
+      } else if (statusCode == 403) {
+        return 'Akun Anda belum terverifikasi. Silakan hubungi admin.';
+      } else if (statusCode == 404) {
+        return 'Akun tidak ditemukan.';
+      } else if (statusCode == 500 || statusCode == 502 || statusCode == 503) {
+        return 'Server sedang mengalami gangguan. Silakan coba lagi nanti.';
+      }
+
+      // Check DioException type
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Koneksi ke server terlalu lama. Periksa internet Anda.';
+        case DioExceptionType.connectionError:
+          return 'Tidak dapat terhubung ke server. Periksa koneksi internet.';
+        case DioExceptionType.cancel:
+          return 'Permintaan dibatalkan.';
+        default:
+          return 'Terjadi kesalahan. Silakan coba lagi nanti.';
+      }
+    }
+
+    // Handle SocketException (no internet)
+    if (error is SocketException) {
+      return 'Tidak ada koneksi internet. Periksa koneksi Anda.';
+    }
+
+    // Handle FormatException (parsing errors)
+    if (error is FormatException) {
+      return 'Format data tidak valid. Silakan coba lagi.';
+    }
+
+    // Default error message
+    return 'Terjadi kesalahan. Silakan coba lagi nanti.';
+  }
+
   Future<bool> login(
     String identifier,
     String password, {
@@ -152,10 +198,15 @@ class AuthService extends GetxService {
 
       if (response.statusCode != 200 || response.data == null) {
         if (!isAutoLogin && showError) {
+          final errorMessage = _getUserFriendlyErrorMessage(
+            DioException(
+              requestOptions: RequestOptions(path: ''),
+              response: response,
+            ),
+          );
           showCustomSnackbar(
               title: 'Login Gagal',
-              message:
-                  response.data?['meta']?['message'] ?? 'Terjadi kesalahan',
+              message: errorMessage,
               isError: true);
         }
         return false;
@@ -228,9 +279,10 @@ class AuthService extends GetxService {
     } catch (e) {
       debugPrint('Error during login: $e');
       if (!isAutoLogin && showError) {
+        String errorMessage = _getUserFriendlyErrorMessage(e);
         showCustomSnackbar(
-            title: 'Error',
-            message: 'Gagal login: ${e.toString()}',
+            title: 'Login Gagal',
+            message: errorMessage,
             isError: true);
       }
       return false;
@@ -288,15 +340,22 @@ class AuthService extends GetxService {
         return false;
       }
 
+      String errorMessage = _getUserFriendlyErrorMessage(
+        DioException(
+          requestOptions: RequestOptions(path: ''),
+          response: response,
+        ),
+      );
       showCustomSnackbar(
           title: 'Registrasi Gagal',
-          message: response.data['meta']['message'] ?? 'Registrasi gagal',
+          message: errorMessage,
           isError: true);
       return false;
     } catch (e) {
+      String errorMessage = _getUserFriendlyErrorMessage(e);
       showCustomSnackbar(
-          title: 'Error',
-          message: 'Gagal registrasi: ${e.toString()}',
+          title: 'Registrasi Gagal',
+          message: errorMessage,
           isError: true);
       return false;
     }

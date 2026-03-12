@@ -411,4 +411,41 @@ class TransactionProvider {
       rethrow;
     }
   }
+
+  Future<dio.Response> verifyQrisPayment({
+    required int transactionId,
+    required String paymentType,
+    required String imagePath,
+  }) async {
+    try {
+      debugPrint('\n=== Verifying QRIS Payment ===');
+      debugPrint('Transaction ID: $transactionId');
+      debugPrint('Payment Type: $paymentType');
+      debugPrint('Image Path: $imagePath');
+
+      final formData = dio.FormData.fromMap({
+        'transaction_id': transactionId.toString(),
+        'payment_type': paymentType,
+        'payment_proof': await dio.MultipartFile.fromFile(
+          imagePath,
+          filename: imagePath.split('/').last,
+        ),
+      });
+
+      final response = await _dio.post(
+        '/payments/verify-qris',
+        data: formData,
+        options: dio.Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      return response;
+    } on dio.DioException catch (e) {
+      _handleError(e);
+      rethrow;
+    }
+  }
 }

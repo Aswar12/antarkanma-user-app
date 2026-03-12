@@ -53,11 +53,19 @@ class ProductCard extends StatelessWidget {
                     placeholder: (context, url) => Shimmer.fromColors(
                       baseColor: Colors.grey[300]!,
                       highlightColor: Colors.grey[100]!,
-                      child: Container(color: Colors.white),
+                      child: Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        color: Colors.white,
+                      ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: Icon(Icons.broken_image, color: Colors.grey),
+                    errorWidget: (context, url, error) => SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.broken_image, color: Colors.grey),
+                      ),
                     ),
                   ),
                   // Wishlist Heart Icon

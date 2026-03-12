@@ -43,6 +43,9 @@ class OrderController extends GetxController {
   final RxString errorMessage = ''.obs;
   final RxList<TransactionModel> transactions = <TransactionModel>[].obs;
   final RxInt currentTab = 0.obs;
+  
+  // Getter for selectedTabIndex (used by UI)
+  int get selectedTabIndex => currentTab.value;
 
   @override
   void onInit() {
@@ -195,6 +198,7 @@ class OrderController extends GetxController {
 
     currentTab.value = index;
     errorMessage.value = '';
+    update(); // Notify UI to rebuild
 
     if (index == 0) {
       await fetchTransactions(status: STATUS_PENDING);

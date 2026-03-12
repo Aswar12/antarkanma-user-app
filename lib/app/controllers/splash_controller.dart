@@ -106,7 +106,66 @@ class SplashController extends GetxController {
   Future<void> _navigateToNext(String route) async {
     _isInitializing.value = false;
     await Future.delayed(const Duration(milliseconds: 500));
-    Get.offAllNamed(route);
+    
+    // Wait for GetMaterialApp to be ready
+    await _waitForGetContext();
+    
+    try {
+      // Try multiple navigation methods
+      if (Get.key?.currentContext != null && Get.key!.currentState != null) {
+        debugPrint('✅ Using Get.offAllNamed');
+        await Get.offAllNamed(route);
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Get.offAllNamed failed: $e');
+    }
+    
+    // Fallback 1: Try Get.toNamed
+    try {
+      if (Get.key?.currentContext != null) {
+        debugPrint('✅ Using Get.toNamed as fallback');
+        await Get.toNamed(route);
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Get.toNamed failed: $e');
+    }
+    
+    // Fallback 2: Use Navigator with context from GetMaterialApp
+    try {
+      final context = Get.context;
+      if (context != null && context.mounted) {
+        debugPrint('✅ Using Navigator.pushNamedAndRemoveUntil as fallback');
+        if (!context.mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Navigator fallback failed: $e');
+    }
+    
+    // Last resort: Log error
+    debugPrint('❌ All navigation methods failed. Route: $route');
+  }
+
+  /// Wait for GetMaterialApp context to be available
+  Future<void> _waitForGetContext() async {
+    int attempts = 0;
+    const maxAttempts = 10;
+    const delay = Duration(milliseconds: 100);
+    
+    while (attempts < maxAttempts) {
+      if (Get.key?.currentContext != null && Get.key!.currentState != null) {
+        debugPrint('✅ Get context available after ${attempts + 1} attempts');
+        return;
+      }
+      attempts++;
+      debugPrint('⏳ Waiting for Get context... Attempt ${attempts + 1}/$maxAttempts');
+      await Future.delayed(delay);
+    }
+    
+    debugPrint('⚠️ Get context not available after $maxAttempts attempts');
   }
 
   @override

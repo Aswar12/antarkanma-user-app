@@ -47,19 +47,24 @@ class _OrderPageState extends State<OrderPage>
     return Scaffold(
       backgroundColor: backgroundColor3,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(Dimenssions.height85),
+        preferredSize: Size.fromHeight(Dimenssions.height95),
         child: Container(
           decoration: BoxDecoration(
-            color: navyColor,
+            gradient: LinearGradient(
+              colors: [navyColor, navyColor.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(Dimenssions.radius30),
               bottomRight: Radius.circular(Dimenssions.radius30),
             ),
             boxShadow: [
               BoxShadow(
-                color: navyColor.withOpacity(0.3),
+                color: primaryOrange.withOpacity(0.2),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
+                spreadRadius: 2,
               ),
             ],
           ),
@@ -67,58 +72,195 @@ class _OrderPageState extends State<OrderPage>
             bottom: false,
             child: Column(
               children: [
-                // Header Title
+                // Header Title & Tab Bar
                 Padding(
                   padding: EdgeInsets.only(
                     left: Dimenssions.width20,
                     right: Dimenssions.width20,
-                    top: Dimenssions.height12,
+                    top: Dimenssions.height20,
                     bottom: Dimenssions.height12,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Pesanan Saya',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font20,
-                          fontWeight: semiBold,
-                          color: Colors.white,
-                        ),
+                      // Title with icon
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(Dimenssions.height8),
+                            decoration: BoxDecoration(
+                              color: primaryOrange.withOpacity(0.2),
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius12),
+                            ),
+                            child: Icon(
+                              Icons.receipt_long_rounded,
+                              color: primaryOrange,
+                              size: Dimenssions.height20,
+                            ),
+                          ),
+                          SizedBox(width: Dimenssions.width12),
+                          Text(
+                            'Pesanan Saya',
+                            style: primaryTextStyle.copyWith(
+                              fontSize: Dimenssions.font22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: Dimenssions.height16),
+                      // Modern Segmented Tab Bar
+                      GetBuilder<OrderController>(
+                        builder: (controller) {
+                          return ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(Dimenssions.radius16),
+                            child: Container(
+                              height: Dimenssions.height50,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius:
+                                    BorderRadius.circular(Dimenssions.radius16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Stack(
+                                children: [
+                                  // Animated Background Indicator
+                                  AnimatedPositioned(
+                                    duration: Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    left: controller.selectedTabIndex == 0
+                                        ? Dimenssions.width4
+                                        : null,
+                                    right: controller.selectedTabIndex == 1
+                                        ? Dimenssions.width4
+                                        : null,
+                                    top: Dimenssions.height4,
+                                    bottom: Dimenssions.height4,
+                                    child: AnimatedContainer(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                      width:
+                                          (MediaQuery.of(context).size.width /
+                                                  2) -
+                                              Dimenssions.width8,
+                                      decoration: BoxDecoration(
+                                        color: primaryOrange,
+                                        borderRadius: BorderRadius.circular(
+                                            Dimenssions.radius12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                primaryOrange.withOpacity(0.3),
+                                            blurRadius: 6,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  // Tab Buttons
+                                  Row(
+                                    children: [
+                                      // Aktif Tab
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            _tabController.animateTo(0);
+                                          },
+                                          child: Center(
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.inventory_2_rounded,
+                                                  color: controller
+                                                              .selectedTabIndex ==
+                                                          0
+                                                      ? Colors.white
+                                                      : Colors.white
+                                                          .withOpacity(0.7),
+                                                  size: 18,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  'Aktif',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: controller
+                                                                .selectedTabIndex ==
+                                                            0
+                                                        ? Colors.white
+                                                        : Colors.white
+                                                            .withOpacity(0.7),
+                                                    letterSpacing: 0.3,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Riwayat Tab
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            _tabController.animateTo(1);
+                                          },
+                                          child: Center(
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.history_rounded,
+                                                  color: controller
+                                                              .selectedTabIndex ==
+                                                          1
+                                                      ? Colors.white
+                                                      : Colors.white
+                                                          .withOpacity(0.7),
+                                                  size: 18,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  'Riwayat',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: controller
+                                                                .selectedTabIndex ==
+                                                            1
+                                                        ? Colors.white
+                                                        : Colors.white
+                                                            .withOpacity(0.7),
+                                                    letterSpacing: 0.3,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
-                // Tab Bar
-                Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: Dimenssions.width20),
-                  child: GetBuilder<OrderController>(
-                    builder: (controller) {
-                      return TabBar(
-                        controller: _tabController,
-                        onTap: controller.onTabChanged,
-                        tabs: const [
-                          Tab(text: 'Aktif'),
-                          Tab(text: 'Riwayat'),
-                        ],
-                        labelColor: primaryOrange,
-                        unselectedLabelColor: Colors.white.withOpacity(0.6),
-                        indicatorColor: primaryOrange,
-                        indicatorWeight: 3,
-                        labelStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(height: Dimenssions.height10),
               ],
             ),
           ),
@@ -189,14 +331,21 @@ class _OrderPageState extends State<OrderPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
+            // Handle bar - Drag indicator
             Container(
-              margin: EdgeInsets.symmetric(vertical: Dimenssions.height8),
-              width: Dimenssions.width40,
-              height: 4,
+              margin: EdgeInsets.symmetric(vertical: Dimenssions.height12),
+              width: Dimenssions.width50,
+              height: 5,
               decoration: BoxDecoration(
-                color: backgroundColor3.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(Dimenssions.radius4),
+                color: backgroundColor3.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(Dimenssions.radius15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ],
               ),
             ),
             // Header
@@ -361,47 +510,86 @@ class _OrderPageState extends State<OrderPage>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Chat Driver Button (primary action)
+                  // Chat and Cancel Buttons (Horizontal Row)
                   if (['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
                       .contains(transaction.status.toUpperCase()))
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Get.back(); // Close bottom sheet
-                        Get.toNamed(Routes.userChat, arguments: {
-                          'chatId': null,
-                          'orderId': transaction.id,
-                        });
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline,
-                          color: Colors.white, size: 20),
-                      label: Text(
-                        'Chat dengan Kurir',
-                        style: primaryTextStyle.copyWith(
-                          color: Colors.white,
-                          fontSize: Dimenssions.font14,
-                          fontWeight: medium,
+                    Row(
+                      children: [
+                        // Chat with Courier Button (primary action)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: transaction.canChatWithCourier
+                                ? () {
+                                    Get.back(); // Close bottom sheet
+                                    Get.toNamed(Routes.userChat, arguments: {
+                                      'chatId': null,
+                                      'orderId': transaction.id,
+                                    });
+                                  }
+                                : null,
+                            icon: const Icon(Icons.chat_bubble_outline,
+                                color: Colors.white, size: 20),
+                            label: Text(
+                              transaction.canChatWithCourier
+                                  ? 'Chat Kurir'
+                                  : 'Kurir Belum Ditugaskan',
+                              style: primaryTextStyle.copyWith(
+                                color: Colors.white,
+                                fontSize: Dimenssions.font13,
+                                fontWeight: medium,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: transaction.canChatWithCourier
+                                  ? primaryOrange
+                                  : primaryOrange.withOpacity(0.5),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: Dimenssions.height12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(Dimenssions.radius8),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryOrange,
-                        padding: EdgeInsets.symmetric(
-                            vertical: Dimenssions.height12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(Dimenssions.radius8),
-                        ),
-                        elevation: 0,
-                      ),
+
+                        // Spacer between buttons
+                        SizedBox(width: Dimenssions.width10),
+
+                        // Cancel Button (secondary action - outlined style)
+                        if (transaction.status.toUpperCase() == 'PENDING')
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showCancelDialog(transaction),
+                              icon: Icon(Icons.cancel_outlined, size: 20),
+                              label: Text(
+                                'Batalkan',
+                                style: primaryTextStyle.copyWith(
+                                  color: alertColor,
+                                  fontSize: Dimenssions.font13,
+                                  fontWeight: medium,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: alertColor,
+                                side: BorderSide(color: alertColor, width: 1.5),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: Dimenssions.height12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      Dimenssions.radius8),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
 
-                  // Spacer between buttons
+                  // Cancel Button Only (when chat not available)
                   if (transaction.status.toUpperCase() == 'PENDING' &&
-                      ['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
+                      !['PENDING', 'ACCEPTED', 'ON_DELIVERY', 'PICKED_UP']
                           .contains(transaction.status.toUpperCase()))
-                    SizedBox(height: Dimenssions.height8),
-
-                  // Cancel Button (secondary action - outlined style)
-                  if (transaction.status.toUpperCase() == 'PENDING')
                     OutlinedButton.icon(
                       onPressed: () => _showCancelDialog(transaction),
                       icon: Icon(Icons.cancel_outlined, size: 20),

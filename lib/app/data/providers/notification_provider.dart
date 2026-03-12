@@ -35,7 +35,7 @@ class NotificationProvider {
   Future<Response> registerFCMToken(String fcmToken, String userId,
       {String? role}) async {
     try {
-      if (fcmToken == null || fcmToken.isEmpty) {
+      if (fcmToken.isEmpty) {
         debugPrint('FCM token is null or empty, skipping registration');
         throw Exception('FCM token is required');
       }

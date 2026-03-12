@@ -104,7 +104,7 @@ class ImageService extends GetxService {
       'is3.cloudhost.id',
       'antarkanma.my.id',
     ];
-    
+
     if (blockedDomains.any((domain) => imageUrl.contains(domain))) {
       debugPrint('ImageService: BLOCKED problematic URL: $imageUrl');
       return _buildPlaceholder(size);
@@ -133,25 +133,23 @@ class ImageService extends GetxService {
           final optimizedUrl = snapshot.data ?? imageUrl;
 
           // Double-check: block problematic URLs even after optimization
-          if (optimizedUrl.isEmpty || 
+          if (optimizedUrl.isEmpty ||
               blockedDomains.any((domain) => optimizedUrl.contains(domain))) {
-            debugPrint('ImageService: BLOCKED after optimization: $optimizedUrl');
+            debugPrint(
+                'ImageService: BLOCKED after optimization: $optimizedUrl');
             return _buildPlaceholder(size);
           }
 
           return CachedNetworkImage(
             imageUrl: optimizedUrl,
             fit: fit,
-            memCacheWidth: size.round(),
-            memCacheHeight: size.round(),
             cacheManager: _cacheManager,
-            maxWidthDiskCache: 1000,
-            maxHeightDiskCache: 1000,
             placeholder: (context, url) => _buildLoadingPlaceholder(size),
             errorWidget: (context, url, error) {
               // Silent fail for blocked domains (already expected)
               if (!blockedDomains.any((domain) => url.contains(domain))) {
-                debugPrint('ImageService: Image load error: $error for URL: $url');
+                debugPrint(
+                    'ImageService: Image load error: $error for URL: $url');
               }
               return _buildPlaceholder(size);
             },

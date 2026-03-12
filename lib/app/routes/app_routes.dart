@@ -31,6 +31,7 @@ abstract class Routes {
 
   // Shopping Routes
   static const cart = _Paths.cart;
+  static const paymentQris = _Paths.paymentQris;
   static const checkoutSuccess = _Paths.checkoutSuccess;
   static const productDetail = _Paths.productDetail;
   static const merchantDetail = _Paths.merchantDetail;
@@ -38,6 +39,8 @@ abstract class Routes {
   static const userEditProfile = _Paths.userMainPage + _Paths.editProfile;
   static const manualOrder = _Paths.manualOrder;
   static const wishlist = _Paths.wishlist;
+  static const allProducts = _Paths.userMainPage + _Paths.allProducts;
+  static const allMerchants = _Paths.userMainPage + _Paths.allMerchants;
 }
 
 abstract class _Paths {
@@ -57,6 +60,7 @@ abstract class _Paths {
   static const selectAddress = '/select-address';
   static const mapPicker = '/map-picker';
   static const cart = '/cart';
+  static const paymentQris = '/payment-qris';
   static const checkoutSuccess = '/checkout-success';
   static const productDetail = '/product-detail';
   static const merchantDetail = '/merchant-detail';
@@ -64,4 +68,6 @@ abstract class _Paths {
   static const editProfile = '/edit-profile';
   static const manualOrder = '/manual-order';
   static const wishlist = '/wishlist';
+  static const allProducts = '/all-products';
+  static const allMerchants = '/all-merchants';
 }

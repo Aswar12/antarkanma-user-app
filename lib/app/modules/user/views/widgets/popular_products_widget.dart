@@ -33,7 +33,7 @@ class PopularProductsWidget extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  // Navigate to all products if implemented
+                  Get.toNamed(Routes.allProducts);
                 },
                 child: Text(
                   'Lihat Semua',
@@ -93,7 +93,7 @@ class PopularProductsWidget extends StatelessWidget {
                 },
                 options: CarouselOptions(
                   height: Dimenssions.height100 * 2.2,
-                  viewportFraction: 0.8, // Adjusted to show side cards
+                  viewportFraction: 0.8,
                   enlargeCenterPage: true,
                   autoPlay: true,
                   autoPlayInterval: const Duration(seconds: 4),

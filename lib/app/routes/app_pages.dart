@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../modules/auth/views/login_view.dart';
 import '../modules/auth/views/register_view.dart';
 import '../modules/checkout/views/checkout_success_page.dart';
+import '../modules/checkout/views/payment_qris_page.dart';
+import '../modules/checkout/controllers/payment_qris_controller.dart';
 import '../modules/splash/views/splash_page.dart';
 import '../modules/user/views/add_edit_address_page.dart';
 import '../modules/user/views/address_page.dart';
@@ -30,6 +32,8 @@ import '../modules/chat/views/chat_list_page.dart';
 import '../modules/chat/controllers/chat_list_controller.dart';
 import '../modules/user/views/wishlist_page.dart';
 import '../modules/user/views/notification_inbox_page.dart';
+import '../modules/home/views/all_products_page.dart';
+import '../modules/home/views/all_merchants_page.dart';
 
 part 'app_routes.dart';
 
@@ -78,6 +82,16 @@ class AppPages {
         GetPage(
           name: _Paths.notificationInbox,
           page: () => const NotificationInboxPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.allProducts,
+          page: () => const AllProductsPage(),
+          transition: Transition.rightToLeft,
+        ),
+        GetPage(
+          name: _Paths.allMerchants,
+          page: () => const AllMerchantsPage(),
           transition: Transition.rightToLeft,
         ),
 
@@ -159,6 +173,15 @@ class AppPages {
     GetPage(
       name: _Paths.cart,
       page: () => const CartPage(),
+      middlewares: [AuthGuard()],
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: _Paths.paymentQris,
+      page: () => const PaymentQrisPage(),
+      binding: BindingsBuilder(() {
+        Get.put(PaymentQrisController(transaction: Get.arguments['transaction']));
+      }),
       middlewares: [AuthGuard()],
       transition: Transition.rightToLeft,
     ),

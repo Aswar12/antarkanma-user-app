@@ -1,0 +1,183 @@
+﻿Analyzing customer...                                           
+
+   info - The constant name 'CART_STORAGE_KEY' isn't a lowerCamelCase identifier - lib\app\controllers\cart_controller.dart:10:23 - constant_identifier_names
+   info - The constant name 'MAX_QUANTITY' isn't a lowerCamelCase identifier - lib\app\controllers\cart_controller.dart:11:20 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:43:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:48:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:68:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:154:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:174:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:189:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\cart_controller.dart:222:7 - avoid_print
+   info - The constant name 'CATEGORIES_STORAGE_KEY' isn't a lowerCamelCase identifier - lib\app\controllers\category_controller.dart:11:23 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\app\controllers\category_controller.dart:36:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\category_controller.dart:64:7 - avoid_print
+   info - Unnecessary override - lib\app\controllers\notification_controller.dart:22:8 - unnecessary_overrides
+   info - The constant name 'STATUS_PENDING' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:13:23 - constant_identifier_names
+   info - The constant name 'STATUS_PROCESSING' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:14:23 - constant_identifier_names
+   info - The constant name 'STATUS_COMPLETED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:15:23 - constant_identifier_names
+   info - The constant name 'STATUS_CANCELED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:16:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_PENDING' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:19:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_WAITING_APPROVAL' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:20:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_PROCESSING' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:21:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_READY_FOR_PICKUP' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:22:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_READYTOPICKUP' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:23:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_PICKED_UP' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:24:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_SHIPPED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:25:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_DELIVERED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:26:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_COMPLETED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:27:23 - constant_identifier_names
+   info - The constant name 'ORDER_STATUS_CANCELED' isn't a lowerCamelCase identifier - lib\app\controllers\order_controller.dart:28:23 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\app\controllers\user_location_controller.dart:38:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\controllers\user_location_controller.dart:59:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\merchant_model.dart:91:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\merchant_model.dart:106:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\merchant_model.dart:139:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\merchant_model.dart:140:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:41:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:124:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:125:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:126:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:335:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:336:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:337:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:388:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:389:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:432:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\order_item_model.dart:433:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\paginated_response.dart:54:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\paginated_response.dart:55:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\product_review_model.dart:32:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\product_review_model.dart:33:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\product_review_model.dart:44:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\product_review_model.dart:60:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\product_review_model.dart:61:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\review_response_model.dart:22:7 - avoid_print
+   info - Use 'whereType' to select elements of a given type - lib\app\data\models\transaction_model.dart:26:12 - prefer_iterable_wheretype
+   info - Use 'whereType' to select elements of a given type - lib\app\data\models\transaction_model.dart:127:14 - prefer_iterable_wheretype
+   info - Use 'whereType' to select elements of a given type - lib\app\data\models\transaction_model.dart:146:14 - prefer_iterable_wheretype
+   info - Don't invoke 'print' in production code - lib\app\data\models\transaction_model.dart:209:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\transaction_model.dart:210:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\transaction_model.dart:211:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\transaction_model.dart:231:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\models\transaction_model.dart:232:9 - avoid_print
+   info - The constant name 'ROLE_USER' isn't a lowerCamelCase identifier - lib\app\data\models\user_model.dart:11:23 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\app\data\providers\notification_provider.dart:115:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\providers\notification_provider.dart:118:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\providers\notification_provider.dart:138:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\providers\notification_provider.dart:141:7 - avoid_print
+   info - The imported package 'http' isn't a dependency of the importing package - lib\app\data\repositories\chat_repository.dart:6:8 - depend_on_referenced_packages
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:18:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:88:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\chat_repository.dart:103:9 - avoid_print
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:153:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:190:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:253:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\chat_repository.dart:316:7 - avoid_print
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:331:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:368:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\chat_repository.dart:393:7 - avoid_print
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:400:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\chat_repository.dart:423:7 - avoid_print
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:430:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:522:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:572:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\chat_repository.dart:583:7 - avoid_print
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:589:21 - await_only_futures
+   info - Uses 'await' on an instance of 'String?', which is not a subtype of 'Future' - lib\app\data\repositories\chat_repository.dart:632:21 - await_only_futures
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:16:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:24:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:27:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:39:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:44:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:49:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:53:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:65:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:66:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:70:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\repositories\review_repository.dart:73:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\auth\auth_binding.dart:10:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\auth\auth_binding.dart:16:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\auth\bindings\auth_binding.dart:10:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\auth\bindings\auth_binding.dart:32:5 - avoid_print
+   info - Unnecessary override - lib\app\modules\chat\controllers\chat_list_controller.dart:25:8 - unnecessary_overrides
+   info - The member 'refresh' overrides an inherited member but isn't annotated with '@override' - lib\app\modules\chat\controllers\chat_list_controller.dart:78:16 - annotate_overrides
+   info - Parameter 'key' could be a super parameter - lib\app\modules\chat\views\chat_list_page.dart:8:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\app\modules\chat\views\chat_view.dart:11:9 - use_super_parameters
+   info - Unnecessary braces in a string interpolation - lib\app\modules\chat\views\chat_view.dart:400:61 - unnecessary_brace_in_string_interps
+  error - The method 'deleteMessage' isn't defined for the type 'ChatController' - lib\app\modules\chat\views\chat_view.dart:629:26 - undefined_method
+   info - Parameter 'key' could be a super parameter - lib\app\modules\chat\views\widgets\chat_list_tile.dart:12:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\app\modules\home\controllers\manual_order_controller.dart:247:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\home\controllers\manual_order_controller.dart:253:7 - avoid_print
+   info - The local variable '_topPath' starts with an underscore - lib\app\modules\home\views\manual_order_page.dart:540:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_rightPath' starts with an underscore - lib\app\modules\home\views\manual_order_page.dart:546:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_bottomPath' starts with an underscore - lib\app\modules\home\views\manual_order_page.dart:552:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_leftPath' starts with an underscore - lib\app\modules\home\views\manual_order_page.dart:558:10 - no_leading_underscores_for_local_identifiers
+   info - Don't invoke 'print' in production code - lib\app\modules\user\controllers\edit_profile_controller.dart:57:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\user\controllers\edit_profile_controller.dart:98:7 - avoid_print
+   info - Statements in an if should be enclosed in a block - lib\app\modules\user\views\home_page.dart:278:37 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\app\modules\user\views\home_page.dart:335:35 - curly_braces_in_flow_control_structures
+   info - Parameter 'key' could be a super parameter - lib\app\modules\user\views\notification_inbox_page.dart:9:9 - use_super_parameters
+warning - The operand can't be 'null', so the condition is always 'true' - lib\app\modules\user\views\review_page.dart:42:17 - unnecessary_null_comparison
+warning - The operand can't be 'null', so the condition is always 'true' - lib\app\modules\user\views\review_page.dart:283:43 - unnecessary_null_comparison
+   info - Parameter 'key' could be a super parameter - lib\app\modules\user\views\widgets\empty_inbox_state.dart:5:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\app\modules\user\views\widgets\notification_list_tile.dart:13:9 - use_super_parameters
+   info - Don't invoke 'print' in production code - lib\app\modules\user\views\widgets\service_grid_widget.dart:34:15 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\user\views\widgets\service_grid_widget.dart:38:17 - avoid_print
+warning - Unused import: '../modules/user/views/chat_page.dart' - lib\app\routes\app_pages.dart:11:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:56:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:92:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:105:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:109:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:115:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:133:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:136:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:184:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:190:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:193:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:198:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:199:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:200:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:218:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:224:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:226:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:256:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:263:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:264:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:275:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:286:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:289:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:292:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:304:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:307:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:333:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:340:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:370:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\fcm_token_service.dart:372:7 - avoid_print
+   info - The imported package 'geolocator_android' isn't a dependency of the importing package - lib\app\services\location_service.dart:6:8 - depend_on_referenced_packages
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:17:3 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:18:3 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:41:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:149:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:154:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:174:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:182:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:186:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:203:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:247:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:248:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:298:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:323:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:367:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:369:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:375:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:376:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:383:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:403:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\notification_service.dart:426:9 - avoid_print
+   info - The constant name 'CATEGORIES_STORAGE_KEY' isn't a lowerCamelCase identifier - lib\app\services\product_category_service.dart:14:23 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\app\services\user_service.dart:27:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\services\user_service.dart:75:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\utils\performance_config.dart:30:11 - avoid_print
+warning - The value of the local variable 'iconColor' isn't used - lib\app\widgets\order_status_timeline.dart:172:11 - unused_local_variable
+   info - The constant name 'PLACEHOLDER_IMAGES' isn't a lowerCamelCase identifier - lib\app\widgets\product_image_slider.dart:25:29 - constant_identifier_names
+

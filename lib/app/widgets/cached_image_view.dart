@@ -26,9 +26,9 @@ class CachedImageView extends StatelessWidget {
   });
 
   bool _isValidUrl(String url) {
-    return url.isNotEmpty && 
-           (url.startsWith('http://') || url.startsWith('https://')) &&
-           Uri.tryParse(url)?.hasAbsolutePath == true;
+    return url.isNotEmpty &&
+        (url.startsWith('http://') || url.startsWith('https://')) &&
+        Uri.tryParse(url)?.hasAbsolutePath == true;
   }
 
   @override
@@ -45,11 +45,8 @@ class CachedImageView extends StatelessWidget {
         height: height,
         fit: fit,
         alignment: alignment,
-        maxWidthDiskCache: 1000,
-        maxHeightDiskCache: 1000,
-        memCacheWidth: 800,
-        memCacheHeight: 800,
-        placeholder: (context, url) => placeholderWidget ?? _buildLoadingState(),
+        placeholder: (context, url) =>
+            placeholderWidget ?? _buildLoadingState(),
         errorWidget: (context, url, error) {
           debugPrint('Error loading image: $url');
           debugPrint('Error details: $error');
@@ -86,7 +83,7 @@ class CachedImageView extends StatelessWidget {
         image: placeholder != null && placeholder!.isNotEmpty
             ? DecorationImage(
                 image: AssetImage(placeholder!),
-                fit: fit,
+                fit: fit, // Pass fit explicitly
               )
             : null,
       ),

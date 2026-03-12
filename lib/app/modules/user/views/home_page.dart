@@ -394,7 +394,7 @@ class _HomePageState extends State<HomePage>
 
           // Floating Search Bar
           Positioned(
-            top: Dimenssions.height100 * 0.85,
+            top: Dimenssions.height100 * 0.72,
             left: Dimenssions.width15,
             right: Dimenssions.width15,
             child: Container(

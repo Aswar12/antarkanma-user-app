@@ -53,11 +53,13 @@ class ProductCarouselCard extends StatelessWidget {
                   ),
                 )
               else
-                Image.asset(
-                  'assets/image_shoes.png',
-                  fit: BoxFit.cover,
+                SizedBox(
                   width: double.infinity,
                   height: double.infinity,
+                  child: Image.asset(
+                    'assets/image_shoes.png',
+                    fit: BoxFit.cover,
+                  ),
                 ),
 
               // Gradient Overlay

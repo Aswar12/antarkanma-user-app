@@ -59,37 +59,27 @@ class MerchantCard extends StatelessWidget {
                     // Merchant Image
                     Hero(
                       tag: 'merchant-${merchant.id}',
-                      child: merchant.logoUrl != null &&
-                              merchant.logoUrl!.isNotEmpty
-                          ? CachedImageView(
-                              imageUrl: merchant.logoUrl!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              // Add alignment to center the image for better crop
-                              alignment: Alignment.center,
-                              // Use centerCrop-like behavior
-                              placeholderWidget: Container(
-                                color: backgroundColor3,
-                                child: Center(
-                                  child: Icon(
-                                    Icons.store_rounded,
-                                    color: secondaryTextColor.withOpacity(0.5),
-                                    size: Dimenssions.iconSize24 * 2,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Container(
-                              color: backgroundColor3,
-                              child: Center(
-                                child: Icon(
-                                  Icons.store_rounded,
-                                  color: secondaryTextColor.withOpacity(0.5),
-                                  size: Dimenssions.iconSize24 * 2,
-                                ),
+                      child: CachedImageView(
+                        imageUrl: merchant.logoUrl ?? '',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        alignment: Alignment.center,
+                        placeholderWidget: SizedBox(
+                          width: double.infinity,
+                          height: double.infinity,
+                          child: Container(
+                            color: backgroundColor3,
+                            child: Center(
+                              child: Icon(
+                                Icons.store_rounded,
+                                color: secondaryTextColor.withOpacity(0.5),
+                                size: Dimenssions.iconSize24 * 2,
                               ),
                             ),
+                          ),
+                        ),
+                      ),
                     ),
                     // Gradient Overlay
                     Container(

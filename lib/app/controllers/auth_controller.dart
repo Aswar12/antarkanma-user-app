@@ -187,11 +187,8 @@ class AuthController extends GetxController {
       );
 
       if (!success) {
-        showCustomSnackbar(
-          title: 'Login Gagal',
-          message: 'Periksa kembali email/nomor telepon dan password Anda.',
-          isError: true,
-        );
+        // Error already handled by AuthService
+        return;
       } else {
         String role = _authService.currentUser.value?.role ?? '';
         if (role != 'USER') {
@@ -221,6 +218,9 @@ class AuthController extends GetxController {
           message: 'Selamat datang kembali!',
         );
       }
+    } catch (e) {
+      // Error already handled by AuthService
+      return;
     } finally {
       isLoading.value = false;
     }
@@ -250,11 +250,8 @@ class AuthController extends GetxController {
           confirmPasswordController.text);
 
       if (!success) {
-        showCustomSnackbar(
-          title: 'Registrasi Gagal',
-          message: 'Pendaftaran gagal. Periksa kembali data Anda.',
-          isError: true,
-        );
+        // Error already handled by AuthService
+        return;
       } else {
         showCustomSnackbar(
           title: 'Registrasi Berhasil',

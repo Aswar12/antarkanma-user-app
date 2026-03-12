@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:antarkanma/app/controllers/order_controller.dart';
@@ -85,53 +86,81 @@ class OrderCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(Dimenssions.height6),
-                  decoration: BoxDecoration(
-                    color: logoColorSecondary.withOpacity(0.26),
-                    borderRadius: BorderRadius.circular(Dimenssions.radius8),
+            child: InkWell(
+              onTap: () {
+                // Copy order ID to clipboard
+                Clipboard.setData(ClipboardData(text: '#ANTAR-$orderId'));
+                Get.snackbar(
+                  'Berhasil',
+                  'Order ID #ANTAR-$orderId disalin!',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: primaryOrange,
+                  colorText: Colors.white,
+                  duration: const Duration(seconds: 2),
+                  margin: const EdgeInsets.all(16),
+                  borderRadius: 8,
+                );
+              },
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(Dimenssions.height6),
+                    decoration: BoxDecoration(
+                      color: logoColorSecondary.withOpacity(0.26),
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                    ),
+                    child: Icon(
+                      Icons.shopping_bag_outlined,
+                      size: Dimenssions.font18,
+                      color: logoColorSecondary,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.shopping_bag_outlined,
-                    size: Dimenssions.font18,
-                    color: logoColorSecondary,
-                  ),
-                ),
-                SizedBox(width: Dimenssions.width8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '#ANTAR-$orderId',
-                        style: primaryTextStyle.copyWith(
-                          fontSize: Dimenssions.font14,
-                          fontWeight: semiBold,
-                        ),
-                      ),
-                      SizedBox(height: Dimenssions.height2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: Dimenssions.font12,
-                            color: secondaryTextColor,
-                          ),
-                          SizedBox(width: Dimenssions.width4),
-                          Text(
-                            date,
-                            style: secondaryTextStyle.copyWith(
-                              fontSize: Dimenssions.font12,
+                  SizedBox(width: Dimenssions.width8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '#ANTAR-$orderId',
+                                style: primaryTextStyle.copyWith(
+                                  fontSize: Dimenssions.font14,
+                                  fontWeight: semiBold,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            SizedBox(width: Dimenssions.width4),
+                            Icon(
+                              Icons.copy,
+                              size: Dimenssions.font12,
+                              color: secondaryTextColor.withOpacity(0.6),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: Dimenssions.height2),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: Dimenssions.font12,
+                              color: secondaryTextColor,
+                            ),
+                            SizedBox(width: Dimenssions.width4),
+                            Text(
+                              date,
+                              style: secondaryTextStyle.copyWith(
+                                fontSize: Dimenssions.font12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           SizedBox(width: Dimenssions.width8),
@@ -305,6 +334,12 @@ class OrderCard extends StatelessWidget {
     // Use canChatWithCourier getter from TransactionModel
     final canChat = transaction.canChatWithCourier;
     final canCancel = status.toUpperCase() == 'PENDING';
+    
+    // Check if courier is assigned for tooltip message
+    final courierNotAssigned = transaction.courierId == null;
+    final courierIdle = !courierNotAssigned && 
+        (transaction.courierStatus?.toUpperCase() == 'IDLE' || 
+         transaction.courierStatus?.isEmpty == true);
 
     // Jika tidak ada button yang perlu ditampilkan
     if (!canCancel && !canChat) {
@@ -345,6 +380,64 @@ class OrderCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(Dimenssions.radius8),
                   ),
                   elevation: 0,
+                ),
+              ),
+            )
+          else if (!canChat && !courierNotAssigned && !courierIdle)
+            // Courier assigned but chat not available (order completed/canceled)
+            Expanded(
+              child: Tooltip(
+                message: 'Chat tidak tersedia untuk order yang sudah selesai atau dibatalkan',
+                child: ElevatedButton.icon(
+                  onPressed: null,
+                  icon: Icon(Icons.chat_bubble_outline, size: 18),
+                  label: Text(
+                    'Chat Kurir',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font13,
+                      fontWeight: medium,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.withOpacity(0.3),
+                    foregroundColor: Colors.white.withOpacity(0.5),
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            )
+          else
+            // Courier not assigned or idle
+            Expanded(
+              child: Tooltip(
+                message: courierNotAssigned 
+                    ? 'Kurir belum ditugaskan. Chat akan tersedia setelah kurir mengambil order.'
+                    : 'Kurir belum mengambil order. Chat akan tersedia setelah kurir mengambil order.',
+                child: ElevatedButton.icon(
+                  onPressed: null,
+                  icon: Icon(Icons.chat_bubble_outline, size: 18),
+                  label: Text(
+                    'Chat Kurir',
+                    style: primaryTextStyle.copyWith(
+                      fontSize: Dimenssions.font13,
+                      fontWeight: medium,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.withOpacity(0.3),
+                    foregroundColor: Colors.white.withOpacity(0.5),
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ),

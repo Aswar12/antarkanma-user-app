@@ -44,6 +44,21 @@ class AddressSelectionPage extends GetView<UserLocationController> {
                 AppBar(
                   backgroundColor: Colors.transparent,
                   elevation: 0,
+                  leading: IconButton(
+                    icon: Container(
+                      padding: EdgeInsets.all(Dimenssions.height8),
+                      decoration: BoxDecoration(
+                        color: logoColorSecondary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(Dimenssions.radius12),
+                      ),
+                      child: Icon(
+                        Icons.arrow_back_ios_new,
+                        color: logoColorSecondary,
+                        size: Dimenssions.height18,
+                      ),
+                    ),
+                    onPressed: () => Get.back(),
+                  ),
                   title: Text(
                     'Pilih Alamat',
                     style: primaryTextStyle.copyWith(

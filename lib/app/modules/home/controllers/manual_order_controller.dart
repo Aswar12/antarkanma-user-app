@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:antarkanma/config.dart';
 import 'package:antarkanma/app/services/storage_service.dart';
-import '../../../routes/app_pages.dart';
 import '../../../controllers/user_location_controller.dart';
 
 class ManualOrderItem {

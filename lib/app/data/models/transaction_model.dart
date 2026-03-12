@@ -91,6 +91,12 @@ class TransactionModel {
   final dynamic courierId;
   final String courierStatus;
   final Map<String, dynamic>? courierInfo;
+  final String? merchantQrisUrl;
+  final String? platformQrisUrl;
+  DateTime? merchantPaidAt;
+  DateTime? platformPaidAt;
+  final double? merchantAmount;
+  final double? platformAmount;
 
   TransactionModel({
     this.id,
@@ -111,6 +117,12 @@ class TransactionModel {
     this.courierId,
     this.courierStatus = 'IDLE',
     this.courierInfo,
+    this.merchantQrisUrl,
+    this.platformQrisUrl,
+    this.merchantPaidAt,
+    this.platformPaidAt,
+    this.merchantAmount,
+    this.platformAmount,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -204,6 +216,24 @@ class TransactionModel {
         courierId: _parseId(transactionData['courier_id']),
         courierStatus: transactionData['courier_status']?.toString() ?? 'IDLE',
         courierInfo: transactionData['courier'] as Map<String, dynamic>?,
+        merchantQrisUrl: transactionData['merchant_qris_url']?.toString(),
+        platformQrisUrl: transactionData['platform_qris_url']?.toString(),
+        merchantPaidAt: transactionData['merchant_paid_at'] != null
+            ? DateTime.tryParse(transactionData['merchant_paid_at'].toString())
+            : null,
+        platformPaidAt: transactionData['platform_paid_at'] != null
+            ? DateTime.tryParse(transactionData['platform_paid_at'].toString())
+            : null,
+        merchantAmount: transactionData['merchant_amount'] != null
+            ? (transactionData['merchant_amount'] is String
+                ? double.tryParse(transactionData['merchant_amount'])
+                : (transactionData['merchant_amount'] as num).toDouble())
+            : null,
+        platformAmount: transactionData['platform_amount'] != null
+            ? (transactionData['platform_amount'] is String
+                ? double.tryParse(transactionData['platform_amount'])
+                : (transactionData['platform_amount'] as num).toDouble())
+            : null,
       );
     } catch (e, stackTrace) {
       print('Error parsing TransactionModel: $e');
@@ -255,12 +285,39 @@ class TransactionModel {
       'courier_id': courierId,
       'courier_status': courierStatus,
       'courier': courierInfo,
+      'merchant_qris_url': merchantQrisUrl,
+      'platform_qris_url': platformQrisUrl,
+      'merchant_paid_at': merchantPaidAt?.toIso8601String(),
+      'platform_paid_at': platformPaidAt?.toIso8601String(),
+      'merchant_amount': merchantAmount,
+      'platform_amount': platformAmount,
     };
   }
 
   // Getter untuk can_chat_with_courier sesuai dokumentasi
-  bool get canChatWithCourier => courierId != null && 
-      !['COMPLETED', 'CANCELED'].contains(status.toUpperCase());
+  // Chat dengan kurir hanya bisa jika:
+  // 1. courierId tidak null (kurir sudah assigned)
+  // 2. Status order bukan COMPLETED atau CANCELED
+  // 3. Kurir sudah mengambil order (courierStatus bukan IDLE atau null)
+  bool get canChatWithCourier {
+    // Check if courier is assigned
+    if (courierId == null) {
+      return false;
+    }
+    
+    // Check if order is not completed or canceled
+    if (['COMPLETED', 'CANCELED'].contains(status.toUpperCase())) {
+      return false;
+    }
+    
+    // Check if courier has started delivery (not IDLE)
+    final courierStatusUpper = courierStatus?.toUpperCase() ?? '';
+    if (courierStatusUpper == 'IDLE' || courierStatusUpper.isEmpty) {
+      return false;
+    }
+    
+    return true;
+  }
 
   // Getter untuk informasi kurir
   String? get courierName => courierInfo?['name'] ?? courierInfo?['courier_name'];
@@ -331,6 +388,8 @@ class TransactionModel {
     UserModel? user,
     dynamic courierId,
     String? courierStatus,
+    String? merchantQrisUrl,
+    String? platformQrisUrl,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -350,6 +409,8 @@ class TransactionModel {
       user: user ?? this.user,
       courierId: courierId ?? this.courierId,
       courierStatus: courierStatus ?? this.courierStatus,
+      merchantQrisUrl: merchantQrisUrl ?? this.merchantQrisUrl,
+      platformQrisUrl: platformQrisUrl ?? this.platformQrisUrl,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:antarkanma/theme.dart';
 
 import 'package:antarkanma/app/controllers/homepage_controller.dart';
+import 'package:antarkanma/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 
 class MerchantHorizontalList extends StatelessWidget {
@@ -29,7 +30,7 @@ class MerchantHorizontalList extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  // Navigate to all merchants
+                  Get.toNamed(Routes.allMerchants);
                 },
                 child: Row(
                   children: [

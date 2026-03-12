@@ -6,6 +6,8 @@ import 'package:antarkanma/app/controllers/checkout_controller.dart';
 import 'package:antarkanma/app/data/repositories/review_repository.dart';
 import 'package:antarkanma/app/services/shipping_service.dart';
 import 'package:antarkanma/app/data/providers/shipping_provider.dart';
+import 'package:antarkanma/app/services/cart_sync_service.dart';
+import 'package:antarkanma/app/data/providers/api_provider.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import '../controllers/homepage_controller.dart';
@@ -169,6 +171,13 @@ class MainBinding extends Bindings {
   Future<void> _initializeProviders() async {
     try {
       debugPrint('Initializing providers...');
+      
+      // Initialize ApiProvider first (required by many services)
+      Get.put<ApiProvider>(
+        ApiProvider(),
+        permanent: true,
+      );
+      
       // Initialize providers in order
       final userLocationProvider = UserLocationProvider();
       Get.put<UserLocationProvider>(
@@ -295,6 +304,12 @@ class MainBinding extends Bindings {
       final productService = ProductService();
       Get.put<ProductService>(
         productService,
+        permanent: true,
+      );
+
+      // Initialize CartSyncService before CartController
+      Get.put<CartSyncService>(
+        CartSyncService(),
         permanent: true,
       );
 

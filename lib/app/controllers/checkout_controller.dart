@@ -41,6 +41,7 @@ class CheckoutController extends GetxController {
   final selectedPaymentMethod = Rxn<String>();
   final subtotal = 0.0.obs;
   final deliveryFee = 0.0.obs;
+  final serviceFee = 500.0.obs; // Fixed Service Fee Rp 500
   final total = 0.0.obs;
   final shippingDetails = Rxn<ShippingDetails>();
   final merchantItems = Rx<Map<int, List<OrderItemModel>>>({});
@@ -321,7 +322,7 @@ class CheckoutController extends GetxController {
 
   void _updateDeliveryFee() {
     deliveryFee.value = shippingDetails.value?.totalShippingPrice ?? 0.0;
-    total.value = subtotal.value + deliveryFee.value;
+    total.value = subtotal.value + deliveryFee.value + serviceFee.value;
   }
 
   void setDeliveryLocation(UserLocationModel location) {
@@ -475,7 +476,7 @@ class CheckoutController extends GetxController {
     }
 
     final invalidItems =
-        orderItems.where((item) => (item.merchant.id ?? 0) <= 0);
+        orderItems.where((item) => (item.merchant.id) <= 0);
     if (invalidItems.isNotEmpty) {
       validationErrors.add('Terdapat item dengan merchant tidak valid');
     }
@@ -504,16 +505,23 @@ class CheckoutController extends GetxController {
   }
 
   void _navigateToSuccessPage(TransactionModel transaction) {
-    Get.offNamed(Routes.checkoutSuccess, arguments: {
+    final args = {
+      'transaction': transaction,
       'allTransactions': [transaction],
       'orderItems': orderItems.toList(),
       'subtotal': subtotal.value,
       'shippingFee': deliveryFee.value,
       'total': total.value,
       'deliveryAddress': selectedLocation.value,
-    });
+    };
 
     Get.find<OrderController>().setTransactionData(transaction);
+
+    if (transaction.paymentMethod == 'QRIS_DUAL' || transaction.paymentMethod == 'ONLINE') {
+      Get.offNamed(Routes.paymentQris, arguments: args);
+    } else {
+      Get.offNamed(Routes.checkoutSuccess, arguments: args);
+    }
   }
 
   void _handleCheckoutError(dynamic error) {

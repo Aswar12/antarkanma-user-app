@@ -437,11 +437,50 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ? _buildSkeletonRow('Biaya Pengiriman')
                   : _buildTotalRow(
                       'Biaya Pengiriman', controller.deliveryFee.value),
+              isCalculating
+                  ? _buildSkeletonRow('Service Fee')
+                  : _buildTotalRow(
+                      'Service Fee', controller.serviceFee.value),
               const Divider(height: 16),
               isCalculating
                   ? _buildSkeletonRow('Total', isTotal: true)
                   : _buildTotalRow('Total', controller.total.value,
                       isTotal: true),
+              
+              // Service Fee Info
+              SizedBox(height: Dimenssions.height12),
+              Container(
+                padding: EdgeInsets.all(Dimenssions.width12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                  border: Border.all(
+                    color: primaryColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.favorite_outline,
+                      color: primaryColor,
+                      size: Dimenssions.iconSize16,
+                    ),
+                    SizedBox(width: Dimenssions.width8),
+                    Expanded(
+                      child: Text(
+                        'Service Fee Rp 500 dari Anda membantu AntarkanMa terus berkembang dan memberikan layanan terbaik. Terima kasih atas dukungan Anda! ❤️',
+                        style: TextStyle(
+                          fontSize: Dimenssions.font10,
+                          color: secondaryTextColor,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

@@ -55,23 +55,24 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                 width: double.infinity,
                 child: Hero(
                   tag: 'merchant-${merchant.id}',
-                  child: merchant.logoUrl != null && merchant.logoUrl!.isNotEmpty
-                      ? CachedImageView(
-                          imageUrl: merchant.logoUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        )
-                      : Container(
-                          color: backgroundColor3,
-                          child: Center(
-                            child: Icon(
-                              Icons.store_rounded,
-                              color: secondaryTextColor.withOpacity(0.5),
-                              size: Dimenssions.iconSize24 * 2,
+                  child:
+                      merchant.logoUrl != null && merchant.logoUrl!.isNotEmpty
+                          ? CachedImageView(
+                              imageUrl: merchant.logoUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                          : Container(
+                              color: backgroundColor3,
+                              child: Center(
+                                child: Icon(
+                                  Icons.store_rounded,
+                                  color: secondaryTextColor.withOpacity(0.5),
+                                  size: Dimenssions.iconSize24 * 2,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
                 ),
               ),
               // Gradient Overlay
@@ -127,8 +128,10 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                               vertical: Dimenssions.height4,
                             ),
                             decoration: BoxDecoration(
-                              color: merchant.isActive ? Colors.green : alertColor,
-                              borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                              color:
+                                  merchant.isActive ? Colors.green : alertColor,
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius8),
                             ),
                             child: Text(
                               merchant.isActive ? 'Buka' : 'Tutup',
@@ -175,7 +178,8 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Description if available
-                if (merchant.description != null && merchant.description!.isNotEmpty)
+                if (merchant.description != null &&
+                    merchant.description!.isNotEmpty)
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(Dimenssions.width12),
@@ -225,7 +229,8 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                               padding: EdgeInsets.all(Dimenssions.width6),
                               decoration: BoxDecoration(
                                 color: logoColorSecondary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                                borderRadius:
+                                    BorderRadius.circular(Dimenssions.radius8),
                               ),
                               child: Icon(
                                 Icons.access_time,
@@ -249,7 +254,8 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                         height: 24,
                         width: 1,
                         color: backgroundColor3.withOpacity(0.5),
-                        margin: EdgeInsets.symmetric(horizontal: Dimenssions.width12),
+                        margin: EdgeInsets.symmetric(
+                            horizontal: Dimenssions.width12),
                       ),
                       // Product Count
                       Row(
@@ -258,7 +264,8 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
                             padding: EdgeInsets.all(Dimenssions.width6),
                             decoration: BoxDecoration(
                               color: logoColorSecondary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(Dimenssions.radius8),
+                              borderRadius:
+                                  BorderRadius.circular(Dimenssions.radius8),
                             ),
                             child: Icon(
                               Icons.shopping_bag,
@@ -401,7 +408,7 @@ class MerchantDetailPage extends GetView<MerchantDetailController> {
         padding: EdgeInsets.zero,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.65,
+          childAspectRatio: 0.7,
           mainAxisSpacing: Dimenssions.height15,
           crossAxisSpacing: Dimenssions.width15,
         ),

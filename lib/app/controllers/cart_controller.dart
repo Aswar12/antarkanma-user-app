@@ -3,24 +3,30 @@ import 'package:antarkanma/app/data/models/product_model.dart';
 import 'package:antarkanma/app/data/models/variant_model.dart';
 import 'package:antarkanma/app/data/models/merchant_model.dart';
 import 'package:antarkanma/app/widgets/custom_snackbar.dart';
+import 'package:antarkanma/app/services/cart_sync_service.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
 class CartController extends GetxController {
-  static const String CART_STORAGE_KEY = 'cart_items';
+  static const String cartStorageKey = 'cart_items';
   static const int MAX_QUANTITY = 99;
   final storage = GetStorage();
   final RxMap<int, List<CartItemModel>> merchantItems = <int, List<CartItemModel>>{}.obs;
+  final CartSyncService _cartSyncService = Get.find<CartSyncService>();
+  final RxBool isSyncing = false.obs;
+  final RxBool hasSynced = false.obs;
 
   @override
   void onInit() {
     super.onInit();
     _loadCartFromStorage();
+    // Sync with server after loading local cart
+    _syncWithServer();
   }
 
   void _loadCartFromStorage() {
     try {
-      final cartData = storage.read(CART_STORAGE_KEY);
+      final cartData = storage.read(cartStorageKey);
       if (cartData != null) {
         final Map<String, dynamic> decodedData = Map<String, dynamic>.from(cartData);
         
@@ -58,15 +64,91 @@ class CartController extends GetxController {
       final validItems = merchantItems.map((key, value) {
         return MapEntry(key.toString(), value.map((item) => item.toJson()).toList());
       });
-      
+
       if (validItems.isNotEmpty) {
-        storage.write(CART_STORAGE_KEY, validItems);
+        storage.write(cartStorageKey, validItems);
       } else {
-        storage.remove(CART_STORAGE_KEY);
+        storage.remove(cartStorageKey);
       }
     } catch (e) {
       print('Error saving cart: $e');
     }
+  }
+
+  Future<void> _syncWithServer() async {
+    try {
+      isSyncing.value = true;
+      
+      // Convert local cart to server format
+      final cartData = _convertToServerFormat();
+      
+      if (cartData.isEmpty) {
+        // If local cart is empty, fetch from server
+        await _fetchCartFromServer();
+      } else {
+        // Sync local cart to server
+        await _cartSyncService.syncCart(cartData);
+        hasSynced.value = true;
+        // After syncing, fetch latest from server
+        await _fetchCartFromServer();
+      }
+    } catch (e) {
+      print('Error syncing cart with server: $e');
+      // Continue with local cart - don't show error to user
+    } finally {
+      isSyncing.value = false;
+    }
+  }
+
+  Future<void> _fetchCartFromServer() async {
+    try {
+      final cartData = await _cartSyncService.getCart();
+      final serverItems = _cartSyncService.parseCartItems(cartData);
+      
+      // Convert server items to local format
+      merchantItems.clear();
+      for (var item in serverItems) {
+        final merchantId = item.merchant.id;
+        if (merchantId != null) {
+          if (!merchantItems.containsKey(merchantId)) {
+            merchantItems[merchantId] = [];
+          }
+          merchantItems[merchantId]!.add(item);
+        }
+      }
+      
+      hasSynced.value = true;
+      update();
+      print('✅ Cart synced from server: ${serverItems.length} items');
+    } catch (e) {
+      print('Error fetching cart from server: $e');
+      // Continue with local cart
+    }
+  }
+
+  List<Map<String, dynamic>> _convertToServerFormat() {
+    final List<Map<String, dynamic>> cartData = [];
+    
+    merchantItems.forEach((merchantId, items) {
+      if (items.isEmpty) return;
+      
+      final itemData = <Map<String, dynamic>>[];
+      for (var item in items) {
+        itemData.add({
+          'product_id': item.product.id,
+          'variant_id': item.selectedVariant?.id,
+          'quantity': item.quantity,
+          'is_selected': item.isSelected,
+        });
+      }
+      
+      cartData.add({
+        'merchant_id': merchantId,
+        'items': itemData,
+      });
+    });
+    
+    return cartData;
   }
 
   void addToCart(
@@ -145,6 +227,9 @@ class CartController extends GetxController {
       _saveCartToStorage();
       update();
 
+      // Sync to server in background
+      _syncWithServer();
+
       CustomSnackbarX.showSuccess(
         title: 'Berhasil',
         message: 'Produk berhasil ditambahkan ke keranjang',
@@ -180,11 +265,20 @@ class CartController extends GetxController {
     }
   }
 
-  void clearCart() {
+  Future<void> clearCart() async {
     try {
       merchantItems.clear();
       _saveCartToStorage();
       update();
+      
+      // Clear from server too
+      await _cartSyncService.clearCart();
+      
+      CustomSnackbarX.showSuccess(
+        title: 'Berhasil',
+        message: 'Keranjang berhasil dikosongkan',
+        position: SnackPosition.BOTTOM,
+      );
     } catch (e) {
       print('Error clearing cart: $e');
       CustomSnackbarX.showError(
@@ -192,6 +286,17 @@ class CartController extends GetxController {
         message: 'Gagal mengosongkan keranjang',
         position: SnackPosition.BOTTOM,
       );
+    }
+  }
+
+  Future<void> markCartAsCheckedOut() async {
+    try {
+      final merchantIds = merchantItems.keys.toList();
+      await _cartSyncService.markAsCheckedOut(merchantIds: merchantIds);
+      print('✅ Cart marked as checked out');
+    } catch (e) {
+      print('Error marking cart as checked out: $e');
+      // Don't show error - this is analytics only
     }
   }
 
